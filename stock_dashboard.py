@@ -35,20 +35,21 @@ def process_data(data):
 
 # Calculate basic metrics from stock data
 def calculate_metrics(data):
-    last_close = data['Close'].iloc[-1]
-    prev_close = data['Close'].iloc[0]
+    last_close = float(data['Close'].iloc[-1])
+    prev_close = float(data['Close'].iloc[0])
     change = last_close - prev_close
     pct_change = (change / prev_close) * 100
-    high = data['High'].max()
-    low = data['Low'].min()
-    volume = data['Volume'].sum()
+    high = float(data['High'].max())
+    low = float(data['Low'].min())
+    volume = int(data['Volume'].sum())
     return last_close, change, pct_change, high, low, volume
 
 # Add technical indicators (SMA, EMA, RSI)
 def add_technical_indicators(data):
-    data['SMA_20'] = ta.trend.sma_indicator(data['Close'], window=20)
-    data['EMA_20'] = ta.trend.ema_indicator(data['Close'], window=20)
-    data['RSI_14'] = ta.momentum.rsi(data['Close'], window=14)
+    close_prices = data['Close'].squeeze()
+    data['SMA_20'] = ta.trend.sma_indicator(close_prices, window=20)
+    data['EMA_20'] = ta.trend.ema_indicator(close_prices, window=20)
+    data['RSI_14'] = ta.momentum.rsi(close_prices, window=14)
     return data
 
 # Dashboard app page layout
@@ -132,9 +133,9 @@ for symbol in stock_symbols:
     real_time_data = fetch_stock_data(symbol, '1d', '1m')
     if real_time_data is not None:
         real_time_data = process_data(real_time_data)
-        last_price = real_time_data['Close'].iloc[-1]
-        change = last_price - real_time_data['Open'].iloc[0]
-        pct_change = (change / real_time_data['Open'].iloc[0]) * 100
+        last_price = float(real_time_data['Close'].iloc[-1])
+        change = last_price - float(real_time_data['Open'].iloc[0])
+        pct_change = (change / float(real_time_data['Open'].iloc[0])) * 100
         st.sidebar.metric(f"{symbol}", f"{last_price:.2f} USD", f"{change:.2f} ({pct_change:.2f}%)")
 
 # Sidebar information section
