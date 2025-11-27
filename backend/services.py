@@ -43,12 +43,10 @@ def fetch_stock_data(ticker: str, period: str, interval: str) -> pd.DataFrame:
         
         # Using period argument is safer than manual date calculation
         if period == 'max':
-            data = yf.download(ticker, period='max', interval=interval)
+            data = yf.download(ticker, period='max', interval=interval, auto_adjust=False)
         else:
-            # Replicating original behavior but safer
-            # If the original code worked, maybe I misread it or it only worked for 'd'.
-            # Let's just use the period param.
-            data = yf.download(ticker, period=period, interval=interval)
+            # Use the period parameter and set auto_adjust explicitly
+            data = yf.download(ticker, period=period, interval=interval, auto_adjust=False)
             
         if data.empty:
             raise ValueError(f"No data found for {ticker}.")
@@ -60,7 +58,7 @@ def process_data(data: pd.DataFrame) -> pd.DataFrame:
     """
     Format the date & time to ensure it is timezone aware with correct formatting.
     """
-    if data.index.tzinfo is None:
+    if data.index.tz is None:
         data.index = data.index.tz_localize('UTC')
     data.index = data.index.tz_convert('US/Eastern')
     data.reset_index(inplace=True)
@@ -86,13 +84,13 @@ def calculate_metrics(data: pd.DataFrame) -> dict:
     """
     Calculate basic metrics from stock data.
     """
-    last_close = float(data['Close'].iloc[-1])
-    prev_close = float(data['Close'].iloc[0])
+    last_close = float(data['Close'].iloc[-1].item())
+    prev_close = float(data['Close'].iloc[0].item())
     change = last_close - prev_close
     pct_change = (change / prev_close) * 100
-    high = float(data['High'].max())
-    low = float(data['Low'].min())
-    volume = int(data['Volume'].sum())
+    high = float(data['High'].max().item())
+    low = float(data['Low'].min().item())
+    volume = int(data['Volume'].sum().item())
     
     return {
         "last_close": last_close,

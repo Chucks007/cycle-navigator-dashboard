@@ -10,12 +10,11 @@ import ta
 # Fetch stock data based on ticker, period, & interval through Yahoo Finance API
 def fetch_stock_data(ticker, period, interval):
     try:
-        end_date = datetime.now()
-        if period == '1wk':
-            start_date = end_date - timedelta(days=7)
+        # Use yfinance's period argument which handles '1d','5d','1mo','max', etc.
+        if period == 'max':
+            data = yf.download(ticker, period='max', interval=interval, auto_adjust=False)
         else:
-            start_date = end_date - timedelta(days=int(period[:-1]))
-        data = yf.download(ticker, start=start_date, end=end_date, interval=interval)
+            data = yf.download(ticker, period=period, interval=interval, auto_adjust=False)
         if data.empty:
             st.error(f"No data found for {ticker}. Please check the ticker symbol and try again.")
             return None
@@ -26,7 +25,7 @@ def fetch_stock_data(ticker, period, interval):
 
 # Format the date & time to ensure it is timezone aware with correct formatting
 def process_data(data):
-    if data.index.tzinfo is None:
+    if data.index.tz is None:
         data.index = data.index.tz_localize('UTC')
     data.index = data.index.tz_convert('US/Eastern')
     data.reset_index(inplace=True)
@@ -35,13 +34,13 @@ def process_data(data):
 
 # Calculate basic metrics from stock data
 def calculate_metrics(data):
-    last_close = float(data['Close'].iloc[-1])
-    prev_close = float(data['Close'].iloc[0])
+    last_close = float(data['Close'].iloc[-1].item())
+    prev_close = float(data['Close'].iloc[0].item())
     change = last_close - prev_close
     pct_change = (change / prev_close) * 100
-    high = float(data['High'].max())
-    low = float(data['Low'].min())
-    volume = int(data['Volume'].sum())
+    high = float(data['High'].max().item())
+    low = float(data['Low'].min().item())
+    volume = int(data['Volume'].sum().item())
     return last_close, change, pct_change, high, low, volume
 
 # Add technical indicators (SMA, EMA, RSI)
@@ -113,11 +112,11 @@ if st.sidebar.button('Update'):
 
         # Formatting of the chart
         fig.update_layout(title=f"{ticker} {time_period.upper()} Chart",
-                          xaxis_title='Time',
-                          yaxis_title='Price (USD)',
-                          yaxis2=dict(title='RSI', overlaying='y', side='right', showgrid=False),
-                          height=600)
-        st.plotly_chart(fig, use_container_width=True)
+                  xaxis_title='Time',
+                  yaxis_title='Price (USD)',
+                  yaxis2=dict(title='RSI', overlaying='y', side='right', showgrid=False),
+                  height=600)
+        st.plotly_chart(fig, width='stretch')
 
         # Display historical data & technical indicators
         st.subheader('Historical Data')
@@ -133,9 +132,9 @@ for symbol in stock_symbols:
     real_time_data = fetch_stock_data(symbol, '1d', '1m')
     if real_time_data is not None:
         real_time_data = process_data(real_time_data)
-        last_price = float(real_time_data['Close'].iloc[-1])
-        change = last_price - float(real_time_data['Open'].iloc[0])
-        pct_change = (change / float(real_time_data['Open'].iloc[0])) * 100
+        last_price = float(real_time_data['Close'].iloc[-1].item())
+        change = last_price - float(real_time_data['Open'].iloc[0].item())
+        pct_change = (change / float(real_time_data['Open'].iloc[0].item())) * 100
         st.sidebar.metric(f"{symbol}", f"{last_price:.2f} USD", f"{change:.2f} ({pct_change:.2f}%)")
 
 # Sidebar information section
