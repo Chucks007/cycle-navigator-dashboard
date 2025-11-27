@@ -14,116 +14,164 @@ https://github.com/user-attachments/assets/73e8ccaa-fba7-4288-9af2-376f0964c727
 Real_Time_Stock_Price_Dashboard/
 ├── stock_dashboard.py
 ├── requirements.txt
-├── README.md
-├── LICENSE
-└── Example.png
+```markdown
+# Cycle Navigator — Real-Time Stock Dashboard
+
+Small, opinionated Streamlit dashboard for viewing stock prices, basic technical indicators, and simple verification scripts. Originally created as a lightweight tool to monitor equities (candlesticks, SMA/EMA/RSI) and to exercise some automation checks.
+
+This repo contains:
+
+- `stock_dashboard.py` — Streamlit app (main UI).
+- `backend/` — FastAPI helpers and small API that re-uses the same data functions.
+- `scripts/playwright/` — Playwright test that opens the Streamlit app and captures screenshots into `artifacts/`.
+- `scripts/test_fred_api.py` and `scripts/verify_env.py` — small helpers for verifying FRED API connectivity and environment variables.
+- `requirements.txt` and `backend/requirements.txt` — Python dependencies.
+
+**Quick goals**: run the Streamlit app locally, optionally run the small FastAPI backend, and verify UI behavior with the Playwright script.
+
+**Note:** this README was updated to reflect the current structure and run instructions.
+
+---
+
+## Requirements
+
+- Python 3.8+ (3.10/3.11 recommended)
+- A virtualenv or venv for dependency isolation
+- Optional: Playwright to run the end-to-end script (`scripts/playwright/test_dashboard.py`)
+
+Install system-level packages and create a virtual environment (example using `fish`):
+
+```fish
+python -m venv venv
+source venv/bin/activate.fish
+pip install --upgrade pip
+pip install -r requirements.txt
 ```
 
-## Features
+If you plan to run the backend service, also install backend deps:
 
-- **Real-Time Data**: Fetches and displays real-time stock data.
-- **Customizable Charts**: Supports candlestick and line charts.
-- **Technical Indicators**: Includes Simple Moving Average (SMA) and Exponential Moving Average (EMA).
-- **Historical Data**: View and analyze historical stock data.
-- **Multiple Tickers**: Monitor multiple stock symbols in real-time.
+```fish
+pip install -r backend/requirements.txt
+```
 
-## Installation
+If you want to run the Playwright-based UI test, install Playwright in the venv and download browsers:
 
-### Prerequisites
+```fish
+pip install playwright
+python -m playwright install chromium
+```
 
-Ensure that you have Python 3.8 or higher installed on your machine. You'll also need to install the following Python libraries:
+---
 
-- `streamlit`
-- `yfinance`
-- `pandas`
-- `plotly`
-- `ta` (Technical Analysis library)
+## Running the Streamlit dashboard (frontend)
 
-### Steps to Install
+Run the Streamlit app from the repository root (from the activated venv):
 
-1. **Clone the Repository**
+```fish
+venv/bin/streamlit run stock_dashboard.py
+```
 
-   First, clone the repository to your local machine:
-   ```bash
-   git clone https://github.com/peterajhgraham/Real_Time_Stock_Price_Dashboard.git
-   cd Real_Time_Stock_Price_Dashboard
+Open `http://localhost:8501` in your browser (Streamlit prints the local and network URLs when it starts).
 
-3. **Install the Required Packages**
+Sidebar controls summary:
 
-   Install the required Python packages using pip:
-   ```bash
-   pip3 install -r requirements.txt
-   ```
+- `Ticker` — stock symbol (e.g. `AAPL`).
+- `Time Period` — periods supported by `yfinance` (e.g. `1d`, `5d`, `1mo`, `max`).
+- `Chart Type` — `Candlestick` or `Line`.
+- `Technical Indicators` — `SMA 20`, `EMA 20`, `RSI 14` (add them then click `Update`).
 
-   If you don't have a requirements.txt file, you can manually install the dependencies:
-   ```bash
-   pip3 install streamlit yfinance pandas plotly pytz ta
-   ```
+The app also shows a small list of real-time prices in the sidebar for `AAPL`, `GOOGL`, `AMZN`, and `MSFT`.
 
-3. **Run the Application**
+---
 
-   Once all the dependencies are installed, you can start the Streamlit app:
-   ```bash
-   python3 -m streamlit run stock_dashboard.py
-   ```
-   This command will launch the dashboard in your web browser!
+## Running the backend (optional)
 
-   *Example*:
+The `backend/` package contains a FastAPI app that exposes a few endpoints which wrap the same data functions:
 
-   <img src='Example.png'>
+- `GET /api/stock/{ticker}` — basic metrics
+- `GET /api/stock/{ticker}/history` — historical OHLCV data
+- `GET /api/stock/{ticker}/indicators` — SMA/EMA/RSI
 
-## Usage
-### Interface Overview
+Start the server (from repo root, venv active):
 
-* **Ticker** - Enter the stock ticker symbol you want to analyze (e.g., AAPL for Apple Inc.)
+```fish
+uvicorn backend.main:app --reload --port 8000
+```
 
-* **Time Period** - Select the time period over which you want to view the stock data (e.g., 1d, 1wk, 1mo, 1y, etc.)
+CORS is configured to allow `http://localhost:5173` by default (Vite dev server). Adjust `backend/main.py` if you need other origins.
 
-* **Chart Type** - Choose between a candlestick chart and a line chart
+---
 
-* **Technical Indicators** - Select one or more technical indicators to apply to the chart
+## Playwright UI test
 
-### Real-Time Stock Prices
+The Playwright script exercises the Streamlit UI and saves screenshots to the `artifacts/` folder.
 
-The sidebar displays the real-time prices for a predefined list of stock symbols (e.g., AAPL, GOOGL, AMZN, MSFT). These prices update automatically and show the percentage change from the opening price.
+Run it after the Streamlit app is running:
 
-### Customization
+```fish
+python scripts/playwright/test_dashboard.py
+```
 
-You can easily modify the list of stock symbols monitored in real-time by editing the stock_symbols list in the app.py file.
+Notes:
 
-### Example Usage
+- If Playwright raises an error about missing browsers, run `python -m playwright install chromium` (or `python -m playwright install` to install all supported browsers).
+- The script captures screenshots into `artifacts/`.
 
-1. Monitoring Apple Stock in Real-Time:
+---
 
-    * Enter `AAPL` in the ticker input
+## FRED API helpers
 
-    * Select `1d` for the time period
+This project includes small scripts that require a FRED API key (optional):
 
-    * Choose the Candlestick chart type
+- Create a `.env` file with `FRED_API_KEY=your_key_here` or export `FRED_API_KEY` in your environment.
+- `scripts/verify_env.py` prints the loaded key for quick verification.
+- `scripts/test_fred_api.py` fetches CPI, M2, and 10Y yield series using the public FRED REST API.
 
-    * Select `SMA 20`, `EMA 20`, & `RSI 14` for technical indicators
+Example:
 
-    * Click `Update` to visualize the data
+```fish
+# Create .env in repo root with: FRED_API_KEY=xxxx
+python scripts/verify_env.py
+python scripts/test_fred_api.py
+```
 
-2. Viewing Historical Data:
+---
 
-    * Select a longer time period (e.g., `1y`)
+## Troubleshooting
 
-    * Use the `Line` chart type for a smooth trend visualization.
+- Playwright browser error: if you see an error like "Executable doesn't exist" or a message asking you to run `playwright install`, run:
 
-    * Analyze the historical data displayed below the chart.
+  ```fish
+  python -m playwright install chromium
+  ```
 
-## Known Issues
+- Connection refused during Playwright `page.goto`: ensure the Streamlit app is running at `http://localhost:8501` before starting the test.
 
-  * **Data Fetching Errors**: If no data is returned for a given ticker, an error message will be displayed. Ensure that the ticker symbol is correct and try again.
+- yfinance returns empty data: verify the ticker symbol and try a different `period`/`interval`. Network issues or rate-limiting can also cause empty responses.
+
+---
+
+## Development notes
+
+- Core data logic is implemented in `backend/services.py` and reused by both the Streamlit app and the FastAPI routes to avoid duplication.
+- Technical indicators use the `ta` library; results may include NaNs for very short series (the code currently fills NaNs with zeros before returning JSON from the backend).
+
+---
 
 ## Contributing
 
-Contributions are welcome! If you have ideas for new features, elements, or enhancements, feel free to fork the repository and submit a pull request. Please ensure your code follows geenral best practices and is well-documented.
+Contributions welcome — open an issue or a PR. Please include a short description and tests where appropriate.
+
+---
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for more details.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
+
+---
 
 ## Contact
-For questions or support, please contact me at peter_graham@brown.edu.
+
+For questions, open an issue or contact the maintainer in the repository.
+
+```
