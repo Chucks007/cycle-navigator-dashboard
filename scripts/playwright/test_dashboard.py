@@ -11,7 +11,10 @@ def take_screenshot(page, name):
 
 def run_test():
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
+        # Allow running headless via env var for CI / headless environments
+        headless_env = os.getenv("PLAYWRIGHT_HEADLESS", "false").lower()
+        headless = headless_env in ("1", "true", "yes")
+        browser = p.chromium.launch(headless=headless)
         page = browser.new_page()
         print('Opening dashboard...')
         page.goto('http://localhost:8501', timeout=60000)
