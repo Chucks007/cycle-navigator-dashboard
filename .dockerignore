@@ -1,0 +1,22 @@
+# Git
+.git
+.gitignore
+
+# Virtual Environments
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs and artifacts
+streamlit.log
+artifacts/
+*.log
+
+# IDE settings
+.idea/
+.vscode/

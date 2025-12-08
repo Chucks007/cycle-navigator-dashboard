@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from services import fetch_stock_data, process_data, calculate_metrics, add_technical_indicators
+from .services import fetch_stock_data, process_data, calculate_metrics, add_technical_indicators
 import pandas as pd
 
 app = FastAPI()
