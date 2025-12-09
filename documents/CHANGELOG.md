@@ -112,3 +112,14 @@ env PLAYWRIGHT_HEADLESS=false /home/chuck/Projects/cycle-navigator-dashboard/ven
 ---
 
 *This CHANGELOG entry was created automatically from `documents/RISK_METRICS_UPDATE.md`.*
+
+## 2025-12-09 — CI: E2E workflow Playwright fix
+
+**Summary**
+- Fixed E2E workflow failure due to missing Playwright Python package in the runner environment.
+- Updated `.github/workflows/e2e.yml` to install `requirements-dev.txt` (which includes `playwright`) before running `python -m playwright install` and starting tests.
+- Verified successful E2E run in CI: Playwright tests ran against the built container and passed.
+
+**Files Changed**
+- `.github/workflows/e2e.yml`: Install dev requirements before `playwright install`.
+

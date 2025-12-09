@@ -124,6 +124,15 @@ Notes:
 
 - If Playwright raises an error about missing browsers, run `python -m playwright install chromium` (or `python -m playwright install` to install all supported browsers).
 - The script captures screenshots into `artifacts/`.
+- Install the test/dev dependencies before running Playwright locally:
+
+  ```bash
+  python -m pip install --upgrade pip
+  pip install -r requirements.txt -r requirements-dev.txt
+  python -m playwright install chromium
+  ```
+
+- In CI, the E2E workflow automatically installs `requirements-dev.txt` and Playwright browsers before running the tests.
 
 ---
 

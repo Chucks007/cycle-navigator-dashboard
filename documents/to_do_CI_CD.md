@@ -27,6 +27,7 @@ The goal of CI is to automate the building and testing of the application with e
 -   [x] **Automate UI Testing with Playwright**
     -   [x] **Run Playwright manually / separate workflow**: A `workflow_dispatch`/scheduled job now runs the test suite without blocking PR CI.
     -   [x] Create a separate `.github/workflows/e2e.yml` triggered by `workflow_dispatch` (and an optional nightly cron) that installs browsers and runs the script headless.
+    -   [x] **Note:** The E2E workflow now installs `requirements-dev.txt` (including Playwright) before installing Playwright browsers; this avoids missing module errors during runs.
     -   [x] The E2E workflow builds the same container, starts it, waits for health/readiness endpoints, runs `scripts/playwright/test_dashboard.py` with `PLAYWRIGHT_HEADLESS=true`, and tears down the container.
     -   [x] The E2E workflow uploads failure artifacts (screenshots/traces/logs) for easier debugging.
 

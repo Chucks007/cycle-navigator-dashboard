@@ -18,6 +18,7 @@ The core Streamlit application (`stock_dashboard.py`) has been successfully veri
 - **Container Environment:** Podman container running the `cycle-navigator-dashboard:latest` image
 - **Test Framework:** Playwright (Chromium browser)
 - **Test Script:** `scripts/playwright/test_dashboard.py`
+ - **CI Note:** The GitHub Actions E2E workflow now installs `requirements-dev.txt` (includes `playwright`) before running `python -m playwright install`, ensuring the Playwright Python package is present in the runner for browser installation.
 
 ---
 
@@ -77,6 +78,8 @@ All screenshots are saved in the `artifacts/` directory:
 ## Conclusion
 
 **✅ Base functionality verified. Real-time prices, charts, and technical indicators are loading correctly from `stock_dashboard.py`.**
+
+**CI Note:** The CI Playwright E2E run executed successfully (main) and included the updated step to install dev dependencies prior to running `playwright install`.
 
 The dashboard is fully operational and ready for:
 - Integration with Cycle Navigator features
