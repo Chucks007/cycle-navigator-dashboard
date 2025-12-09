@@ -4,11 +4,12 @@ Run with the project's venv python:
 
 /absolute/path/to/venv/bin/python scripts/test_fred_api.py
 """
-import os
 import json
+import os
 import urllib.parse
 import urllib.request
 from datetime import date, timedelta
+
 from dotenv import load_dotenv
 
 load_dotenv()

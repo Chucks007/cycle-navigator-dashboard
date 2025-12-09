@@ -15,74 +15,35 @@ The core Streamlit application (`stock_dashboard.py`) has been successfully veri
 ## Test Configuration
 
 - **Dashboard URL:** http://localhost:8501
-- **Python Environment:** Virtual environment at `/home/chuck/Projects/cycle-navigator-dashboard/venv`
-- **Python Version:** 3.14.0
-- **Test Framework:** Playwright (Chromium browser, headed mode)
+- **Container Environment:** Podman container running the `cycle-navigator-dashboard:latest` image
+- **Test Framework:** Playwright (Chromium browser)
 - **Test Script:** `scripts/playwright/test_dashboard.py`
-
----
-
-## Verification Results
-
-### ✅ All Checks Passed (11/11)
-
-#### 1. **Sidebar Real-Time Stock Prices** ✅
-- AAPL price displayed
-- GOOGL price displayed
-- AMZN price displayed
-- MSFT price displayed
-
-**Status:** All 4 stock symbols successfully fetched and displayed with current prices and percentage changes.
-
-#### 2. **Price Metrics Display** ✅
-- Last Price metric displayed
-- High metric displayed
-- Low metric displayed
-- Volume metric displayed
-
-**Status:** All price metrics render correctly for the selected ticker (AAPL by default).
-
-#### 3. **Chart Rendering** ✅
-- Found 1 Plotly chart
-- Chart successfully loads after clicking "Update"
-- Default chart type: Candlestick
-
-**Status:** Interactive Plotly chart renders correctly with OHLC data.
-
-#### 4. **Data Tables** ✅
-- Historical Data table section present
-- Technical Indicators table section present
-
-**Status:** Both data tables display correctly with datetime, OHLC values, and indicator values.
-
-#### 5. **Technical Indicators** ✅
-- Multiselect component functional
-- Successfully selected: SMA 20, EMA 20, RSI 14
-- Indicators render on chart after clicking "Update"
-
-**Status:** All three technical indicators can be selected and are computed/displayed correctly.
 
 ---
 
 ## Test Execution Flow
 
-1. **Initial Load**
+1. **Start the Application Container**
+   - Build the image: `podman build -t cycle-navigator-dashboard .`
+   - Run the container: `podman run -p 8501:8501 -d --name cycle-navigator-app cycle-navigator-dashboard`
+
+2. **Initial Load**
    - Opened dashboard at http://localhost:8501
    - Verified title: "Real-Time Stock Dashboard"
    - Screenshot saved: `artifacts/initial.png`
 
-2. **Default Ticker Load (AAPL)**
+3. **Default Ticker Load (AAPL)**
    - Clicked "Update" button
    - Waited for "Historical Data" section to appear
    - Screenshot saved: `artifacts/after_update.png`
 
-3. **Technical Indicators Selection**
+4. **Technical Indicators Selection**
    - Opened "Technical Indicators" multiselect
    - Selected all three indicators (SMA 20, EMA 20, RSI 14)
    - Clicked "Update" to render indicators
    - Screenshot saved: `artifacts/after_indicators.png`
 
-4. **Automated Verification**
+5. **Automated Verification**
    - Checked sidebar stock prices (4/4 present)
    - Verified price metrics (4/4 present)
    - Confirmed Plotly chart presence (1 chart found)
