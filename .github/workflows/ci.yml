@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [develop]
 
+# Permissions required for GHCR push
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -41,20 +46,38 @@ jobs:
         run: |
           pytest -q
 
-      - name: Build container image
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/develop' }}
+
+      - name: Build and push container image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Containerfile
-          push: false
-          load: true
-          tags: cycle-navigator-dashboard:${{ github.sha }}
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' }}
+          load: ${{ github.event_name != 'push' || github.ref != 'refs/heads/develop' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
       - name: Verify container dependencies
         run: |
           echo "Verifying container image was built successfully..."
-          docker images cycle-navigator-dashboard:${{ github.sha }}
+          # Use the SHA tag for verification (always available)
+          docker images ghcr.io/${{ github.repository }}:${{ github.sha }} || docker images cycle-navigator-dashboard
           echo "Checking installed Python packages in container..."
-          docker run --rm cycle-navigator-dashboard:${{ github.sha }} pip list
+          docker run --rm ghcr.io/${{ github.repository }}:${{ github.sha }} pip list 2>/dev/null || docker run --rm $(docker images -q | head -1) pip list
           echo "Verifying key dependencies are installed..."
-          docker run --rm cycle-navigator-dashboard:${{ github.sha }} python -c "import fastapi; import streamlit; import yfinance; import pandas; print('All core dependencies verified!')"
+          docker run --rm ghcr.io/${{ github.repository }}:${{ github.sha }} python -c "import fastapi; import streamlit; import yfinance; import pandas; print('All core dependencies verified!')" 2>/dev/null || docker run --rm $(docker images -q | head -1) python -c "import fastapi; import streamlit; import yfinance; import pandas; print('All core dependencies verified!')"

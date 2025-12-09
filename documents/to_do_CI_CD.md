@@ -34,13 +34,13 @@ The goal of CI is to automate the building and testing of the application with e
 
 The goal of CD is to automate the release process, making it easy to deploy new versions of the application.
 
--   [ ] **Set up GitHub Container Registry (GHCR)**
-    -   [ ] Configure GitHub Actions to authenticate with GHCR.
-    -   [ ] Add a step in the CI workflow (after successful build and tests) to push the `cycle-navigator-dashboard` image to GHCR, tagging it appropriately (e.g., with `latest` and `git_sha`).
+-   [x] **Set up GitHub Container Registry (GHCR)**
+    -   [x] Configure GitHub Actions to authenticate with GHCR.
+    -   [x] Add a step in the CI workflow (after successful build and tests) to push the `cycle-navigator-dashboard` image to GHCR, tagging it appropriately (e.g., with `latest` and `git_sha`).
 
--   [ ] **Automate Local Deployment (using Watchtower or similar)**
-    -   [ ] Research and understand how Watchtower (or a similar tool) can monitor GHCR for new `cycle-navigator-dashboard` images.
-    -   [ ] Document instructions for setting up Watchtower on the local machine to automatically pull and restart the application container.
+-   [x] **Automate Local Deployment (using Watchtower or similar)**
+    -   [x] Research and understand how Watchtower (or a similar tool) can monitor GHCR for new `cycle-navigator-dashboard` images.
+    -   [x] Document instructions for setting up Watchtower on the local machine to automatically pull and restart the application container. See [`documents/WATCHTOWER_SETUP.md`](WATCHTOWER_SETUP.md).
 +
 ## 3. General Best Practices
 
