@@ -2,6 +2,28 @@
 
 All notable changes to this project are documented in this file.
 
+## 2025-12-07 — Application Containerization
+
+**Summary**
+- Containerized the application using Podman to provide a stable, isolated, and reproducible runtime environment. This protects the application from host system updates and simplifies setup.
+- The single container runs both the Streamlit frontend and the FastAPI backend concurrently.
+
+**Files Changed**
+- `Containerfile`: Added to define the build process for the Podman image.
+- `start.sh`: A new script to launch both the Uvicorn and Streamlit servers within the container.
+- `.dockerignore`: Added to exclude unnecessary files from the container image, keeping it lightweight.
+- `requirements.txt`: Consolidated all frontend and backend dependencies into a single file.
+- `backend/requirements.txt`: Deleted after its contents were merged.
+- `backend/main.py`: Corrected a module import to use a relative path, ensuring compatibility with the container's execution context.
+- `.gitignore`: Added `streamlit.log` to the ignore list.
+
+**How to Run**
+- **Build:** `podman build -t cycle-navigator-dashboard .`
+- **Run:** `podman run -p 8000:8000 -p 8501:8501 -d --name cycle-navigator-app cycle-navigator-dashboard`
+- **Access:** `http://localhost:8501`
+
+---
+
 ## 2025-11-26 — Risk Metrics & Playwright Test Update
 
 **Summary**
