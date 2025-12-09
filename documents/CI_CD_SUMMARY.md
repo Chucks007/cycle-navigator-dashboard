@@ -64,7 +64,7 @@ Why we changed e2e install step:
 
 - Container file: `Containerfile` (based on `python:3.11-slim`) builds image for both frontend and backend.
 - Build and verification steps are part of the CI job; the E2E uses the same container build for integration test parity.
-- GHCR Push: CI `ci.yml` is configured to authenticate against GHCR and push images using `docker/build-push-action` if configured to do so (e.g., from `develop` / `main` or on successful PR).
+ - GHCR Push: CI `ci.yml` is configured to authenticate against GHCR and push images using a build-push GitHub Action (for example, the `docker/build-push-action` action) if configured to do so (e.g., from `develop` / `main` or on successful PR).
 - Image tags:
   - `ghcr.io/<owner>/cycle-navigator-dashboard:<SHA>` — unique per commit (recommended)
   - `ghcr.io/<owner>/cycle-navigator-dashboard:latest` — on `develop`/`main`
@@ -75,7 +75,7 @@ Why we changed e2e install step:
 
 - We documented setup in `documents/WATCHTOWER_SETUP.md`.
 - Watchtower or an equivalent Podman auto-update tool can watch GHCR and pull+restart the container automatically when a new image arrives.
-- Use `podman run` / `docker run` commands shown in `WATCHTOWER_SETUP.md` to configure local auto-updates with proper credentials.
+ - Use `podman run` commands shown in `WATCHTOWER_SETUP.md` to configure local auto-updates with proper credentials.
 
 ---
 

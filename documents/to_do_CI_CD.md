@@ -21,7 +21,7 @@ The goal of CI is to automate the building and testing of the application with e
     -   [x] **Integrate Pytest:** CI workflow runs `pytest -q` after linting; pytest config in `pyproject.toml` under `[tool.pytest.ini_options]`.
 
 -   [x] **Automate Container Image Build**
-    -   [x] Add a step in the CI workflow to build the `cycle-navigator-dashboard` Podman/Docker image using the `Containerfile`.
+    -   [x] Add a step in the CI workflow to build the `cycle-navigator-dashboard` Podman image using the `Containerfile`.
     -   [x] Ensure the build process verifies dependency installation.
 
 -   [x] **Automate UI Testing with Playwright**

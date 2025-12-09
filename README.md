@@ -23,7 +23,7 @@ Small, opinionated Streamlit dashboard for viewing stock prices, basic technical
 
 ## Running with Podman (Recommended)
 
-The easiest and most reliable way to run this application is with Podman (or another container runtime like Docker). This method isolates the application and all its dependencies, protecting it from issues related to your host system's configuration or updates.
+The easiest and most reliable way to run this application is with Podman (recommended). This method isolates the application and all its dependencies, protecting it from issues related to your host system's configuration or updates.
 
 **1. Build the Container Image:**
 

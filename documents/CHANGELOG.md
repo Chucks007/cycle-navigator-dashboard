@@ -11,7 +11,7 @@ All notable changes to this project are documented in this file.
 **Files Changed**
 - `Containerfile`: Added to define the build process for the Podman image.
 - `start.sh`: A new script to launch both the Uvicorn and Streamlit servers within the container.
-- `.dockerignore`: Added to exclude unnecessary files from the container image, keeping it lightweight.
+. `.dockerignore` (container ignore file used by Podman and Docker): Added to exclude unnecessary files from the container image, keeping it lightweight.
 - `requirements.txt`: Consolidated all frontend and backend dependencies into a single file.
 - `backend/requirements.txt`: Deleted after its contents were merged.
 - `backend/main.py`: Corrected a module import to use a relative path, ensuring compatibility with the container's execution context.
