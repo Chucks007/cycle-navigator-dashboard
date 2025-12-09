@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from .services import fetch_stock_data, process_data, calculate_metrics, add_technical_indicators
-import pandas as pd
+
+from .services import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data
 
 app = FastAPI()
 
@@ -16,7 +16,7 @@ app.add_middleware(
 
 @app.get("/api/stock/{ticker}")
 def get_stock_metrics(
-    ticker: str, 
+    ticker: str,
     period: str = Query("1d", description="Time period (e.g., 1d, 5d, 1mo)"),
     interval: str = Query("1m", description="Data interval (e.g., 1m, 5m, 1h)")
 ):
@@ -30,7 +30,7 @@ def get_stock_metrics(
 
 @app.get("/api/stock/{ticker}/history")
 def get_stock_history(
-    ticker: str, 
+    ticker: str,
     period: str = Query("1d"),
     interval: str = Query("1m")
 ):
@@ -47,7 +47,7 @@ def get_stock_history(
 
 @app.get("/api/stock/{ticker}/indicators")
 def get_stock_indicators(
-    ticker: str, 
+    ticker: str,
     period: str = Query("1d"),
     interval: str = Query("1m")
 ):
@@ -55,7 +55,7 @@ def get_stock_indicators(
         data = fetch_stock_data(ticker, period, interval)
         data = process_data(data)
         data = add_technical_indicators(data)
-        
+
         data['Datetime'] = data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
         # Filter columns that exist (some indicators might fail or be NaN)
         cols = ['Datetime', 'SMA_20', 'EMA_20', 'RSI_14']

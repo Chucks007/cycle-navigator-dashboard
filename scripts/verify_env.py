@@ -4,6 +4,7 @@ Run with the project's venv python, e.g.:
 /absolute/path/to/venv/bin/python scripts/verify_env.py
 """
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()

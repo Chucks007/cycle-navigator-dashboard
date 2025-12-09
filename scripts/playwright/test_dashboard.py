@@ -1,6 +1,7 @@
-from playwright.sync_api import sync_playwright
-import time
 import os
+import time
+
+from playwright.sync_api import sync_playwright
 
 
 def take_screenshot(page, name):
@@ -53,15 +54,15 @@ def run_test():
             # Find all multiselect widgets on the page
             # Streamlit multiselects have input elements with role="combobox"
             multiselects = page.locator('[data-baseweb="select"]').all()
-            
+
             # Find the one near "Technical Indicators" text
             # Alternative: use the input directly
             indicators_input = page.locator('label:has-text("Technical Indicators")').locator('..').locator('input')
-            
+
             # Click to open dropdown
             indicators_input.click()
             time.sleep(0.5)
-            
+
             # Select each indicator by clicking on the option in the dropdown
             for option in ['SMA 20', 'EMA 20', 'RSI 14']:
                 # Streamlit renders options with specific text in divs
@@ -71,7 +72,7 @@ def run_test():
                     time.sleep(0.3)
                 else:
                     print(f'Option {option} not found in dropdown')
-            
+
             # Close dropdown by clicking elsewhere or pressing Escape
             page.keyboard.press('Escape')
             time.sleep(0.5)
@@ -109,7 +110,7 @@ def run_test():
         print('\n=== Verification Results ===')
         checks_passed = []
         checks_failed = []
-        
+
         # Check 1: Sidebar Real-Time Stock Prices
         try:
             sidebar_stocks = ['AAPL', 'GOOGL', 'AMZN', 'MSFT']
@@ -120,7 +121,7 @@ def run_test():
                     checks_failed.append(f'Sidebar missing {stock} price')
         except Exception as e:
             checks_failed.append(f'Sidebar check error: {e}')
-        
+
         # Check 2: Last Price metric
         try:
             if page.locator('text=Last Price').count() > 0:
@@ -129,7 +130,7 @@ def run_test():
                 checks_failed.append('Last Price metric not found')
         except Exception:
             checks_failed.append('Last Price check failed')
-        
+
         # Check 3: High/Low/Volume metrics
         try:
             if page.locator('text=High').count() > 0:
@@ -140,7 +141,7 @@ def run_test():
                 checks_passed.append('Volume metric displayed')
         except Exception as e:
             checks_failed.append(f'Price metrics check error: {e}')
-        
+
         # Check 4: Chart presence (Plotly container)
         try:
             plotly_chart = page.locator('.js-plotly-plot').count()
@@ -150,7 +151,7 @@ def run_test():
                 checks_failed.append('No Plotly charts found')
         except Exception as e:
             checks_failed.append(f'Chart check error: {e}')
-        
+
         # Check 5: Historical Data table
         try:
             if page.locator('text=Historical Data').count() > 0:
@@ -159,7 +160,7 @@ def run_test():
                 checks_failed.append('Historical Data table not found')
         except Exception:
             checks_failed.append('Historical Data check failed')
-        
+
         # Check 6: Technical Indicators table
         try:
             if page.locator('text=Technical Indicators').count() > 0:
@@ -168,24 +169,24 @@ def run_test():
                 checks_failed.append('Technical Indicators table not found')
         except Exception:
             checks_failed.append('Technical Indicators table check failed')
-        
+
         # Print results
         print(f'\n✅ Passed ({len(checks_passed)}):')
         for check in checks_passed:
             print(f'  - {check}')
-        
+
         if checks_failed:
             print(f'\n❌ Failed ({len(checks_failed)}):')
             for check in checks_failed:
                 print(f'  - {check}')
-        
+
         print(f'\n📊 Summary: {len(checks_passed)}/{len(checks_passed) + len(checks_failed)} checks passed')
         print('===========================\n')
 
         print('Test finished; closing browser in 3s')
         time.sleep(3)
         browser.close()
-        
+
         return len(checks_failed) == 0
 
 

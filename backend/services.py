@@ -1,8 +1,9 @@
-import yfinance as yf
+from datetime import datetime, timedelta
+
 import pandas as pd
 import ta
-from datetime import datetime, timedelta
-import pytz
+import yfinance as yf
+
 
 def fetch_stock_data(ticker: str, period: str, interval: str) -> pd.DataFrame:
     """
@@ -40,14 +41,14 @@ def fetch_stock_data(ticker: str, period: str, interval: str) -> pd.DataFrame:
                 # OR fix the logic.
                 # Let's use yfinance's period argument directly, it's more robust.
                 pass
-        
+
         # Using period argument is safer than manual date calculation
         if period == 'max':
             data = yf.download(ticker, period='max', interval=interval, auto_adjust=False)
         else:
             # Use the period parameter and set auto_adjust explicitly
             data = yf.download(ticker, period=period, interval=interval, auto_adjust=False)
-            
+
         if data.empty:
             raise ValueError(f"No data found for {ticker}.")
         return data
@@ -71,11 +72,11 @@ def add_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
     """
     # Fix for dimensionality issue
     close_prices = data['Close'].squeeze()
-    
+
     data['SMA_20'] = ta.trend.sma_indicator(close_prices, window=20)
     data['EMA_20'] = ta.trend.ema_indicator(close_prices, window=20)
     data['RSI_14'] = ta.momentum.rsi(close_prices, window=14)
-    
+
     # Fill NaNs to avoid JSON serialization issues (NaN becomes null)
     data.fillna(0, inplace=True)
     return data
@@ -91,7 +92,7 @@ def calculate_metrics(data: pd.DataFrame) -> dict:
     high = float(data['High'].max().item())
     low = float(data['Low'].min().item())
     volume = int(data['Volume'].sum().item())
-    
+
     return {
         "last_close": last_close,
         "change": change,

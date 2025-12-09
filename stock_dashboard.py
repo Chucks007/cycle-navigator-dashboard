@@ -1,12 +1,12 @@
-import yfinance as yf
-import streamlit as st
+
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
-import pytz
+import streamlit as st
 import ta
-import numpy as np
+import yfinance as yf
+
 
 # Fetch stock data based on ticker, period, & interval through Yahoo Finance API
 def fetch_stock_data(ticker, period, interval):
@@ -76,7 +76,7 @@ def calculate_risk_metrics(data, risk_free_rate=0.04):
     """
     if data is None or len(data) < 2:
         return np.nan, np.nan
-    
+
     # Coerce Close to numeric series and calculate Daily Returns
     close_col = data['Close']
     # If Close is a DataFrame (unexpected multi-column), try to squeeze to Series
@@ -139,7 +139,7 @@ if st.sidebar.button('Update'):
         data = add_technical_indicators(data)
 
         last_close, change, pct_change, high, low, volume = calculate_metrics(data)
-        
+
         # Fetch risk-free rate and calculate risk metrics
         risk_free_rate = fetch_risk_free_rate()
         volatility, sharpe_ratio = calculate_risk_metrics(data, risk_free_rate)
@@ -150,7 +150,7 @@ if st.sidebar.button('Update'):
         col1.metric('High', f"{high:.2f} USD")
         col2.metric('Low', f"{low:.2f} USD")
         col3.metric('Volume', f"{volume:,}")
-        
+
         # Display risk metrics
         st.subheader('Risk Profile')
         col4, col5, col6 = st.columns(3)
