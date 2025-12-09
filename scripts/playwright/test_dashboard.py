@@ -51,10 +51,6 @@ def run_test():
         # Interact with the multiselect for Technical Indicators
         # Streamlit renders multiselects with specific data-testid attributes
         try:
-            # Find all multiselect widgets on the page
-            # Streamlit multiselects have input elements with role="combobox"
-            multiselects = page.locator('[data-baseweb="select"]').all()
-
             # Find the one near "Technical Indicators" text
             # Alternative: use the input directly
             indicators_input = page.locator('label:has-text("Technical Indicators")').locator('..').locator('input')

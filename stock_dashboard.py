@@ -182,7 +182,7 @@ if st.sidebar.button('Update'):
         fig.update_layout(title=f"{ticker} {time_period.upper()} Chart",
                   xaxis_title='Time',
                   yaxis_title='Price (USD)',
-                  yaxis2=dict(title='RSI', overlaying='y', side='right', showgrid=False),
+                  yaxis2={'title': 'RSI', 'overlaying': 'y', 'side': 'right', 'showgrid': False},
                   height=600)
         st.plotly_chart(fig, width='stretch')
 
