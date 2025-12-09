@@ -46,5 +46,8 @@ The goal of CD is to automate the release process, making it easy to deploy new 
 ## 3. General Best Practices
 
 -   [ ] **Notifications:** Configure CI/CD pipeline notifications for failures (e.g., via GitHub Actions checks, email, Slack).
--   [ ] **Secrets Management:** Ensure any API keys or sensitive information are handled securely within the CI/CD environment (e.g., GitHub Secrets).
+-   [x] **Secrets Management:** Ensure any API keys or sensitive information are handled securely within the CI/CD environment (e.g., GitHub Secrets).
+    -   [x] Documented `FRED_API_KEY` usage by CI/E2E workflows and added instruction for GitHub Secrets (`Settings → Secrets & variables`)
+    -   [x] CI GHCR push uses `GITHUB_TOKEN` with `packages: write` permissions; workflows are set to use it for authentication (no secret needed beyond GITHUB_TOKEN unless you configure a PAT)
+    -   [x] Recommended action: Add `FRED_API_KEY` via `gh secret set FRED_API_KEY --body "<value>"` or in GitHub repo Settings → Secrets → Actions
 -   [ ] **Version Tagging:** Integrate automatic Git tagging (e.g., `vX.Y.Z`) upon merges to `main` for releases.
