@@ -16,9 +16,9 @@ The goal of CI is to automate the building and testing of the application with e
     -   [x] Configured linting rules in `pyproject.toml` under `[tool.ruff]` targeting `backend`, `scripts`, and top-level Python files while excluding generated folders (`__pycache__`, `artifacts`, `venv`).
     -   [x] Created `requirements-dev.txt` with `ruff` and `pytest` for consistent dev/CI environments.
 
--   [ ] **Implement Unit & Integration Tests**
-    -   [ ] **Write Tests:** Develop unit tests for key functions, particularly in `backend/services.py` and `stock_dashboard.py`.
-    -   [ ] **Integrate Pytest:** Add a step in the CI workflow to run `pytest` (or your chosen test runner) to execute these tests.
+-   [x] **Implement Unit & Integration Tests**
+    -   [x] **Write Tests:** Created `tests/` directory with unit tests for `backend/services.py` (19 tests covering `process_data`, `calculate_metrics`, `add_technical_indicators`, `fetch_stock_data`) and `stock_dashboard.py` (14 tests covering `calculate_metrics`, `calculate_risk_metrics`).
+    -   [x] **Integrate Pytest:** CI workflow runs `pytest -q` after linting; pytest config in `pyproject.toml` under `[tool.pytest.ini_options]`.
 
 -   [ ] **Automate Container Image Build**
     -   [ ] Add a step in the CI workflow to build the `cycle-navigator-dashboard` Podman/Docker image using the `Containerfile`.
