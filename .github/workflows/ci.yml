@@ -47,4 +47,14 @@ jobs:
           context: .
           file: Containerfile
           push: false
+          load: true
           tags: cycle-navigator-dashboard:${{ github.sha }}
+
+      - name: Verify container dependencies
+        run: |
+          echo "Verifying container image was built successfully..."
+          docker images cycle-navigator-dashboard:${{ github.sha }}
+          echo "Checking installed Python packages in container..."
+          docker run --rm cycle-navigator-dashboard:${{ github.sha }} pip list
+          echo "Verifying key dependencies are installed..."
+          docker run --rm cycle-navigator-dashboard:${{ github.sha }} python -c "import fastapi; import streamlit; import yfinance; import pandas; print('All core dependencies verified!')"

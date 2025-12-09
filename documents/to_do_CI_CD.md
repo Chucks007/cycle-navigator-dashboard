@@ -20,9 +20,9 @@ The goal of CI is to automate the building and testing of the application with e
     -   [x] **Write Tests:** Created `tests/` directory with unit tests for `backend/services.py` (19 tests covering `process_data`, `calculate_metrics`, `add_technical_indicators`, `fetch_stock_data`) and `stock_dashboard.py` (14 tests covering `calculate_metrics`, `calculate_risk_metrics`).
     -   [x] **Integrate Pytest:** CI workflow runs `pytest -q` after linting; pytest config in `pyproject.toml` under `[tool.pytest.ini_options]`.
 
--   [ ] **Automate Container Image Build**
-    -   [ ] Add a step in the CI workflow to build the `cycle-navigator-dashboard` Podman/Docker image using the `Containerfile`.
-    -   [ ] Ensure the build process verifies dependency installation.
+-   [x] **Automate Container Image Build**
+    -   [x] Add a step in the CI workflow to build the `cycle-navigator-dashboard` Podman/Docker image using the `Containerfile`.
+    -   [x] Ensure the build process verifies dependency installation.
 
 -   [x] **Automate UI Testing with Playwright**
     -   [x] **Run Playwright manually / separate workflow**: A `workflow_dispatch`/scheduled job now runs the test suite without blocking PR CI.
