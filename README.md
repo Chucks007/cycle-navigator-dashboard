@@ -19,6 +19,44 @@ Real_Time_Stock_Price_Dashboard/
 
 Small, opinionated Streamlit dashboard for viewing stock prices, basic technical indicators, and simple verification scripts. Originally created as a lightweight tool to monitor equities (candlesticks, SMA/EMA/RSI) and to exercise some automation checks.
 
+---
+
+## Running with Podman (Recommended)
+
+The easiest and most reliable way to run this application is with Podman (or another container runtime like Docker). This method isolates the application and all its dependencies, protecting it from issues related to your host system's configuration or updates.
+
+**1. Build the Container Image:**
+
+From the root of the repository, run the build command. This may take a few minutes on the first run.
+
+```bash
+podman build -t cycle-navigator-dashboard .
+```
+
+**2. Run the Container:**
+
+This command starts the container in the background and makes the application available on your local machine.
+
+```bash
+podman run -p 8000:8000 -p 8501:8501 -d --name cycle-navigator-app cycle-navigator-dashboard
+```
+
+**3. Access the Application:**
+
+- **Streamlit Frontend:** Open your browser and navigate to `http://localhost:8501`.
+- **FastAPI Backend:** The API is available at `http://localhost:8000`. You can access its health check at `http://localhost:8000/health`.
+
+**4. Stopping the Container:**
+
+To stop the application, run:
+```bash
+podman stop cycle-navigator-app
+```
+
+---
+
+## Project Overview
+
 This repo contains:
 
 - `stock_dashboard.py` — Streamlit app (main UI).
@@ -31,74 +69,44 @@ This repo contains:
 
 **Note:** this README was updated to reflect the current structure and run instructions.
 
----
+<details>
+<summary>Local Development (without Containers)</summary>
 
-## Requirements
+### Requirements
 
 - Python 3.8+ (3.10/3.11 recommended)
 - A virtualenv or venv for dependency isolation
-- Optional: Playwright to run the end-to-end script (`scripts/playwright/test_dashboard.py`)
 
-Install system-level packages and create a virtual environment (example using `fish`):
+Install system-level packages and create a virtual environment:
 
-```fish
+```bash
 python -m venv venv
-source venv/bin/activate.fish
+source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-If you plan to run the backend service, also install backend deps:
+### Running the Applications
 
-```fish
-pip install -r backend/requirements.txt
-```
+Once your environment is set up, you can run the Streamlit frontend and FastAPI backend.
 
-If you want to run the Playwright-based UI test, install Playwright in the venv and download browsers:
-
-```fish
-pip install playwright
-python -m playwright install chromium
-```
-
----
-
-## Running the Streamlit dashboard (frontend)
+**Frontend:**
 
 Run the Streamlit app from the repository root (from the activated venv):
 
-```fish
-venv/bin/streamlit run stock_dashboard.py
+```bash
+streamlit run stock_dashboard.py
 ```
 
-Open `http://localhost:8501` in your browser (Streamlit prints the local and network URLs when it starts).
+**Backend (Optional):**
 
-Sidebar controls summary:
+Start the FastAPI server (from repo root, venv active):
 
-- `Ticker` — stock symbol (e.g. `AAPL`).
-- `Time Period` — periods supported by `yfinance` (e.g. `1d`, `5d`, `1mo`, `max`).
-- `Chart Type` — `Candlestick` or `Line`.
-- `Technical Indicators` — `SMA 20`, `EMA 20`, `RSI 14` (add them then click `Update`).
-
-The app also shows a small list of real-time prices in the sidebar for `AAPL`, `GOOGL`, `AMZN`, and `MSFT`.
-
----
-
-## Running the backend (optional)
-
-The `backend/` package contains a FastAPI app that exposes a few endpoints which wrap the same data functions:
-
-- `GET /api/stock/{ticker}` — basic metrics
-- `GET /api/stock/{ticker}/history` — historical OHLCV data
-- `GET /api/stock/{ticker}/indicators` — SMA/EMA/RSI
-
-Start the server (from repo root, venv active):
-
-```fish
+```bash
 uvicorn backend.main:app --reload --port 8000
 ```
 
-CORS is configured to allow `http://localhost:5173` by default (Vite dev server). Adjust `backend/main.py` if you need other origins.
+</details>
 
 ---
 
