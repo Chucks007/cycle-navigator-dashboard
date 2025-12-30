@@ -164,6 +164,8 @@ python scripts/test_fred_api.py
 
 - Connection refused during Playwright `page.goto`: ensure the Streamlit app is running at `http://localhost:8501` before starting the test.
 
+- Windows CRLF / script shebang issues: On Windows, shell scripts can have CRLF endings which break shebangs inside Linux containers; to avoid this the repo includes a `.gitattributes` that enforces LF for `*.sh`, and the `Containerfile` normalizes `start.sh` during image build.
+
 - yfinance returns empty data: verify the ticker symbol and try a different `period`/`interval`. Network issues or rate-limiting can also cause empty responses.
 
 ---
