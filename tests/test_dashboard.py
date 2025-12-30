@@ -275,9 +275,9 @@ class TestProcessData:
 
         # Columns should no longer be MultiIndex
         assert not isinstance(result.columns, pd.MultiIndex)
-        # Should have simple column names (without ticker suffix)
-        assert 'Close' in result.columns
-        assert 'Open' in result.columns
+        # Should have flattened column names
+        assert 'Close_AAPL' in result.columns
+        assert 'Open_AAPL' in result.columns
         assert 'Datetime' in result.columns
 
     def test_preserves_single_level_columns(self):
