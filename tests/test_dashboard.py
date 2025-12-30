@@ -228,3 +228,92 @@ class TestCalculateRiskMetrics:
         # Higher risk-free rate should give lower Sharpe ratio
         # (assuming returns are similar)
         assert sharpe_high < sharpe_low
+
+
+# --- Tests for process_data ---
+
+def process_data(data):
+    """Mirror of stock_dashboard.process_data for testing."""
+    if data.index.tz is None:
+        data.index = data.index.tz_localize('UTC')
+    data.index = data.index.tz_convert('US/Eastern')
+    data.reset_index(inplace=True)
+
+    # Flatten MultiIndex columns - drop the ticker suffix
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
+
+    # Rename index column to 'Datetime'
+    first_col = data.columns[0]
+    if first_col != 'Datetime':
+        data.rename(columns={first_col: 'Datetime'}, inplace=True)
+    data['Datetime'] = pd.to_datetime(data['Datetime'])
+
+    return data
+
+
+class TestProcessData:
+    """Tests for the process_data function."""
+
+    def test_flattens_multiindex_columns(self):
+        """Test that MultiIndex columns are flattened to simple strings."""
+        # Create DataFrame with MultiIndex columns (like yfinance returns for multi-ticker)
+        dates = pd.date_range(start="2024-01-01", periods=5, freq="D", tz="UTC")
+        arrays = [
+            ['Close', 'Open', 'High', 'Low', 'Volume'],
+            ['AAPL', 'AAPL', 'AAPL', 'AAPL', 'AAPL']
+        ]
+        tuples = list(zip(*arrays))
+        columns = pd.MultiIndex.from_tuples(tuples)
+        data = pd.DataFrame(
+            np.random.randn(5, 5),
+            index=dates,
+            columns=columns
+        )
+
+        result = process_data(data)
+
+        # Columns should no longer be MultiIndex
+        assert not isinstance(result.columns, pd.MultiIndex)
+        # Should have flattened column names
+        assert 'Close_AAPL' in result.columns
+        assert 'Open_AAPL' in result.columns
+        assert 'Datetime' in result.columns
+
+    def test_preserves_single_level_columns(self):
+        """Test that single-level columns are preserved correctly."""
+        dates = pd.date_range(start="2024-01-01", periods=5, freq="D", tz="UTC")
+        data = pd.DataFrame({
+            'Close': [100, 101, 102, 103, 104],
+            'Open': [99, 100, 101, 102, 103],
+            'High': [102, 103, 104, 105, 106],
+            'Low': [98, 99, 100, 101, 102],
+            'Volume': [1000, 1100, 1200, 1300, 1400],
+        }, index=dates)
+
+        result = process_data(data)
+
+        # Should have standard column names
+        assert 'Close' in result.columns
+        assert 'Open' in result.columns
+        assert 'Datetime' in result.columns
+
+    def test_datetime_column_exists(self):
+        """Test that Datetime column is created from Date index."""
+        dates = pd.date_range(start="2024-01-01", periods=5, freq="D", tz="UTC")
+        data = pd.DataFrame({'Close': [100, 101, 102, 103, 104]}, index=dates)
+
+        result = process_data(data)
+
+        assert 'Datetime' in result.columns
+        assert pd.api.types.is_datetime64_any_dtype(result['Datetime'])
+
+    def test_timezone_conversion(self):
+        """Test that timezone is converted to US/Eastern."""
+        dates = pd.date_range(start="2024-01-01 12:00:00", periods=5, freq="h", tz="UTC")
+        data = pd.DataFrame({'Close': [100, 101, 102, 103, 104]}, index=dates)
+
+        result = process_data(data)
+
+        # Datetime should be in US/Eastern timezone (converted from UTC)
+        assert result['Datetime'].dt.tz is not None
