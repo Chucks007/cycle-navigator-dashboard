@@ -30,7 +30,18 @@ def process_data(data):
         data.index = data.index.tz_localize('UTC')
     data.index = data.index.tz_convert('US/Eastern')
     data.reset_index(inplace=True)
-    data.rename(columns={'Date': 'Datetime'}, inplace=True)
+
+    # Flatten MultiIndex columns to simple strings (e.g., ('Close','AAPL') -> 'Close')
+    # Drop the ticker suffix so we always have 'Close', 'Open', etc.
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
+
+    # Rename index column to 'Datetime' (could be 'Date', 'index', or 'Datetime')
+    first_col = data.columns[0]
+    if first_col != 'Datetime':
+        data.rename(columns={first_col: 'Datetime'}, inplace=True)
+    data['Datetime'] = pd.to_datetime(data['Datetime'])
+
     return data
 
 # Calculate basic metrics from stock data
