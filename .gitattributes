@@ -1,0 +1,2 @@
+# Ensure shell scripts use LF on checkout to avoid CRLF shebang issues on Linux
+*.sh text eol=lf

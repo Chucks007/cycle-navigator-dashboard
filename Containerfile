@@ -11,6 +11,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of your application code
 COPY . .
 
+# Normalize line endings for shell scripts to avoid CRLF issues on Windows
+RUN sed -i 's/\r$//' start.sh
+
 # Make the start script executable
 RUN chmod +x start.sh
 
