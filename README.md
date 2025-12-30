@@ -61,11 +61,10 @@ This repo contains:
 
 - `stock_dashboard.py` — Streamlit app (main UI).
 - `backend/` — FastAPI helpers and small API that re-uses the same data functions.
-- `scripts/playwright/` — Playwright test that opens the Streamlit app and captures screenshots into `artifacts/`.
 - `scripts/test_fred_api.py` and `scripts/verify_env.py` — small helpers for verifying FRED API connectivity and environment variables.
 - `requirements.txt` and `backend/requirements.txt` — Python dependencies.
 
-**Quick goals**: run the Streamlit app locally, optionally run the small FastAPI backend, and verify UI behavior with the Playwright script.
+**Quick goals**: run the Streamlit app locally and optionally run the small FastAPI backend.
 
 **Note:** this README was updated to reflect the current structure and run instructions.
 
@@ -110,30 +109,6 @@ uvicorn backend.main:app --reload --port 8000
 
 ---
 
-## Playwright UI test
-
-The Playwright script exercises the Streamlit UI and saves screenshots to the `artifacts/` folder.
-
-Run it after the Streamlit app is running:
-
-```fish
-python scripts/playwright/test_dashboard.py
-```
-
-Notes:
-
-- If Playwright raises an error about missing browsers, run `python -m playwright install chromium` (or `python -m playwright install` to install all supported browsers).
-- The script captures screenshots into `artifacts/`.
-- Install the test/dev dependencies before running Playwright locally:
-
-  ```bash
-  python -m pip install --upgrade pip
-  pip install -r requirements.txt -r requirements-dev.txt
-  python -m playwright install chromium
-  ```
-
-- In CI, the E2E workflow automatically installs `requirements-dev.txt` and Playwright browsers before running the tests.
-
 ---
 
 ## FRED API helpers
@@ -155,14 +130,6 @@ python scripts/test_fred_api.py
 ---
 
 ## Troubleshooting
-
-- Playwright browser error: if you see an error like "Executable doesn't exist" or a message asking you to run `playwright install`, run:
-
-  ```fish
-  python -m playwright install chromium
-  ```
-
-- Connection refused during Playwright `page.goto`: ensure the Streamlit app is running at `http://localhost:8501` before starting the test.
 
 - Windows CRLF / script shebang issues: On Windows, shell scripts can have CRLF endings which break shebangs inside Linux containers; to avoid this the repo includes a `.gitattributes` that enforces LF for `*.sh`, and the `Containerfile` normalizes `start.sh` during image build.
 
