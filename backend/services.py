@@ -3,6 +3,8 @@ import pandas as pd
 import ta
 import yfinance as yf
 
+from . import config
+
 
 def fetch_stock_data(ticker: str, period: str, interval: str) -> pd.DataFrame:
     """
@@ -58,9 +60,9 @@ def add_technical_indicators(data: pd.DataFrame, fill_na: bool = True) -> pd.Dat
     # Fix for dimensionality issue
     close_prices = data['Close'].squeeze()
 
-    data['SMA_20'] = ta.trend.sma_indicator(close_prices, window=20)
-    data['EMA_20'] = ta.trend.ema_indicator(close_prices, window=20)
-    data['RSI_14'] = ta.momentum.rsi(close_prices, window=14)
+    data['SMA_20'] = ta.trend.sma_indicator(close_prices, window=config.SMA_WINDOW)
+    data['EMA_20'] = ta.trend.ema_indicator(close_prices, window=config.EMA_WINDOW)
+    data['RSI_14'] = ta.momentum.rsi(close_prices, window=config.RSI_WINDOW)
 
     # Fill NaNs to avoid JSON serialization issues (NaN becomes null)
     # For charting, keep NaN to prevent lines from dropping to zero
@@ -77,17 +79,20 @@ def fetch_risk_free_rate() -> float:
             # Get the most recent close price and convert to decimal (e.g., 4.5% -> 0.045)
             rate = float(hist['Close'].iloc[-1]) / 100.0
             return rate
-        return 0.04  # Default to 4% if unable to fetch
+        return config.DEFAULT_RISK_FREE_RATE  # Default to 4% if unable to fetch
     except Exception as e:
         print(f"Unable to fetch risk-free rate: {e}. Using default 4%.")
-        return 0.04
+        return config.DEFAULT_RISK_FREE_RATE
 
-def calculate_risk_metrics(data: pd.DataFrame, risk_free_rate: float = 0.04) -> tuple:
+def calculate_risk_metrics(data: pd.DataFrame, risk_free_rate: float = None) -> tuple:
     """
     Calculates Annualized Volatility and Sharpe Ratio.
     data: Pandas DataFrame with a 'Close' column.
-    risk_free_rate: Float (e.g., 0.04 for 4%).
+    risk_free_rate: Float (e.g., 0.04 for 4%). If None, uses DEFAULT_RISK_FREE_RATE.
     """
+    if risk_free_rate is None:
+        risk_free_rate = config.DEFAULT_RISK_FREE_RATE
+    
     if data is None or len(data) < 2:
         return np.nan, np.nan
 
@@ -109,10 +114,10 @@ def calculate_risk_metrics(data: pd.DataFrame, risk_free_rate: float = 0.04) -> 
         return np.nan, np.nan
 
     # Annualized Volatility (Standard Deviation * sqrt(252 trading days))
-    volatility = float(returns.std() * np.sqrt(252))
+    volatility = float(returns.std() * np.sqrt(config.TRADING_DAYS_PER_YEAR))
 
     # Annualized Return (Mean daily return * 252)
-    annualized_return = float(returns.mean() * 252)
+    annualized_return = float(returns.mean() * config.TRADING_DAYS_PER_YEAR)
 
     # Sharpe Ratio (guard against zero/NaN volatility)
     if volatility == 0 or np.isnan(volatility):
