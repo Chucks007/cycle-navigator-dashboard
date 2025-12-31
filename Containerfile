@@ -4,7 +4,8 @@ FROM python:3.11-slim
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy the combined requirements file and install dependencies
+# Copy production requirements and install dependencies only
+# This keeps the image lightweight and secure by excluding dev dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
