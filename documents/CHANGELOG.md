@@ -2,6 +2,55 @@
 
 All notable changes to this project are documented in this file.
 
+## 2025-12-31 — Refactor: Extract Hardcoded Values to Centralized Constants
+
+**Summary**
+- Created a new centralized configuration module (`backend/config.py`) to serve as a single source of truth for all application constants.
+- Extracted hardcoded "magic numbers" and configuration values from `stock_dashboard.py` and `backend/services.py`.
+- Improved code maintainability by replacing hardcoded values with descriptive constant names.
+- Made dashboard parameters easily adjustable without modifying core logic.
+
+**Constants Defined**
+- `DEFAULT_RISK_FREE_RATE = 0.04` — Fallback risk-free rate (4%)
+- `TRADING_DAYS_PER_YEAR = 252` — Standard number of trading days per year
+- `SMA_WINDOW = 20` — Simple Moving Average window
+- `EMA_WINDOW = 20` — Exponential Moving Average window
+- `RSI_WINDOW = 14` — Relative Strength Index window
+- `DEFAULT_TICKERS = ['AAPL', 'GOOGL', 'AMZN', 'MSFT']` — Real-time stock symbols in sidebar
+- `DEFAULT_TICKER = 'AAPL'` — Default ticker symbol for the main chart
+- `INTERVAL_MAPPING` — Time period to interval mapping dictionary
+
+**Files Changed**
+- `backend/config.py` (NEW): Created centralized configuration module with all constants
+- `backend/services.py`:
+  - Imported config module
+  - Replaced hardcoded window values (20, 20, 14) with `config.SMA_WINDOW`, `config.EMA_WINDOW`, `config.RSI_WINDOW`
+  - Replaced hardcoded risk-free rate fallback (0.04) with `config.DEFAULT_RISK_FREE_RATE`
+  - Replaced hardcoded trading days (252) with `config.TRADING_DAYS_PER_YEAR`
+  - Updated `calculate_risk_metrics()` signature to use `None` as default and apply config constant internally
+- `stock_dashboard.py`:
+  - Imported config module
+  - Replaced hardcoded default ticker ('AAPL') with `config.DEFAULT_TICKER`
+  - Removed local `interval_mapping` dictionary, now uses `config.INTERVAL_MAPPING`
+  - Replaced hardcoded stock symbols list with `config.DEFAULT_TICKERS`
+  - Updated technical indicator labels to use f-strings with config constants (e.g., `f'SMA {config.SMA_WINDOW}'`)
+- `tests/test_services.py`:
+  - Added import for config module for consistency
+  - Tests continue to pass with explicit risk_free_rate parameters
+
+**Testing**
+- All 25 unit tests in `tests/test_services.py` pass successfully
+- No errors detected in static analysis
+- Configuration values are now centrally managed and easily adjustable
+
+**Benefits**
+- Single source of truth for configuration values
+- Improved code readability with descriptive constant names
+- Easier to adjust dashboard parameters (e.g., changing indicator windows from 20 to 50 requires changing only one value)
+- Better maintainability and reduced risk of inconsistencies
+
+---
+
 ## 2025-12-31 — Refactor: Full unification of data processing & metrics (Final phase)
 
 **Summary**

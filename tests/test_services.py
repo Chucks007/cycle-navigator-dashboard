@@ -15,6 +15,7 @@ import pytest
 # Mock yfinance before importing backend.services to avoid protobuf issues on Python 3.14
 sys.modules['yfinance'] = MagicMock()
 
+from backend import config
 from backend.services import (
     add_technical_indicators,
     calculate_metrics,

@@ -7,6 +7,7 @@ import streamlit as st
 import yfinance as yf
 
 # Import shared service functions from backend
+from backend import config
 from backend.services import (
     fetch_stock_data,
     process_data,
@@ -20,27 +21,18 @@ st.title('Real-Time Stock Dashboard')
 
 # Sidebar for user input parameters
 st.sidebar.header('Chart Parameters')
-ticker = st.sidebar.text_input('Ticker', 'AAPL')
+ticker = st.sidebar.text_input('Ticker', config.DEFAULT_TICKER)
 time_period = st.sidebar.selectbox('Time Period', ['1d', '5d', '1mo', '3mo', '6mo', '1y', '5y', 'max'])
 chart_type = st.sidebar.selectbox('Chart Type', ['Candlestick', 'Line'])
-indicators = st.sidebar.multiselect('Technical Indicators', ['SMA 20', 'EMA 20', 'RSI 14'])
-
-# Interval Mapping
-interval_mapping = {
-    '1d': '1m',
-    '5d': '5m',
-    '1mo': '1h',
-    '3mo': '1d',
-    '6mo': '1d',
-    '1y': '1wk',
-    '5y': '1mo',
-    'max': '1mo',
-}
+indicators = st.sidebar.multiselect(
+    'Technical Indicators', 
+    [f'SMA {config.SMA_WINDOW}', f'EMA {config.EMA_WINDOW}', f'RSI {config.RSI_WINDOW}']
+)
 
 # Update dashboard based on user inputs
 if st.sidebar.button('Update'):
     try:
-        data = fetch_stock_data(ticker, time_period, interval_mapping[time_period])
+        data = fetch_stock_data(ticker, time_period, config.INTERVAL_MAPPING[time_period])
     except Exception as e:
         st.error(str(e))
         data = None
@@ -89,12 +81,12 @@ if st.sidebar.button('Update'):
 
         # Add selected technical indicators to chart
         for indicator in indicators:
-            if indicator == 'SMA 20':
-                fig.add_trace(go.Scatter(x=data['Datetime'], y=data['SMA_20'], name='SMA 20'))
-            elif indicator == 'EMA 20':
-                fig.add_trace(go.Scatter(x=data['Datetime'], y=data['EMA_20'], name='EMA 20'))
-            elif indicator == 'RSI 14':
-                fig.add_trace(go.Scatter(x=data['Datetime'], y=data['RSI_14'], name='RSI 14', yaxis="y2"))
+            if indicator == f'SMA {config.SMA_WINDOW}':
+                fig.add_trace(go.Scatter(x=data['Datetime'], y=data['SMA_20'], name=f'SMA {config.SMA_WINDOW}'))
+            elif indicator == f'EMA {config.EMA_WINDOW}':
+                fig.add_trace(go.Scatter(x=data['Datetime'], y=data['EMA_20'], name=f'EMA {config.EMA_WINDOW}'))
+            elif indicator == f'RSI {config.RSI_WINDOW}':
+                fig.add_trace(go.Scatter(x=data['Datetime'], y=data['RSI_14'], name=f'RSI {config.RSI_WINDOW}', yaxis="y2"))
 
         # Formatting of the chart
         fig.update_layout(title=f"{ticker} {time_period.upper()} Chart",
@@ -113,8 +105,7 @@ if st.sidebar.button('Update'):
 
 # Real-time stock prices of selected symbols in sidebar
 st.sidebar.header('Real-Time Stock Prices')
-stock_symbols = ['AAPL', 'GOOGL', 'AMZN', 'MSFT']
-for symbol in stock_symbols:
+for symbol in config.DEFAULT_TICKERS:
     try:
         real_time_data = fetch_stock_data(symbol, '1d', '1m')
     except Exception:
