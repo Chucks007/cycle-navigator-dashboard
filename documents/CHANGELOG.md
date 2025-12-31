@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented in this file.
 
+## 2025-12-31 — Refactor: Centralize stock & indicator logic (DRY)
+
+**Summary**
+- Removed duplicated logic from `stock_dashboard.py` and centralized core data-fetching and calculation functions in `backend/services.py` to follow the DRY principle.
+- Added `fill_na: bool = True` to `add_technical_indicators()`:
+  - `True` (default) fills NaN values for API JSON serialization.
+  - `False` preserves NaN values for charting to avoid indicator lines dropping to zero at the beginning of a series.
+- Standardized `calculate_metrics()` to return a `dict` in the backend; the Streamlit dashboard uses a small wrapper to preserve backward-compatible tuple unpacking.
+- Made `backend/` a proper package by adding `backend/__init__.py` and exported shared functions for easy imports.
+- Updated `stock_dashboard.py` to import the shared services and removed local duplicates.
+- Updated unit tests to make `tests/test_services.py` the source of truth and to test `fill_na` behavior; `tests/test_dashboard.py` now tests dashboard-specific wrappers and integration points.
+- All tests pass (41 tests) after changes.
+
+**Files Changed**
+- `backend/__init__.py` (new)
+- `backend/services.py` (refactor, added `fill_na` option)
+- `stock_dashboard.py` (removed duplicated logic, added wrappers)
+- `tests/test_services.py` (added tests for `fill_na`, updated expectations)
+- `tests/test_dashboard.py` (now tests integration with backend services)
+
+**Commit / Branch**
+- Commit message: `refactor: centralize stock & indicator logic in backend.services; add fill_na option; update dashboard wrappers and tests`
+- Branch: `refactor/dry-core-logic` (pushed to remote)
+
+---
+
 ## 2025-12-07 — Application Containerization
 
 **Summary**
