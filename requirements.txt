@@ -1,14 +1,21 @@
-# Core dependencies (without pyarrow)
+# Production dependencies for Cycle Navigator Dashboard
+# Includes all libraries required for both Streamlit frontend and FastAPI backend
+
+# Web Frameworks
 streamlit>=1.30.0
 fastapi>=0.100.0
 uvicorn>=0.24.0
+
+# Financial Data & Analysis
 yfinance>=0.2.30
+fredapi>=0.5.1
 pandas>=2.0.0
-plotly>=5.17.0
-pytz
+numpy>=1.23.0
 ta>=0.11.0
 
-# Cycle Navigator additions
-fredapi>=0.5.1
+# Visualization
+plotly>=5.17.0
+
+# Utilities
 python-dotenv>=1.0.0
-numpy>=1.23.0 # Adjusted to a more flexible version
+pytz

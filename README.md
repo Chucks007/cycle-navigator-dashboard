@@ -62,7 +62,8 @@ This repo contains:
 - `stock_dashboard.py` — Streamlit app (main UI).
 - `backend/` — FastAPI helpers and small API that re-uses the same data functions.
 - `scripts/test_fred_api.py` and `scripts/verify_env.py` — small helpers for verifying FRED API connectivity and environment variables.
-- `requirements.txt` and `backend/requirements.txt` — Python dependencies.
+- `requirements.txt` — All production dependencies for both frontend and backend.
+- `requirements-dev.txt` — Development and testing dependencies (includes production deps).
 
 **Quick goals**: run the Streamlit app locally and optionally run the small FastAPI backend.
 
@@ -73,16 +74,27 @@ This repo contains:
 
 ### Requirements
 
-- Python 3.8+ (3.10/3.11 recommended)
+- Python 3.11+ (3.11 recommended to match container)
 - A virtualenv or venv for dependency isolation
 
 Install system-level packages and create a virtual environment:
 
 ```bash
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install --upgrade pip
+```
+
+### Installation
+
+**For Production Use:**
+```bash
 pip install -r requirements.txt
+```
+
+**For Development (includes testing, linting, and all production dependencies):**
+```bash
+pip install -r requirements-dev.txt
 ```
 
 ### Running the Applications
@@ -103,6 +115,19 @@ Start the FastAPI server (from repo root, venv active):
 
 ```bash
 uvicorn backend.main:app --reload --port 8000
+```
+
+### Running Tests
+
+After installing development dependencies, run the test suite:
+
+```bash
+pytest
+```
+
+For Playwright E2E tests, first install browsers:
+```bash
+python -m playwright install
 ```
 
 </details>
