@@ -1,0 +1,32 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: cycle-navigator-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - FRED_API_KEY=${FRED_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: cycle-navigator-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - FRED_API_KEY=${FRED_API_KEY:-}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

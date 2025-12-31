@@ -21,36 +21,58 @@ Small, opinionated Streamlit dashboard for viewing stock prices, basic technical
 
 ---
 
-## Running with Podman (Recommended)
+## Running with Docker Compose (Recommended)
 
-The easiest and most reliable way to run this application is with Podman (recommended). This method isolates the application and all its dependencies, protecting it from issues related to your host system's configuration or updates.
+The easiest and most reliable way to run this application is with Docker Compose. This method runs the backend (FastAPI) and frontend (Streamlit) as separate containers, following Docker best practices for service isolation.
 
-**1. Build the Container Image:**
+**1. Start Both Services:**
 
-From the root of the repository, run the build command. This may take a few minutes on the first run.
-
-```bash
-podman build -t cycle-navigator-dashboard .
-```
-
-**2. Run the Container:**
-
-This command starts the container in the background and makes the application available on your local machine.
+From the root of the repository, run:
 
 ```bash
-podman run -p 8000:8000 -p 8501:8501 -d --name cycle-navigator-app cycle-navigator-dashboard
+docker-compose up --build
 ```
 
-**3. Access the Application:**
+Or run in detached mode:
+
+```bash
+docker-compose up --build -d
+```
+
+**2. Access the Application:**
 
 - **Streamlit Frontend:** Open your browser and navigate to `http://localhost:8501`.
 - **FastAPI Backend:** The API is available at `http://localhost:8000`. You can access its health check at `http://localhost:8000/health`.
 
-**4. Stopping the Container:**
+**3. View Running Containers:**
 
-To stop the application, run:
 ```bash
-podman stop cycle-navigator-app
+docker ps
+```
+
+You should see two containers: `cycle-navigator-backend` and `cycle-navigator-frontend`.
+
+**4. Stopping the Services:**
+
+```bash
+docker-compose down
+```
+
+**5. Independent Service Control:**
+
+You can stop/start individual services without affecting the other:
+
+```bash
+docker-compose stop backend   # Stop only the backend
+docker-compose start backend  # Restart the backend
+```
+
+### Using Podman Compose
+
+If you prefer Podman, you can use `podman-compose` as a drop-in replacement:
+
+```bash
+podman-compose up --build
 ```
 
 ---
@@ -156,7 +178,7 @@ python scripts/test_fred_api.py
 
 ## Troubleshooting
 
-- Windows CRLF / script shebang issues: On Windows, shell scripts can have CRLF endings which break shebangs inside Linux containers; to avoid this the repo includes a `.gitattributes` that enforces LF for `*.sh`, and the `Containerfile` normalizes `start.sh` during image build.
+- Docker Compose issues: Ensure Docker (or Podman with podman-compose) is installed and running. Check service logs with `docker-compose logs backend` or `docker-compose logs frontend`.
 
 - yfinance returns empty data: verify the ticker symbol and try a different `period`/`interval`. Network issues or rate-limiting can also cause empty responses.
 
