@@ -2,29 +2,28 @@
 
 All notable changes to this project are documented in this file.
 
-## 2025-12-31 — Refactor: Centralize stock & indicator logic (DRY)
+## 2025-12-31 — Refactor: Full unification of data processing & metrics (Final phase)
 
 **Summary**
-- Removed duplicated logic from `stock_dashboard.py` and centralized core data-fetching and calculation functions in `backend/services.py` to follow the DRY principle.
-- Added `fill_na: bool = True` to `add_technical_indicators()`:
-  - `True` (default) fills NaN values for API JSON serialization.
-  - `False` preserves NaN values for charting to avoid indicator lines dropping to zero at the beginning of a series.
-- Standardized `calculate_metrics()` to return a `dict` in the backend; the Streamlit dashboard uses a small wrapper to preserve backward-compatible tuple unpacking.
-- Made `backend/` a proper package by adding `backend/__init__.py` and exported shared functions for easy imports.
-- Updated `stock_dashboard.py` to import the shared services and removed local duplicates.
-- Updated unit tests to make `tests/test_services.py` the source of truth and to test `fill_na` behavior; `tests/test_dashboard.py` now tests dashboard-specific wrappers and integration points.
-- All tests pass (41 tests) after changes.
+- Eliminated dashboard-only "wrapper" functions: `stock_dashboard.py` now imports and uses the shared service functions directly (no tuple-unpacking wrappers remain).
+- Migrated financial risk calculations into the central service layer:
+  - `fetch_risk_free_rate()` and `calculate_risk_metrics()` (Annualized Volatility & Sharpe Ratio) moved to `backend/services.py` so they are available to both the dashboard and the FastAPI backend.
+- Expanded `calculate_metrics()` to return the risk metrics and rate in its dictionary:
+  - Added keys: `"volatility"`, `"sharpe_ratio"`, `"risk_free_rate"` (in addition to existing fields like `"last_close"`, `"change"`, etc.).
+- Updated the FastAPI `/api/stock/{ticker}` endpoint to return the expanded metrics dictionary so risk metrics are now available via the API.
+- Standardized `process_data()` as the single place for timezone conversion and column flattening; removed remaining local data manipulation from the dashboard.
+- Added and updated unit tests in `tests/test_services.py` to cover `calculate_risk_metrics()` and to assert the presence and types of the new metric keys.
+- All tests pass (45 passed) and the feature branch (`refactor/unify-data-processing-metrics`) was merged into `develop`.
 
 **Files Changed**
-- `backend/__init__.py` (new)
-- `backend/services.py` (refactor, added `fill_na` option)
-- `stock_dashboard.py` (removed duplicated logic, added wrappers)
-- `tests/test_services.py` (added tests for `fill_na`, updated expectations)
-- `tests/test_dashboard.py` (now tests integration with backend services)
+- `backend/services.py` (moved risk calculations, added risk-free fetch, expanded `calculate_metrics`)
+- `stock_dashboard.py` (removed wrappers, updated to consume dict-based metrics and removed local data manipulation)
+- `backend/main.py` (API now returns expanded metrics dict for `/api/stock/{ticker}`)
+- `tests/test_services.py` (added `TestCalculateRiskMetrics`, updated assertions for new keys)
 
-**Commit / Branch**
-- Commit message: `refactor: centralize stock & indicator logic in backend.services; add fill_na option; update dashboard wrappers and tests`
-- Branch: `refactor/dry-core-logic` (pushed to remote)
+**Commit / Branch / Merge**
+- Commit message: `refactor: unify metrics & processing — move risk metrics to backend, remove dashboard wrappers, update API, add tests`
+- Branch: `refactor/unify-data-processing-metrics` → merged into `develop`
 
 ---
 
