@@ -8,98 +8,11 @@ import yfinance as yf
 
 # Import shared service functions from backend
 from backend.services import (
-    fetch_stock_data as _fetch_stock_data,
+    fetch_stock_data,
     process_data,
-    add_technical_indicators as _add_technical_indicators,
-    calculate_metrics as _calculate_metrics,
+    add_technical_indicators,
+    calculate_metrics,
 )
-
-
-# Wrapper for fetch_stock_data to handle Streamlit error display
-def fetch_stock_data(ticker, period, interval):
-    """Fetch stock data with Streamlit error handling."""
-    try:
-        data = _fetch_stock_data(ticker, period, interval)
-        return data
-    except Exception as e:
-        st.error(str(e))
-        return None
-
-
-# Wrapper for add_technical_indicators - use fill_na=False for charting
-def add_technical_indicators(data):
-    """Add technical indicators without filling NaN (preserves chart quality)."""
-    return _add_technical_indicators(data, fill_na=False)
-
-
-# Wrapper for calculate_metrics - returns tuple for backward compatibility
-def calculate_metrics(data):
-    """Calculate metrics and return as tuple for dashboard unpacking."""
-    metrics = _calculate_metrics(data)
-    return (
-        metrics['last_close'],
-        metrics['change'],
-        metrics['pct_change'],
-        metrics['high'],
-        metrics['low'],
-        metrics['volume'],
-    )
-
-# Fetch 10-Year Treasury Yield as risk-free rate
-def fetch_risk_free_rate():
-    """Fetches the current 10-Year Treasury Yield from yfinance."""
-    try:
-        treasury = yf.Ticker("^TNX")
-        hist = treasury.history(period="5d")
-        if not hist.empty:
-            # Get the most recent close price and convert to decimal (e.g., 4.5% -> 0.045)
-            rate = float(hist['Close'].iloc[-1]) / 100.0
-            return rate
-        return 0.04  # Default to 4% if unable to fetch
-    except Exception as e:
-        st.warning(f"Unable to fetch risk-free rate: {e}. Using default 4%.")
-        return 0.04
-
-# Calculate risk metrics (Annualized Volatility & Sharpe Ratio)
-def calculate_risk_metrics(data, risk_free_rate=0.04):
-    """
-    Calculates Annualized Volatility and Sharpe Ratio.
-    data: Pandas DataFrame with a 'Close' column.
-    risk_free_rate: Float (e.g., 0.04 for 4%).
-    """
-    if data is None or len(data) < 2:
-        return np.nan, np.nan
-
-    # Coerce Close to numeric series and calculate Daily Returns
-    close_col = data['Close']
-    # If Close is a DataFrame (unexpected multi-column), try to squeeze to Series
-    if isinstance(close_col, pd.DataFrame):
-        try:
-            close_series = close_col.squeeze()
-        except Exception:
-            close_series = close_col.iloc[:, 0]
-    else:
-        close_series = close_col
-
-    close_series = pd.to_numeric(close_series, errors='coerce')
-    returns = close_series.pct_change().dropna()
-
-    if len(returns) < 2:
-        return np.nan, np.nan
-
-    # Annualized Volatility (Standard Deviation * sqrt(252 trading days))
-    volatility = float(returns.std() * np.sqrt(252))
-
-    # Annualized Return (Mean daily return * 252)
-    annualized_return = float(returns.mean() * 252)
-
-    # Sharpe Ratio (guard against zero/NaN volatility)
-    if volatility == 0 or np.isnan(volatility):
-        sharpe = np.nan
-    else:
-        sharpe = float((annualized_return - risk_free_rate) / volatility)
-
-    return volatility, sharpe
 
 # Dashboard app page layout
 st.set_page_config(layout='wide')
@@ -126,16 +39,28 @@ interval_mapping = {
 
 # Update dashboard based on user inputs
 if st.sidebar.button('Update'):
-    data = fetch_stock_data(ticker, time_period, interval_mapping[time_period])
+    try:
+        data = fetch_stock_data(ticker, time_period, interval_mapping[time_period])
+    except Exception as e:
+        st.error(str(e))
+        data = None
+
     if data is not None:
         data = process_data(data)
-        data = add_technical_indicators(data)
+        # Use fill_na=False for charting
+        data = add_technical_indicators(data, fill_na=False)
 
-        last_close, change, pct_change, high, low, volume = calculate_metrics(data)
-
-        # Fetch risk-free rate and calculate risk metrics
-        risk_free_rate = fetch_risk_free_rate()
-        volatility, sharpe_ratio = calculate_risk_metrics(data, risk_free_rate)
+        metrics = calculate_metrics(data)
+        
+        last_close = metrics['last_close']
+        change = metrics['change']
+        pct_change = metrics['pct_change']
+        high = metrics['high']
+        low = metrics['low']
+        volume = metrics['volume']
+        volatility = metrics['volatility']
+        sharpe_ratio = metrics['sharpe_ratio']
+        risk_free_rate = metrics['risk_free_rate']
 
         # Display metrics
         st.metric(label=f"{ticker} Last Price", value=f"{last_close:.2f} USD", delta=f"{change:.2f} ({pct_change:.2f}%)")
@@ -190,7 +115,11 @@ if st.sidebar.button('Update'):
 st.sidebar.header('Real-Time Stock Prices')
 stock_symbols = ['AAPL', 'GOOGL', 'AMZN', 'MSFT']
 for symbol in stock_symbols:
-    real_time_data = fetch_stock_data(symbol, '1d', '1m')
+    try:
+        real_time_data = fetch_stock_data(symbol, '1d', '1m')
+    except Exception:
+        real_time_data = None
+        
     if real_time_data is not None:
         real_time_data = process_data(real_time_data)
         last_price = float(real_time_data['Close'].iloc[-1].item())

@@ -18,6 +18,7 @@ sys.modules['yfinance'] = MagicMock()
 from backend.services import (
     add_technical_indicators,
     calculate_metrics,
+    calculate_risk_metrics,
     fetch_stock_data,
     process_data,
 )
@@ -102,6 +103,52 @@ class TestProcessData:
         assert result[datetime_col].dt.tz is not None, "Datetime column should be timezone-aware"
 
 
+# --- Tests for calculate_risk_metrics ---
+
+class TestCalculateRiskMetrics:
+    """Tests for the calculate_risk_metrics function."""
+
+    def test_calculate_risk_metrics_returns_tuple(self, processed_stock_data):
+        """Test that calculate_risk_metrics returns a tuple of two floats."""
+        volatility, sharpe = calculate_risk_metrics(processed_stock_data)
+        assert isinstance(volatility, float)
+        assert isinstance(sharpe, float)
+
+    def test_calculate_risk_metrics_returns_nan_for_short_data(self):
+        """Test that it returns (nan, nan) for insufficient data."""
+        data = pd.DataFrame({"Close": [100.0]})
+        volatility, sharpe = calculate_risk_metrics(data)
+        assert np.isnan(volatility)
+        assert np.isnan(sharpe)
+
+    def test_calculate_risk_metrics_calculation(self):
+        """Test calculation with known values."""
+        # Create a series with constant return to make calculation easy
+        # Price: 100, 110, 121 (10% return each day)
+        data = pd.DataFrame({"Close": [100.0, 110.0, 121.0]})
+        
+        # Returns: 0.1, 0.1
+        # Std dev of [0.1, 0.1] is 0.0
+        # Volatility = 0.0 * sqrt(252) = 0.0
+        
+        volatility, sharpe = calculate_risk_metrics(data, risk_free_rate=0.0)
+        
+        assert volatility == 0.0
+        assert np.isnan(sharpe) # Division by zero volatility -> nan
+
+    def test_calculate_risk_metrics_positive_volatility(self):
+        """Test calculation with varying returns."""
+        # Price: 100, 110, 100 (Returns: +0.1, -0.0909...)
+        data = pd.DataFrame({"Close": [100.0, 110.0, 100.0]})
+        
+        volatility, sharpe = calculate_risk_metrics(data, risk_free_rate=0.0)
+        
+        assert volatility > 0
+        # Mean return is approx 0.0045
+        # Sharpe should be calculated
+        assert not np.isnan(sharpe)
+
+
 # --- Tests for calculate_metrics ---
 
 class TestCalculateMetrics:
@@ -115,7 +162,10 @@ class TestCalculateMetrics:
     def test_calculate_metrics_has_required_keys(self, processed_stock_data):
         """Test that the result contains all required keys."""
         result = calculate_metrics(processed_stock_data)
-        required_keys = ["last_close", "change", "pct_change", "high", "low", "volume"]
+        required_keys = [
+            "last_close", "change", "pct_change", "high", "low", "volume",
+            "volatility", "sharpe_ratio", "risk_free_rate"
+        ]
         for key in required_keys:
             assert key in result, f"Missing key: {key}"
 
@@ -128,6 +178,10 @@ class TestCalculateMetrics:
         assert isinstance(result["high"], float)
         assert isinstance(result["low"], float)
         assert isinstance(result["volume"], int)
+        # Volatility and Sharpe can be float or nan (which is float)
+        assert isinstance(result["volatility"], float)
+        assert isinstance(result["sharpe_ratio"], float)
+        assert isinstance(result["risk_free_rate"], float)
 
     def test_calculate_metrics_change_calculation(self):
         """Test that change is calculated correctly."""
