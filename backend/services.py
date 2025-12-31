@@ -30,12 +30,29 @@ def process_data(data: pd.DataFrame) -> pd.DataFrame:
         data.index = data.index.tz_localize('UTC')
     data.index = data.index.tz_convert('US/Eastern')
     data.reset_index(inplace=True)
-    data.rename(columns={'Date': 'Datetime'}, inplace=True)
+
+    # Flatten MultiIndex columns to simple strings (e.g., ('Close','AAPL') -> 'Close')
+    # Drop the ticker suffix so we always have 'Close', 'Open', etc.
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = data.columns.get_level_values(0)
+
+    # Rename index column to 'Datetime' (could be 'Date', 'index', or 'Datetime')
+    first_col = data.columns[0]
+    if first_col != 'Datetime':
+        data.rename(columns={first_col: 'Datetime'}, inplace=True)
+    data['Datetime'] = pd.to_datetime(data['Datetime'])
+
     return data
 
-def add_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
+def add_technical_indicators(data: pd.DataFrame, fill_na: bool = True) -> pd.DataFrame:
     """
     Add technical indicators (SMA, EMA, RSI).
+    
+    Args:
+        data: DataFrame with stock price data including 'Close' column.
+        fill_na: If True, fills NaN values with 0 (for API JSON serialization).
+                 If False, preserves NaN values (better for charting to avoid
+                 lines dropping to zero at the beginning of the time series).
     """
     # Fix for dimensionality issue
     close_prices = data['Close'].squeeze()
@@ -45,7 +62,9 @@ def add_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data['RSI_14'] = ta.momentum.rsi(close_prices, window=14)
 
     # Fill NaNs to avoid JSON serialization issues (NaN becomes null)
-    data.fillna(0, inplace=True)
+    # For charting, keep NaN to prevent lines from dropping to zero
+    if fill_na:
+        data.fillna(0, inplace=True)
     return data
 
 def calculate_metrics(data: pd.DataFrame) -> dict:
