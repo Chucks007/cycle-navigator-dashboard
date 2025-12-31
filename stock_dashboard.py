@@ -4,64 +4,46 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-import ta
 import yfinance as yf
 
+# Import shared service functions from backend
+from backend.services import (
+    fetch_stock_data as _fetch_stock_data,
+    process_data,
+    add_technical_indicators as _add_technical_indicators,
+    calculate_metrics as _calculate_metrics,
+)
 
-# Fetch stock data based on ticker, period, & interval through Yahoo Finance API
+
+# Wrapper for fetch_stock_data to handle Streamlit error display
 def fetch_stock_data(ticker, period, interval):
+    """Fetch stock data with Streamlit error handling."""
     try:
-        # Use yfinance's period argument which handles '1d','5d','1mo','max', etc.
-        if period == 'max':
-            data = yf.download(ticker, period='max', interval=interval, auto_adjust=False)
-        else:
-            data = yf.download(ticker, period=period, interval=interval, auto_adjust=False)
-        if data.empty:
-            st.error(f"No data found for {ticker}. Please check the ticker symbol and try again.")
-            return None
+        data = _fetch_stock_data(ticker, period, interval)
         return data
     except Exception as e:
-        st.error(f"Error fetching data: {e}")
+        st.error(str(e))
         return None
 
-# Format the date & time to ensure it is timezone aware with correct formatting
-def process_data(data):
-    if data.index.tz is None:
-        data.index = data.index.tz_localize('UTC')
-    data.index = data.index.tz_convert('US/Eastern')
-    data.reset_index(inplace=True)
 
-    # Flatten MultiIndex columns to simple strings (e.g., ('Close','AAPL') -> 'Close')
-    # Drop the ticker suffix so we always have 'Close', 'Open', etc.
-    if isinstance(data.columns, pd.MultiIndex):
-        data.columns = data.columns.get_level_values(0)
-
-    # Rename index column to 'Datetime' (could be 'Date', 'index', or 'Datetime')
-    first_col = data.columns[0]
-    if first_col != 'Datetime':
-        data.rename(columns={first_col: 'Datetime'}, inplace=True)
-    data['Datetime'] = pd.to_datetime(data['Datetime'])
-
-    return data
-
-# Calculate basic metrics from stock data
-def calculate_metrics(data):
-    last_close = float(data['Close'].iloc[-1].item())
-    prev_close = float(data['Close'].iloc[0].item())
-    change = last_close - prev_close
-    pct_change = (change / prev_close) * 100
-    high = float(data['High'].max().item())
-    low = float(data['Low'].min().item())
-    volume = int(data['Volume'].sum().item())
-    return last_close, change, pct_change, high, low, volume
-
-# Add technical indicators (SMA, EMA, RSI)
+# Wrapper for add_technical_indicators - use fill_na=False for charting
 def add_technical_indicators(data):
-    close_prices = data['Close'].squeeze()
-    data['SMA_20'] = ta.trend.sma_indicator(close_prices, window=20)
-    data['EMA_20'] = ta.trend.ema_indicator(close_prices, window=20)
-    data['RSI_14'] = ta.momentum.rsi(close_prices, window=14)
-    return data
+    """Add technical indicators without filling NaN (preserves chart quality)."""
+    return _add_technical_indicators(data, fill_na=False)
+
+
+# Wrapper for calculate_metrics - returns tuple for backward compatibility
+def calculate_metrics(data):
+    """Calculate metrics and return as tuple for dashboard unpacking."""
+    metrics = _calculate_metrics(data)
+    return (
+        metrics['last_close'],
+        metrics['change'],
+        metrics['pct_change'],
+        metrics['high'],
+        metrics['low'],
+        metrics['volume'],
+    )
 
 # Fetch 10-Year Treasury Yield as risk-free rate
 def fetch_risk_free_rate():

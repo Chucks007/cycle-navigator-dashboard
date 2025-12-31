@@ -75,11 +75,10 @@ class TestProcessData:
         assert isinstance(result.index, pd.RangeIndex)
 
     def test_process_data_renames_date_column(self, sample_stock_data):
-        """Test that Date column is renamed to Datetime (or index column exists)."""
+        """Test that Date column is renamed to Datetime."""
         result = process_data(sample_stock_data.copy())
-        # After reset_index, we should have a datetime column (name varies by pandas version)
-        datetime_cols = [c for c in result.columns if 'date' in c.lower() or c == 'index' or c == 'Datetime']
-        assert len(datetime_cols) > 0, "Expected a datetime column after processing"
+        # After reset_index and rename, we should have a Datetime column
+        assert 'Datetime' in result.columns, "Expected a Datetime column after processing"
 
     def test_process_data_handles_naive_datetime(self):
         """Test process_data with timezone-naive data."""
@@ -191,10 +190,24 @@ class TestAddTechnicalIndicators:
         result = add_technical_indicators(processed_stock_data.copy())
         assert "RSI_14" in result.columns
 
-    def test_add_technical_indicators_fills_nan(self, processed_stock_data):
-        """Test that NaN values are filled with 0."""
+    def test_add_technical_indicators_fills_nan_by_default(self, processed_stock_data):
+        """Test that NaN values are filled with 0 by default (fill_na=True)."""
         result = add_technical_indicators(processed_stock_data.copy())
         # Should not have any NaN values
+        assert not result["SMA_20"].isna().any()
+        assert not result["EMA_20"].isna().any()
+        assert not result["RSI_14"].isna().any()
+
+    def test_add_technical_indicators_fill_na_false_preserves_nan(self, processed_stock_data):
+        """Test that fill_na=False preserves NaN values for charting."""
+        result = add_technical_indicators(processed_stock_data.copy(), fill_na=False)
+        # SMA_20 should have NaN for first 19 rows (window=20)
+        assert result["SMA_20"].isna().any(), "SMA_20 should have NaN values when fill_na=False"
+
+    def test_add_technical_indicators_fill_na_true_replaces_nan(self, processed_stock_data):
+        """Test that fill_na=True explicitly replaces NaN with 0."""
+        result = add_technical_indicators(processed_stock_data.copy(), fill_na=True)
+        # No NaN values when fill_na=True
         assert not result["SMA_20"].isna().any()
         assert not result["EMA_20"].isna().any()
         assert not result["RSI_14"].isna().any()

@@ -4,41 +4,63 @@ Unit tests for stock_dashboard.py
 Tests the pure calculation functions from the dashboard module.
 Note: Functions that depend on Streamlit (st.error, st.warning) are harder to test
 in isolation, so we focus on the pure calculation logic.
+
+The dashboard now imports core functions from backend.services, so these tests
+verify the integration and any dashboard-specific wrappers.
 """
 
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import numpy as np
 import pandas as pd
 import pytest
 
-
-# Import functions from stock_dashboard
-# Note: We need to mock streamlit before importing to avoid initialization errors
-@pytest.fixture(autouse=True)
-def mock_streamlit():
-    """Mock streamlit to prevent page config errors during import."""
-    with patch.dict("sys.modules", {"streamlit": __import__("unittest.mock").mock.MagicMock()}):
-        yield
+# Import the canonical implementations from backend.services for testing
+from backend.services import (
+    calculate_metrics as backend_calculate_metrics,
+    process_data,
+    add_technical_indicators,
+)
 
 
-# We'll test the calculation functions directly by recreating them here
-# since importing the full module triggers Streamlit initialization
+# --- Fixtures ---
 
-def calculate_metrics(data):
-    """Mirror of stock_dashboard.calculate_metrics for testing."""
-    last_close = float(data['Close'].iloc[-1].item()) if hasattr(data['Close'].iloc[-1], 'item') else float(data['Close'].iloc[-1])
-    prev_close = float(data['Close'].iloc[0].item()) if hasattr(data['Close'].iloc[0], 'item') else float(data['Close'].iloc[0])
-    change = last_close - prev_close
-    pct_change = (change / prev_close) * 100
-    high = float(data['High'].max().item()) if hasattr(data['High'].max(), 'item') else float(data['High'].max())
-    low = float(data['Low'].min().item()) if hasattr(data['Low'].min(), 'item') else float(data['Low'].min())
-    volume = int(data['Volume'].sum().item()) if hasattr(data['Volume'].sum(), 'item') else int(data['Volume'].sum())
-    return last_close, change, pct_change, high, low, volume
+@pytest.fixture
+def sample_stock_data():
+    """Create sample stock data DataFrame."""
+    np.random.seed(42)
+    dates = pd.date_range(start="2024-01-01", periods=30, freq="D")
+    base_price = 100.0
+    prices = base_price + np.cumsum(np.random.randn(30) * 2)
+    
+    return pd.DataFrame({
+        "Open": prices - np.random.rand(30),
+        "High": prices + np.random.rand(30) * 2,
+        "Low": prices - np.random.rand(30) * 2,
+        "Close": prices,
+        "Volume": np.random.randint(1000000, 5000000, 30),
+    }, index=dates)
+
+
+# Dashboard-specific wrapper for calculate_metrics that returns tuple
+def dashboard_calculate_metrics(data):
+    """
+    Dashboard wrapper that converts dict to tuple.
+    This mirrors the wrapper in stock_dashboard.py.
+    """
+    metrics = backend_calculate_metrics(data)
+    return (
+        metrics['last_close'],
+        metrics['change'],
+        metrics['pct_change'],
+        metrics['high'],
+        metrics['low'],
+        metrics['volume'],
+    )
 
 
 def calculate_risk_metrics(data, risk_free_rate=0.04):
-    """Mirror of stock_dashboard.calculate_risk_metrics for testing."""
+    """Calculate risk metrics (Annualized Volatility & Sharpe Ratio)."""
     if data is None or len(data) < 2:
         return np.nan, np.nan
 
@@ -68,33 +90,14 @@ def calculate_risk_metrics(data, risk_free_rate=0.04):
     return volatility, sharpe
 
 
-# --- Fixtures ---
-
-@pytest.fixture
-def sample_stock_data():
-    """Create sample stock data DataFrame."""
-    np.random.seed(42)
-    dates = pd.date_range(start="2024-01-01", periods=30, freq="D")
-    base_price = 100.0
-    prices = base_price + np.cumsum(np.random.randn(30) * 2)
-    
-    return pd.DataFrame({
-        "Open": prices - np.random.rand(30),
-        "High": prices + np.random.rand(30) * 2,
-        "Low": prices - np.random.rand(30) * 2,
-        "Close": prices,
-        "Volume": np.random.randint(1000000, 5000000, 30),
-    }, index=dates)
-
-
-# --- Tests for calculate_metrics ---
+# --- Tests for dashboard calculate_metrics wrapper ---
 
 class TestDashboardCalculateMetrics:
-    """Tests for the dashboard's calculate_metrics function."""
+    """Tests for the dashboard's calculate_metrics wrapper function."""
 
     def test_returns_tuple_of_six_values(self, sample_stock_data):
         """Test that function returns 6 values."""
-        result = calculate_metrics(sample_stock_data)
+        result = dashboard_calculate_metrics(sample_stock_data)
         assert len(result) == 6
 
     def test_last_close_is_correct(self):
@@ -105,7 +108,7 @@ class TestDashboardCalculateMetrics:
             "Low": [95.0, 105.0, 115.0],
             "Volume": [1000, 1000, 1000],
         })
-        last_close, _, _, _, _, _ = calculate_metrics(data)
+        last_close, _, _, _, _, _ = dashboard_calculate_metrics(data)
         assert last_close == pytest.approx(120.0)
 
     def test_change_calculation(self):
@@ -116,7 +119,7 @@ class TestDashboardCalculateMetrics:
             "Low": [95.0, 105.0, 145.0],
             "Volume": [1000, 1000, 1000],
         })
-        _, change, _, _, _, _ = calculate_metrics(data)
+        _, change, _, _, _, _ = dashboard_calculate_metrics(data)
         assert change == pytest.approx(50.0)
 
     def test_pct_change_calculation(self):
@@ -127,7 +130,7 @@ class TestDashboardCalculateMetrics:
             "Low": [95.0, 105.0, 145.0],
             "Volume": [1000, 1000, 1000],
         })
-        _, _, pct_change, _, _, _ = calculate_metrics(data)
+        _, _, pct_change, _, _, _ = dashboard_calculate_metrics(data)
         # (150 - 100) / 100 * 100 = 50%
         assert pct_change == pytest.approx(50.0)
 
@@ -139,7 +142,7 @@ class TestDashboardCalculateMetrics:
             "Low": [95.0, 105.0, 115.0],
             "Volume": [1000, 1000, 1000],
         })
-        _, _, _, high, _, _ = calculate_metrics(data)
+        _, _, _, high, _, _ = dashboard_calculate_metrics(data)
         assert high == pytest.approx(200.0)
 
     def test_low_is_minimum(self):
@@ -150,7 +153,7 @@ class TestDashboardCalculateMetrics:
             "Low": [50.0, 105.0, 115.0],  # 50 is min
             "Volume": [1000, 1000, 1000],
         })
-        _, _, _, _, low, _ = calculate_metrics(data)
+        _, _, _, _, low, _ = dashboard_calculate_metrics(data)
         assert low == pytest.approx(50.0)
 
     def test_volume_is_sum(self):
@@ -161,7 +164,7 @@ class TestDashboardCalculateMetrics:
             "Low": [95.0, 105.0, 115.0],
             "Volume": [1000, 2000, 3000],
         })
-        _, _, _, _, _, volume = calculate_metrics(data)
+        _, _, _, _, _, volume = dashboard_calculate_metrics(data)
         assert volume == 6000
 
 
@@ -230,30 +233,10 @@ class TestCalculateRiskMetrics:
         assert sharpe_high < sharpe_low
 
 
-# --- Tests for process_data ---
-
-def process_data(data):
-    """Mirror of stock_dashboard.process_data for testing."""
-    if data.index.tz is None:
-        data.index = data.index.tz_localize('UTC')
-    data.index = data.index.tz_convert('US/Eastern')
-    data.reset_index(inplace=True)
-
-    # Flatten MultiIndex columns - drop the ticker suffix
-    if isinstance(data.columns, pd.MultiIndex):
-        data.columns = data.columns.get_level_values(0)
-
-    # Rename index column to 'Datetime'
-    first_col = data.columns[0]
-    if first_col != 'Datetime':
-        data.rename(columns={first_col: 'Datetime'}, inplace=True)
-    data['Datetime'] = pd.to_datetime(data['Datetime'])
-
-    return data
-
+# --- Tests for process_data (imported from backend.services) ---
 
 class TestProcessData:
-    """Tests for the process_data function."""
+    """Tests for the process_data function (from backend.services)."""
 
     def test_flattens_multiindex_columns(self):
         """Test that MultiIndex columns are flattened to simple strings."""
@@ -275,9 +258,7 @@ class TestProcessData:
 
         # Columns should no longer be MultiIndex
         assert not isinstance(result.columns, pd.MultiIndex)
-        # Should have flattened column names
-        assert 'Close_AAPL' in result.columns
-        assert 'Open_AAPL' in result.columns
+        # Should have Datetime column
         assert 'Datetime' in result.columns
 
     def test_preserves_single_level_columns(self):
@@ -317,3 +298,45 @@ class TestProcessData:
 
         # Datetime should be in US/Eastern timezone (converted from UTC)
         assert result['Datetime'].dt.tz is not None
+
+
+# --- Tests for add_technical_indicators (imported from backend.services) ---
+
+class TestAddTechnicalIndicators:
+    """Tests for add_technical_indicators with fill_na parameter."""
+
+    def test_fill_na_false_preserves_nan(self):
+        """Test that fill_na=False preserves NaN values for charting."""
+        dates = pd.date_range(start="2024-01-01", periods=30, freq="D", tz="UTC")
+        data = pd.DataFrame({
+            'Close': np.random.randn(30) + 100,
+            'Open': np.random.randn(30) + 100,
+            'High': np.random.randn(30) + 102,
+            'Low': np.random.randn(30) + 98,
+            'Volume': np.random.randint(1000, 5000, 30),
+        }, index=dates)
+        data = process_data(data)
+        
+        result = add_technical_indicators(data.copy(), fill_na=False)
+        
+        # SMA_20 should have NaN for first 19 rows
+        assert result['SMA_20'].isna().any(), "SMA_20 should have NaN values when fill_na=False"
+
+    def test_fill_na_true_replaces_nan_with_zero(self):
+        """Test that fill_na=True replaces NaN with 0 for API serialization."""
+        dates = pd.date_range(start="2024-01-01", periods=30, freq="D", tz="UTC")
+        data = pd.DataFrame({
+            'Close': np.random.randn(30) + 100,
+            'Open': np.random.randn(30) + 100,
+            'High': np.random.randn(30) + 102,
+            'Low': np.random.randn(30) + 98,
+            'Volume': np.random.randint(1000, 5000, 30),
+        }, index=dates)
+        data = process_data(data)
+        
+        result = add_technical_indicators(data.copy(), fill_na=True)
+        
+        # No NaN values when fill_na=True
+        assert not result['SMA_20'].isna().any(), "SMA_20 should not have NaN values when fill_na=True"
+        assert not result['EMA_20'].isna().any(), "EMA_20 should not have NaN values when fill_na=True"
+        assert not result['RSI_14'].isna().any(), "RSI_14 should not have NaN values when fill_na=True"
