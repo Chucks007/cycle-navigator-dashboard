@@ -16,6 +16,9 @@ ta>=0.11.0
 # Visualization
 plotly>=5.17.0
 
+# NLP / Sentiment Analysis
+textblob>=0.18.0
+
 # Utilities
 python-dotenv>=1.0.0
 pytz
