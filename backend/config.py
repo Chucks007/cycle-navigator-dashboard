@@ -5,6 +5,9 @@ This module centralizes all hardcoded values and magic numbers used throughout
 the application, making them easier to maintain and adjust.
 """
 
+import json
+import os
+
 # Financial Constants
 DEFAULT_RISK_FREE_RATE = 0.04  # 4% fallback rate when unable to fetch current rate
 TRADING_DAYS_PER_YEAR = 252  # Standard number of trading days per year
@@ -30,3 +33,16 @@ INTERVAL_MAPPING = {
     '5y': '1mo',   # 5 years: monthly intervals
     'max': '1mo',  # Maximum: monthly intervals
 }
+
+# Load S&P 500 companies list for dropdown search
+# This list is generated from documents/constituents.csv
+_config_dir = os.path.dirname(os.path.abspath(__file__))
+_project_root = os.path.dirname(_config_dir)
+_companies_file = os.path.join(_project_root, 'top_companies.json')
+
+try:
+    with open(_companies_file, 'r') as f:
+        TOP_COMPANIES = json.load(f)
+except FileNotFoundError:
+    # Fallback to empty list if file not found
+    TOP_COMPANIES = []
