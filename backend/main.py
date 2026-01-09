@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from .services import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data
+from .services import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data, fetch_news_sentiment
 
 app = FastAPI()
 
@@ -67,3 +67,16 @@ def get_stock_indicators(
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/api/sentiment/{ticker}")
+def get_sentiment(ticker: str):
+    """
+    Get news sentiment analysis for a stock ticker.
+    Returns sentiment score, label, and recent headlines with individual scores.
+    """
+    try:
+        sentiment_data = fetch_news_sentiment(ticker)
+        return sentiment_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

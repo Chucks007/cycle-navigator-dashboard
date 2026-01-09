@@ -13,6 +13,7 @@ from backend.services import (
     process_data,
     add_technical_indicators,
     calculate_metrics,
+    fetch_news_sentiment,
 )
 
 # Dashboard app page layout
@@ -104,6 +105,67 @@ if st.sidebar.button('Update'):
             tab1, tab2 = st.tabs(["📈 Analysis", "📄 Historical Data"])
             
             with tab1:
+                # Sentiment Analysis Section
+                st.subheader('📊 Market Sentiment')
+                with st.spinner('Analyzing news sentiment...'):
+                    sentiment_data = fetch_news_sentiment(ticker)
+                
+                # Sentiment metrics row
+                sent_col1, sent_col2, sent_col3 = st.columns(3)
+                
+                score = sentiment_data.get('sentiment_score', 0)
+                label = sentiment_data.get('sentiment_label', 'Neutral')
+                news_count = sentiment_data.get('news_count', 0)
+                
+                # Determine color and emoji based on sentiment
+                if label == "Bullish":
+                    sentiment_color = "green"
+                    sentiment_emoji = "🟢"
+                elif label == "Bearish":
+                    sentiment_color = "red"
+                    sentiment_emoji = "🔴"
+                else:
+                    sentiment_color = "gray"
+                    sentiment_emoji = "⚪"
+                
+                sent_col1.metric(
+                    "Sentiment Score", 
+                    f"{score:.2f}",
+                    delta=f"{sentiment_emoji} {label}"
+                )
+                sent_col2.metric("News Analyzed", news_count)
+                sent_col3.metric("Market Mood", f"{sentiment_emoji} {label}")
+                
+                # News headlines expander
+                headlines = sentiment_data.get('headlines', [])
+                if headlines:
+                    with st.expander("📰 Latest News & Sentiment Analysis", expanded=False):
+                        for article in headlines:
+                            article_score = article.get('score', 0)
+                            if article_score > 0.1:
+                                score_emoji = "🟢"
+                            elif article_score < -0.1:
+                                score_emoji = "🔴"
+                            else:
+                                score_emoji = "⚪"
+                            
+                            title = article.get('title', 'No title')
+                            link = article.get('link', '')
+                            publisher = article.get('publisher', '')
+                            
+                            if link:
+                                st.markdown(f"{score_emoji} **[{title}]({link})**")
+                            else:
+                                st.markdown(f"{score_emoji} **{title}**")
+                            
+                            st.caption(f"Publisher: {publisher} | Sentiment: {article_score:.2f}")
+                            st.divider()
+                else:
+                    message = sentiment_data.get('message', 'No news available for this ticker.')
+                    st.info(message)
+                
+                st.divider()
+                
                 # Plot the Stock Price Chart
                 fig = go.Figure()
                 if chart_type == 'Candlestick':
