@@ -22,6 +22,9 @@ from backend.services import (
     calculate_risk_metrics,
     fetch_stock_data,
     process_data,
+    analyze_sentiment,
+    get_sentiment_label,
+    fetch_news_sentiment,
 )
 
 
@@ -334,3 +337,121 @@ class TestFetchStockData:
         result = fetch_stock_data("AAPL", "1d", "1m")
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 2
+
+
+# --- Tests for Sentiment Analysis ---
+
+class TestAnalyzeSentiment:
+    """Tests for the analyze_sentiment function."""
+
+    def test_analyze_sentiment_positive(self):
+        """Test that positive text returns positive sentiment."""
+        result = analyze_sentiment("This is amazing and wonderful news!")
+        assert result > 0
+
+    def test_analyze_sentiment_negative(self):
+        """Test that negative text returns negative sentiment."""
+        result = analyze_sentiment("This is terrible and horrible news.")
+        assert result < 0
+
+    def test_analyze_sentiment_neutral(self):
+        """Test that neutral text returns near-zero sentiment."""
+        result = analyze_sentiment("The company released quarterly earnings.")
+        assert -0.5 <= result <= 0.5
+
+    def test_analyze_sentiment_returns_float(self):
+        """Test that analyze_sentiment returns a float."""
+        result = analyze_sentiment("Test headline")
+        assert isinstance(result, float)
+
+    def test_analyze_sentiment_range(self):
+        """Test that sentiment score is within valid range."""
+        result = analyze_sentiment("Any text here")
+        assert -1.0 <= result <= 1.0
+
+
+class TestGetSentimentLabel:
+    """Tests for the get_sentiment_label function."""
+
+    def test_get_sentiment_label_bullish(self):
+        """Test that positive score returns Bullish."""
+        assert get_sentiment_label(0.5) == "Bullish"
+        assert get_sentiment_label(0.11) == "Bullish"
+        assert get_sentiment_label(1.0) == "Bullish"
+
+    def test_get_sentiment_label_bearish(self):
+        """Test that negative score returns Bearish."""
+        assert get_sentiment_label(-0.5) == "Bearish"
+        assert get_sentiment_label(-0.11) == "Bearish"
+        assert get_sentiment_label(-1.0) == "Bearish"
+
+    def test_get_sentiment_label_neutral(self):
+        """Test that scores near zero return Neutral."""
+        assert get_sentiment_label(0.0) == "Neutral"
+        assert get_sentiment_label(0.1) == "Neutral"
+        assert get_sentiment_label(-0.1) == "Neutral"
+        assert get_sentiment_label(0.05) == "Neutral"
+
+
+class TestFetchNewsSentiment:
+    """Tests for the fetch_news_sentiment function."""
+
+    @patch("backend.services.yf.Ticker")
+    def test_fetch_news_sentiment_with_news(self, mock_ticker):
+        """Test fetch_news_sentiment with mock news data."""
+        mock_ticker_instance = MagicMock()
+        mock_ticker_instance.news = [
+            {"title": "Great news for the company!", "link": "http://example.com/1", "publisher": "Test"},
+            {"title": "Stock prices soar to new heights", "link": "http://example.com/2", "publisher": "News"},
+        ]
+        mock_ticker.return_value = mock_ticker_instance
+
+        result = fetch_news_sentiment("AAPL")
+
+        assert "sentiment_score" in result
+        assert "sentiment_label" in result
+        assert "news_count" in result
+        assert "headlines" in result
+        assert result["news_count"] == 2
+        assert len(result["headlines"]) == 2
+
+    @patch("backend.services.yf.Ticker")
+    def test_fetch_news_sentiment_no_news(self, mock_ticker):
+        """Test fetch_news_sentiment when no news is available."""
+        mock_ticker_instance = MagicMock()
+        mock_ticker_instance.news = []
+        mock_ticker.return_value = mock_ticker_instance
+
+        result = fetch_news_sentiment("UNKNOWN")
+
+        assert result["sentiment_score"] == 0.0
+        assert result["sentiment_label"] == "Neutral"
+        assert result["news_count"] == 0
+        assert result["headlines"] == []
+        assert "message" in result
+
+    @patch("backend.services.yf.Ticker")
+    def test_fetch_news_sentiment_handles_exception(self, mock_ticker):
+        """Test fetch_news_sentiment handles exceptions gracefully."""
+        mock_ticker.side_effect = Exception("API Error")
+
+        result = fetch_news_sentiment("AAPL")
+
+        assert result["sentiment_score"] == 0.0
+        assert result["sentiment_label"] == "Neutral"
+        assert "message" in result
+
+    @patch("backend.services.yf.Ticker")
+    def test_fetch_news_sentiment_limits_headlines(self, mock_ticker):
+        """Test that fetch_news_sentiment limits to 10 headlines."""
+        mock_ticker_instance = MagicMock()
+        mock_ticker_instance.news = [
+            {"title": f"Headline {i}", "link": f"http://example.com/{i}", "publisher": "Test"}
+            for i in range(15)
+        ]
+        mock_ticker.return_value = mock_ticker_instance
+
+        result = fetch_news_sentiment("AAPL")
+
+        assert result["news_count"] == 10
+        assert len(result["headlines"]) == 10

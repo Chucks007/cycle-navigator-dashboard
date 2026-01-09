@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 # Copy and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# Download TextBlob / NLTK corpora needed for sentiment analysis
+RUN python -m textblob.download_corpora
 
 # Copy CSV data and generate top_companies.json at build time
 COPY documents/constituents.csv /app/documents/constituents.csv

@@ -1,7 +1,16 @@
 import numpy as np
 import pandas as pd
 import ta
-import yfinance as yf
+# yfinance may fail to import on newer Python/protobuf combos (e.g., Python 3.14)
+# Wrap import to surface the error but allow module import to succeed for testing
+try:
+    import yfinance as yf
+    _yf_import_error = None
+except Exception as e:
+    yf = None
+    _yf_import_error = e
+
+from textblob import TextBlob
 
 from . import config
 
@@ -11,6 +20,10 @@ def fetch_stock_data(ticker: str, period: str, interval: str) -> pd.DataFrame:
     Fetch stock data based on ticker, period, & interval through Yahoo Finance API.
     Raises Exception if data is empty or fetch fails.
     """
+    if yf is None:
+        # Surface a clear error so callers can handle it
+        raise Exception(f"yfinance not available: {_yf_import_error}")
+
     try:
         # Using yfinance's period argument directly for better reliability
         if period == 'max':
@@ -72,6 +85,11 @@ def add_technical_indicators(data: pd.DataFrame, fill_na: bool = True) -> pd.Dat
 
 def fetch_risk_free_rate() -> float:
     """Fetches the current 10-Year Treasury Yield from yfinance."""
+    if yf is None:
+        # Fail gracefully and return configured default if yfinance not available
+        print(f"Unable to fetch risk-free rate because yfinance import failed: {_yf_import_error}. Using default rate.")
+        return config.DEFAULT_RISK_FREE_RATE
+
     try:
         treasury = yf.Ticker("^TNX")
         hist = treasury.history(period="5d")
@@ -154,3 +172,113 @@ def calculate_metrics(data: pd.DataFrame) -> dict:
         "sharpe_ratio": sharpe_ratio,
         "risk_free_rate": risk_free_rate
     }
+
+
+def analyze_sentiment(text: str) -> float:
+    """
+    Analyze sentiment of a text using TextBlob.
+    Returns a polarity score from -1.0 (negative) to 1.0 (positive).
+    """
+    analysis = TextBlob(text)
+    return analysis.sentiment.polarity
+
+
+def get_sentiment_label(score: float) -> str:
+    """
+    Convert a sentiment score to a human-readable label.
+    """
+    if score > 0.1:
+        return "Bullish"
+    elif score < -0.1:
+        return "Bearish"
+    else:
+        return "Neutral"
+
+
+def fetch_news_sentiment(ticker: str) -> dict:
+    """
+    Fetch recent news headlines for a ticker and analyze their sentiment.
+    Uses yfinance's news attribute to get headlines.
+    
+    Returns:
+        dict with sentiment_score, sentiment_label, news_count, and headlines list
+    """
+    if yf is None:
+        return {
+            "sentiment_score": 0.0,
+            "sentiment_label": "Neutral",
+            "news_count": 0,
+            "headlines": [],
+            "message": f"yfinance not available: {_yf_import_error}"
+        }
+
+    try:
+        stock = yf.Ticker(ticker)
+        news = stock.news
+        
+        if not news or len(news) == 0:
+            # Return neutral default if no news found
+            return {
+                "sentiment_score": 0.0,
+                "sentiment_label": "Neutral",
+                "news_count": 0,
+                "headlines": [],
+                "message": "No recent news found for this ticker."
+            }
+        
+        # Process up to 10 headlines
+        headlines = []
+        scores = []
+        
+        for article in news[:10]:
+            # yfinance news structure has nested content dict
+            content = article.get('content', {})
+            title = content.get('title', '')
+            
+            # Get canonical URL or click-through URL
+            canonical = content.get('canonicalUrl', {})
+            click_through = content.get('clickThroughUrl', {})
+            link = canonical.get('url', '') or click_through.get('url', '')
+            
+            # Get provider display name
+            provider_info = content.get('provider', {})
+            publisher = provider_info.get('displayName', '')
+            
+            if title:
+                score = analyze_sentiment(title)
+                scores.append(score)
+                headlines.append({
+                    "title": title,
+                    "link": link,
+                    "publisher": publisher,
+                    "score": round(score, 3)
+                })
+        
+        if not scores:
+            return {
+                "sentiment_score": 0.0,
+                "sentiment_label": "Neutral",
+                "news_count": 0,
+                "headlines": [],
+                "message": "Could not analyze news headlines."
+            }
+        
+        # Calculate average sentiment score
+        avg_score = sum(scores) / len(scores)
+        
+        return {
+            "sentiment_score": round(avg_score, 3),
+            "sentiment_label": get_sentiment_label(avg_score),
+            "news_count": len(headlines),
+            "headlines": headlines
+        }
+        
+    except Exception as e:
+        # Return neutral default on error
+        return {
+            "sentiment_score": 0.0,
+            "sentiment_label": "Neutral",
+            "news_count": 0,
+            "headlines": [],
+            "message": f"Error fetching news: {str(e)}"
+        }
