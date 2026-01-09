@@ -14,56 +14,154 @@ from backend.services import (
     add_technical_indicators,
     calculate_metrics,
     fetch_news_sentiment,
+    fetch_batch_prices,
 )
 
 # Dashboard app page layout
-st.set_page_config(layout='wide')
+st.set_page_config(layout='wide', page_title='Real-Time Stock Dashboard')
 st.title('Real-Time Stock Dashboard')
 
-# Sidebar for user input parameters
-st.sidebar.header('Chart Parameters')
+# Initialize session state for ticker if not present
+if 'selected_ticker' not in st.session_state:
+    st.session_state.selected_ticker = config.DEFAULT_TICKER
+if 'goto_analysis' not in st.session_state:
+    st.session_state.goto_analysis = False
 
-# Smart ticker search with manual entry toggle
-manual_mode = st.sidebar.checkbox("Manual Ticker Entry", value=False)
+# If a button requested navigation, set the radio key BEFORE the widget is created
+if st.session_state.get('goto_analysis'):
+    st.session_state['nav_radio'] = "Stock Analysis"
+    st.session_state['goto_analysis'] = False
 
-if manual_mode:
-    # Manual text input for custom tickers (crypto, etc.)
-    ticker = st.sidebar.text_input('Ticker', config.DEFAULT_TICKER)
-else:
-    # Searchable dropdown populated with S&P 500 companies
-    if config.TOP_COMPANIES:
-        # Format options as "SYMBOL - Company Name"
-        company_options = [f"{item['symbol']} - {item['name']}" for item in config.TOP_COMPANIES]
+# Helper to switch to analysis
+def switch_to_analysis(ticker):
+    st.session_state.selected_ticker = ticker
+    st.session_state.goto_analysis = True
+    st.rerun()
+
+# Sidebar Navigation
+st.sidebar.header('Navigation')
+page = st.sidebar.radio("Go to", ["Market Overview", "Stock Analysis"], key="nav_radio")
+
+# Sidebar - Real-Time Stock Prices (Optimized)
+st.sidebar.header('Real-Time Stock Prices')
+with st.spinner('Loading sidebar prices...'):
+    try:
+        sidebar_data = fetch_batch_prices(config.DEFAULT_TICKERS)
+        for symbol in config.DEFAULT_TICKERS:
+            if symbol in sidebar_data:
+                info = sidebar_data[symbol]
+                st.sidebar.metric(
+                    symbol, 
+                    f"{info['price']:.2f} USD", 
+                    f"{info['delta']:.2f} ({info['pct_delta']:.2f}%)"
+                )
+            else:
+                 st.sidebar.text(f"{symbol}: N/A")
+    except Exception as e:
+        st.sidebar.error(f"Error loading prices: {e}")
+
+st.sidebar.subheader('About')
+st.sidebar.info('This dashboard provides real-time stock data and technical indicators for various time periods.')
+
+# --- MAIN CONTENT ---
+
+if page == "Market Overview":
+    st.header("Global Market Overview")
+    
+    # 1. Market Indices
+    st.subheader("Major Indices")
+    indices_tickers = [item["ticker"] for item in config.MARKET_INDICES]
+    
+    with st.spinner("Fetching market indices..."):
+        indices_data = fetch_batch_prices(indices_tickers)
         
-        # Find default index
-        default_index = 0
-        for i, option in enumerate(company_options):
-            if option.startswith(config.DEFAULT_TICKER):
-                default_index = i
-                break
+    cols = st.columns(len(config.MARKET_INDICES))
+    for i, idx_info in enumerate(config.MARKET_INDICES):
+        ticker = idx_info["ticker"]
+        name = idx_info["name"]
         
-        selected_option = st.sidebar.selectbox(
-            'Select Company',
-            company_options,
-            index=default_index
-        )
+        if ticker in indices_data:
+            data = indices_data[ticker]
+            cols[i].metric(
+                name,
+                f"{data['price']:.2f}",
+                f"{data['delta']:.2f} ({data['pct_delta']:.2f}%)"
+            )
+        else:
+            cols[i].metric(name, "N/A", "0.00")
+
+    # 2. Watchlist
+    st.subheader("Your Watchlist")
+    
+    with st.spinner("Fetching watchlist..."):
+        watchlist_data = fetch_batch_prices(config.WATCHLIST_TICKERS)
+    
+    # Display in a grid (3 columns)
+    wl_cols = st.columns(3)
+    for i, ticker in enumerate(config.WATCHLIST_TICKERS):
+        col_idx = i % 3
         
-        # Extract ticker symbol from selection
-        ticker = selected_option.split(" - ")[0]
+        if ticker in watchlist_data:
+            data = watchlist_data[ticker]
+            with wl_cols[col_idx]:
+                st.markdown(f"**{ticker}**")
+                st.metric(
+                    label="Price",
+                    value=f"{data['price']:.2f} USD",
+                    delta=f"{data['delta']:.2f} ({data['pct_delta']:.2f}%)"
+                )
+                st.button(f"Analyze {ticker}", key=f"btn_{ticker}", on_click=switch_to_analysis, args=(ticker,))
+                st.divider()
+
+elif page == "Stock Analysis":
+    # Sidebar for user input parameters (Only for Stock Analysis)
+    st.sidebar.header('Chart Parameters')
+
+    # Smart ticker search with manual entry toggle
+    manual_mode = st.sidebar.checkbox("Manual Ticker Entry", value=False)
+
+    if manual_mode:
+        # Manual text input
+        # Use session state to populate if available
+        ticker = st.sidebar.text_input('Ticker', st.session_state.selected_ticker)
     else:
-        # Fallback to manual entry if TOP_COMPANIES not available
-        ticker = st.sidebar.text_input('Ticker', config.DEFAULT_TICKER)
+        # Searchable dropdown
+        if config.TOP_COMPANIES:
+            company_options = [f"{item['symbol']} - {item['name']}" for item in config.TOP_COMPANIES]
+            
+            # Find default index based on session state
+            default_index = 0
+            current_ticker = st.session_state.selected_ticker
+            for i, option in enumerate(company_options):
+                if option.startswith(current_ticker):
+                    default_index = i
+                    break
+            
+            selected_option = st.sidebar.selectbox(
+                'Select Company',
+                company_options,
+                index=default_index
+            )
+            ticker = selected_option.split(" - ")[0]
+        else:
+            ticker = st.sidebar.text_input('Ticker', st.session_state.selected_ticker)
 
-time_period = st.sidebar.selectbox('Time Period', ['1d', '5d', '1mo', '3mo', '6mo', '1y', '5y', 'max'])
-chart_type = st.sidebar.selectbox('Chart Type', ['Candlestick', 'Line'])
-indicators = st.sidebar.multiselect(
-    'Technical Indicators', 
-    [f'SMA {config.SMA_WINDOW}', f'EMA {config.EMA_WINDOW}', f'RSI {config.RSI_WINDOW}']
-)
+    # Update session state with current selection
+    st.session_state.selected_ticker = ticker
 
-# Update dashboard based on user inputs
-if st.sidebar.button('Update'):
-    with st.spinner('Accessing market data...'):
+    time_period = st.sidebar.selectbox('Time Period', ['1d', '5d', '1mo', '3mo', '6mo', '1y', '5y', 'max'])
+    chart_type = st.sidebar.selectbox('Chart Type', ['Candlestick', 'Line'])
+    indicators = st.sidebar.multiselect(
+        'Technical Indicators', 
+        [f'SMA {config.SMA_WINDOW}', f'EMA {config.EMA_WINDOW}', f'RSI {config.RSI_WINDOW}']
+    )
+    
+    # Update button (or minimal auto-update)
+    if st.sidebar.button('Update'):
+        pass # Streamlit re-runs script on interaction anyway, this just forces it
+
+    # Analysis Content
+    with st.spinner(f'Accessing market data for {ticker}...'):
         try:
             data = fetch_stock_data(ticker, time_period, config.INTERVAL_MAPPING[time_period])
         except Exception as e:
@@ -201,23 +299,3 @@ if st.sidebar.button('Update'):
 
                 st.subheader('Technical Indicators')
                 st.dataframe(data[['Datetime', 'SMA_20', 'EMA_20', 'RSI_14']])
-
-# Real-time stock prices of selected symbols in sidebar
-st.sidebar.header('Real-Time Stock Prices')
-with st.spinner('Loading real-time prices...'):
-    for symbol in config.DEFAULT_TICKERS:
-        try:
-            real_time_data = fetch_stock_data(symbol, '1d', '1m')
-        except Exception:
-            real_time_data = None
-            
-        if real_time_data is not None:
-            real_time_data = process_data(real_time_data)
-            last_price = float(real_time_data['Close'].iloc[-1].item())
-            change = last_price - float(real_time_data['Open'].iloc[0].item())
-            pct_change = (change / float(real_time_data['Open'].iloc[0].item())) * 100
-            st.sidebar.metric(f"{symbol}", f"{last_price:.2f} USD", f"{change:.2f} ({pct_change:.2f}%)")
-
-# Sidebar information section
-st.sidebar.subheader('About')
-st.sidebar.info('This dashboard provides real-time stock data and technical indicators for various time periods.')
