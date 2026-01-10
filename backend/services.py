@@ -7,7 +7,16 @@ try:
     import yfinance as yf
     _yf_import_error = None
 except Exception as e:
-    yf = None
+    # Create a simple stub so tests can patch attributes like yf.download or yf.Ticker
+    from types import SimpleNamespace
+
+    def _stub_download(*args, **kwargs):
+        raise ImportError("yfinance not available: \"download\" called on stub")
+
+    def _stub_Ticker(*args, **kwargs):
+        raise ImportError("yfinance not available: \"Ticker\" called on stub")
+
+    yf = SimpleNamespace(download=_stub_download, Ticker=_stub_Ticker)
     _yf_import_error = e
 
 from textblob import TextBlob
@@ -85,7 +94,7 @@ def add_technical_indicators(data: pd.DataFrame, fill_na: bool = True) -> pd.Dat
 
 def fetch_risk_free_rate() -> float:
     """Fetches the current 10-Year Treasury Yield from yfinance."""
-    if yf is None:
+    if _yf_import_error is not None:
         # Fail gracefully and return configured default if yfinance not available
         print(f"Unable to fetch risk-free rate because yfinance import failed: {_yf_import_error}. Using default rate.")
         return config.DEFAULT_RISK_FREE_RATE
@@ -231,19 +240,26 @@ def fetch_news_sentiment(ticker: str) -> dict:
         scores = []
         
         for article in news[:10]:
-            # yfinance news structure has nested content dict
-            content = article.get('content', {})
-            title = content.get('title', '')
-            
-            # Get canonical URL or click-through URL
-            canonical = content.get('canonicalUrl', {})
-            click_through = content.get('clickThroughUrl', {})
-            link = canonical.get('url', '') or click_through.get('url', '')
-            
-            # Get provider display name
-            provider_info = content.get('provider', {})
-            publisher = provider_info.get('displayName', '')
-            
+            # Support both yfinance's nested 'content' structure and the simpler
+            # dict structure used in unit tests (title, link, publisher).
+            if isinstance(article, dict) and 'content' in article:
+                content = article.get('content', {})
+                title = content.get('title', '')
+
+                # Get canonical URL or click-through URL
+                canonical = content.get('canonicalUrl', {})
+                click_through = content.get('clickThroughUrl', {})
+                link = canonical.get('url', '') or click_through.get('url', '')
+
+                # Get provider display name
+                provider_info = content.get('provider', {})
+                publisher = provider_info.get('displayName', '')
+            else:
+                # Fallback for simpler article dicts used in tests
+                title = article.get('title', '') if isinstance(article, dict) else ''
+                link = article.get('link', '') if isinstance(article, dict) else ''
+                publisher = article.get('publisher', '') if isinstance(article, dict) else ''
+
             if title:
                 score = analyze_sentiment(title)
                 scores.append(score)
