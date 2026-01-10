@@ -160,12 +160,12 @@ class TestCalculateMetrics:
 
     def test_calculate_metrics_returns_dict(self, processed_stock_data):
         """Test that calculate_metrics returns a dictionary."""
-        result = calculate_metrics(processed_stock_data)
+        result = calculate_metrics(processed_stock_data, risk_free_rate=0.04)
         assert isinstance(result, dict)
 
     def test_calculate_metrics_has_required_keys(self, processed_stock_data):
         """Test that the result contains all required keys."""
-        result = calculate_metrics(processed_stock_data)
+        result = calculate_metrics(processed_stock_data, risk_free_rate=0.04)
         required_keys = [
             "last_close", "change", "pct_change", "high", "low", "volume",
             "volatility", "sharpe_ratio", "risk_free_rate"
@@ -175,7 +175,7 @@ class TestCalculateMetrics:
 
     def test_calculate_metrics_values_are_correct_types(self, processed_stock_data):
         """Test that metric values have correct types."""
-        result = calculate_metrics(processed_stock_data)
+        result = calculate_metrics(processed_stock_data, risk_free_rate=0.04)
         assert isinstance(result["last_close"], float)
         assert isinstance(result["change"], float)
         assert isinstance(result["pct_change"], float)
@@ -195,7 +195,7 @@ class TestCalculateMetrics:
             "Low": [99.0, 104.0, 109.0],
             "Volume": [1000, 1100, 1200],
         })
-        result = calculate_metrics(data)
+        result = calculate_metrics(data, risk_free_rate=0.04)
         
         # Change should be last_close - first_close = 110 - 100 = 10
         assert result["change"] == pytest.approx(10.0)
@@ -210,7 +210,7 @@ class TestCalculateMetrics:
             "Low": [98.0, 103.0, 108.0],
             "Volume": [1000, 1100, 1200],
         })
-        result = calculate_metrics(data)
+        result = calculate_metrics(data, risk_free_rate=0.04)
         
         assert result["high"] == pytest.approx(115.0)
         assert result["low"] == pytest.approx(98.0)
@@ -223,7 +223,7 @@ class TestCalculateMetrics:
             "Low": [99.0, 104.0, 109.0],
             "Volume": [1000, 2000, 3000],
         })
-        result = calculate_metrics(data)
+        result = calculate_metrics(data, risk_free_rate=0.04)
         
         assert result["volume"] == 6000
 
@@ -284,8 +284,9 @@ class TestAddTechnicalIndicators:
 class TestFetchStockData:
     """Tests for the fetch_stock_data function."""
 
-    @patch("backend.services.yf.download")
-    def test_fetch_stock_data_calls_yfinance(self, mock_download):
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.utils.yf.download")
+    def test_fetch_stock_data_calls_yfinance(self, mock_download, mock_error):
         """Test that fetch_stock_data calls yfinance.download."""
         mock_download.return_value = pd.DataFrame({
             "Open": [100],
@@ -298,16 +299,18 @@ class TestFetchStockData:
         fetch_stock_data("AAPL", "1d", "1m")
         mock_download.assert_called_once()
 
-    @patch("backend.services.yf.download")
-    def test_fetch_stock_data_raises_on_empty(self, mock_download):
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.utils.yf.download")
+    def test_fetch_stock_data_raises_on_empty(self, mock_download, mock_error):
         """Test that fetch_stock_data raises exception for empty data."""
         mock_download.return_value = pd.DataFrame()
         
         with pytest.raises(Exception, match="Error fetching data"):
             fetch_stock_data("INVALID", "1d", "1m")
 
-    @patch("backend.services.yf.download")
-    def test_fetch_stock_data_handles_max_period(self, mock_download):
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.utils.yf.download")
+    def test_fetch_stock_data_handles_max_period(self, mock_download, mock_error):
         """Test that fetch_stock_data handles 'max' period."""
         mock_download.return_value = pd.DataFrame({
             "Open": [100],
@@ -321,9 +324,9 @@ class TestFetchStockData:
         mock_download.assert_called_with(
             "AAPL", period="max", interval="1d", auto_adjust=False
         )
-
-    @patch("backend.services.yf.download")
-    def test_fetch_stock_data_returns_dataframe(self, mock_download):
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.utils.yf.download")
+    def test_fetch_stock_data_returns_dataframe(self, mock_download, mock_error):
         """Test that fetch_stock_data returns a DataFrame."""
         expected_df = pd.DataFrame({
             "Open": [100, 101],
@@ -396,8 +399,9 @@ class TestGetSentimentLabel:
 class TestFetchNewsSentiment:
     """Tests for the fetch_news_sentiment function."""
 
-    @patch("backend.services.yf.Ticker")
-    def test_fetch_news_sentiment_with_news(self, mock_ticker):
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.utils.yf.Ticker")
+    def test_fetch_news_sentiment_with_news(self, mock_ticker, mock_error):
         """Test fetch_news_sentiment with mock news data."""
         mock_ticker_instance = MagicMock()
         mock_ticker_instance.news = [
@@ -415,8 +419,9 @@ class TestFetchNewsSentiment:
         assert result["news_count"] == 2
         assert len(result["headlines"]) == 2
 
-    @patch("backend.services.yf.Ticker")
-    def test_fetch_news_sentiment_no_news(self, mock_ticker):
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.utils.yf.Ticker")
+    def test_fetch_news_sentiment_no_news(self, mock_ticker, mock_error):
         """Test fetch_news_sentiment when no news is available."""
         mock_ticker_instance = MagicMock()
         mock_ticker_instance.news = []
@@ -429,9 +434,9 @@ class TestFetchNewsSentiment:
         assert result["news_count"] == 0
         assert result["headlines"] == []
         assert "message" in result
-
-    @patch("backend.services.yf.Ticker")
-    def test_fetch_news_sentiment_handles_exception(self, mock_ticker):
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.utils.yf.Ticker")
+    def test_fetch_news_sentiment_handles_exception(self, mock_ticker, mock_error):
         """Test fetch_news_sentiment handles exceptions gracefully."""
         mock_ticker.side_effect = Exception("API Error")
 
@@ -440,9 +445,9 @@ class TestFetchNewsSentiment:
         assert result["sentiment_score"] == 0.0
         assert result["sentiment_label"] == "Neutral"
         assert "message" in result
-
-    @patch("backend.services.yf.Ticker")
-    def test_fetch_news_sentiment_limits_headlines(self, mock_ticker):
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.utils.yf.Ticker")
+    def test_fetch_news_sentiment_limits_headlines(self, mock_ticker, mock_error):
         """Test that fetch_news_sentiment limits to 10 headlines."""
         mock_ticker_instance = MagicMock()
         mock_ticker_instance.news = [

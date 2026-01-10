@@ -48,7 +48,7 @@ def dashboard_calculate_metrics(data):
     Dashboard wrapper that converts dict to tuple.
     This mirrors the wrapper in stock_dashboard.py.
     """
-    metrics = backend_calculate_metrics(data)
+    metrics = backend_calculate_metrics(data, risk_free_rate=0.04)
     return (
         metrics['last_close'],
         metrics['change'],
