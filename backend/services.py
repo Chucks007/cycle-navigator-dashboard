@@ -282,3 +282,67 @@ def fetch_news_sentiment(ticker: str) -> dict:
             "headlines": [],
             "message": f"Error fetching news: {str(e)}"
         }
+
+
+def fetch_batch_prices(tickers: list) -> dict:
+    """
+    Fetch current price data for multiple tickers in a single API call for the dashboard overview.
+    Returns a dictionary mapping ticker -> {price, delta, pct_delta}.
+    """
+    if yf is None:
+        raise Exception(f"yfinance not available: {_yf_import_error}")
+    
+    if not tickers:
+        return {}
+
+    try:
+        # Download batch data for 5 days to ensure we have previous close for delta calculation
+        # interval="1d" is sufficient for overview
+        data = yf.download(tickers, period="5d", interval="1d", group_by='ticker', auto_adjust=False, progress=False)
+        
+        results = {}
+        
+        for ticker in tickers:
+            try:
+                # Handle case where only one ticker is passed (structure is different)
+                if len(tickers) == 1:
+                    ticker_data = data
+                else:
+                    if ticker not in data.columns.levels[0]: 
+                         # Ticker might be missing if download failed for it
+                        continue
+                    ticker_data = data[ticker]
+
+                # Drop NaNs
+                ticker_data = ticker_data.dropna()
+                
+                if len(ticker_data) < 2:
+                    # Not enough data for delta
+                    if len(ticker_data) == 1:
+                         last_price = ticker_data['Close'].iloc[-1]
+                         results[ticker] = {
+                            "price": last_price,
+                            "delta": 0.0,
+                            "pct_delta": 0.0
+                        }
+                    continue
+                
+                last_price = ticker_data['Close'].iloc[-1]
+                prev_price = ticker_data['Close'].iloc[-2]
+                
+                delta = last_price - prev_price
+                pct_delta = (delta / prev_price) * 100
+                
+                results[ticker] = {
+                    "price": last_price,
+                    "delta": delta,
+                    "pct_delta": pct_delta
+                }
+            except Exception as e:
+                print(f"Error processing {ticker}: {e}")
+                continue
+                
+        return results
+
+    except Exception as e:
+        raise Exception(f"Error fetching batch data: {e}")

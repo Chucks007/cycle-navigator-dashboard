@@ -46,3 +46,13 @@ try:
 except FileNotFoundError:
     # Fallback to empty list if file not found
     TOP_COMPANIES = []
+
+# Market Overview Configuration
+MARKET_INDICES = [
+    {"ticker": "^GSPC", "name": "S&P 500"},
+    {"ticker": "^IXIC", "name": "Nasdaq"},
+    {"ticker": "^DJI", "name": "Dow Jones"},
+    {"ticker": "BTC-USD", "name": "Bitcoin"}
+]
+
+WATCHLIST_TICKERS = ["AAPL", "NVDA", "TSLA", "MSFT", "AMZN", "GOOGL"]
