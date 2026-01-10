@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .services import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data, fetch_news_sentiment, fetch_risk_free_rate
+from .macro_service import macro_service
 
 app = FastAPI()
 
@@ -81,3 +82,36 @@ def get_sentiment(ticker: str):
         return sentiment_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Macro Analysis Endpoints
+
+@app.get("/api/macro/liquidity")
+def get_macro_liquidity():
+    """
+    Returns historical M2 Money Supply and YoY % growth.
+    """
+    try:
+        return macro_service.get_liquidity()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching liquidity data: {str(e)}")
+
+@app.get("/api/macro/debt-status")
+def get_macro_debt_status():
+    """
+    Returns the Interest-to-Tax ratio and individual components.
+    """
+    try:
+        return macro_service.get_debt_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching debt status: {str(e)}")
+
+@app.get("/api/macro/real-rates")
+def get_macro_real_rates():
+    """
+    Returns (10-Year Treasury Yield - CPI Inflation Rate).
+    """
+    try:
+        return macro_service.get_real_rates()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching real rates: {str(e)}")
+
