@@ -6,6 +6,7 @@ from backend.services import (
     process_data,
     add_technical_indicators,
     calculate_metrics,
+    fetch_risk_free_rate,
 )
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "process_data",
     "add_technical_indicators",
     "calculate_metrics",
+    "fetch_risk_free_rate",
 ]
