@@ -7,8 +7,12 @@ the application, making them easier to maintain and adjust.
 
 import json
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Financial Constants
+FRED_API_KEY = os.getenv("FRED_API_KEY")
 DEFAULT_RISK_FREE_RATE = 0.04  # 4% fallback rate when unable to fetch current rate
 TRADING_DAYS_PER_YEAR = 252  # Standard number of trading days per year
 
