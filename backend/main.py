@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from .services import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data, fetch_news_sentiment
+from .services import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data, fetch_news_sentiment, fetch_risk_free_rate
 
 app = FastAPI()
 
@@ -23,7 +23,8 @@ def get_stock_metrics(
     try:
         data = fetch_stock_data(ticker, period, interval)
         data = process_data(data)
-        metrics = calculate_metrics(data)
+        rfr = fetch_risk_free_rate()
+        metrics = calculate_metrics(data, rfr)
         return metrics
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

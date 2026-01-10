@@ -9,6 +9,7 @@ from backend.services import (
     calculate_metrics,
     fetch_news_sentiment,
     fetch_batch_prices,
+    fetch_risk_free_rate,
 )
 from frontend.state import add_to_history
 from frontend.utils import get_sentiment_emoji
@@ -95,7 +96,8 @@ def render_analysis_tab():
         if stock_data is not None:
             stock_data = process_data(stock_data)
             stock_data = add_technical_indicators(stock_data, fill_na=False)
-            metrics = calculate_metrics(stock_data)
+            rfr = fetch_risk_free_rate()
+            metrics = calculate_metrics(stock_data, rfr)
             
             last_close = metrics['last_close']
             change = metrics['change']
