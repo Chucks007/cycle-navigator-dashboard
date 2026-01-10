@@ -23,6 +23,7 @@ EOF
 # Copy application code
 COPY stock_dashboard.py .
 COPY backend/ ./backend/
+COPY frontend/ ./frontend/
 
 # Expose Streamlit port
 EXPOSE 8501
