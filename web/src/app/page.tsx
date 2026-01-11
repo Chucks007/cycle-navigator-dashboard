@@ -50,7 +50,7 @@ function LiquiditySection({ days }: { days?: number }) {
       ...item,
       date: item.date,
       value: item.value,
-      growth_rate: item.growth_rate * 100, // Convert to percentage
+      growth_rate: (item.growth_rate ?? 0) * 100, // Convert to percentage, default 0
     }));
   }, [data]);
 

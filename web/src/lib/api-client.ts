@@ -114,7 +114,7 @@ export const getStockMetrics = (ticker: string, period?: string, interval?: stri
 export const getStockHistory = (ticker: string, period?: string, interval?: string) => apiClient.getStockHistory(ticker, period, interval);
 export const getStockIndicators = (ticker: string, period?: string, interval?: string) => apiClient.getStockIndicators(ticker, period, interval);
 export const getSentiment = (ticker: string) => apiClient.getSentiment(ticker);
-export const getLiquidity = () => apiClient.getLiquidity();
-export const getDebtStatus = () => apiClient.getDebtStatus();
+export const getLiquidity = (days?: number) => apiClient.getLiquidity(days);
+export const getDebtStatus = (days?: number) => apiClient.getDebtStatus(days);
 export const getRealRates = () => apiClient.getRealRates();
 export const checkHealth = () => apiClient.checkHealth();
