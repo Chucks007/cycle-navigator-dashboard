@@ -1,0 +1,89 @@
+export interface StockMetrics {
+  last_close: number;
+  change: number;
+  pct_change: number;
+  high: number;
+  low: number;
+  volume: number;
+  volatility: number | null;
+  sharpe_ratio: number | null;
+  risk_free_rate: number;
+}
+
+export interface StockHistoryPoint {
+  Datetime: string;
+  Open: number;
+  High: number;
+  Low: number;
+  Close: number;
+  Volume: number;
+}
+
+export interface StockIndicatorsPoint {
+  Datetime: string;
+  SMA_20: number | null;
+  EMA_20: number | null;
+  RSI_14: number | null;
+}
+
+export interface SentimentArticle {
+  title: string;
+  link: string;
+  publisher: string;
+  score: number;
+}
+
+export interface SentimentResponse {
+  sentiment_score: number;
+  sentiment_label: string;
+  news_count: number;
+  headlines: SentimentArticle[];
+  message: string | null;
+}
+
+// Alias for simpler usage if desired, matching prompt mention of SentimentResult
+export type SentimentResult = SentimentResponse;
+
+export interface LiquidityPoint {
+  date: string;
+  value: number;
+  growth_rate: number | null;
+}
+
+export interface DebtPoint {
+  date: string;
+  interest_payments: number;
+  tax_receipts: number;
+  ratio: number;
+}
+
+export interface RealRatePoint {
+  date: string;
+  treasury_yield_10y: number;
+  cpi_inflation: number;
+  real_rate: number;
+}
+
+export interface CPIPoint {
+  date: string;
+  value: number;
+}
+
+export interface MacroMetrics {
+  m2_supply: number;
+  m2_growth: number;
+  debt_to_tax_ratio: number;
+  real_rate: number;
+}
+
+export interface ComparisonPoint {
+  date: string;
+  Hard_Index: number;
+  Soft_Index: number;
+  Ratio: number;
+  Ratio_Normalized: number;
+}
+
+export interface ComparisonResult {
+  data: ComparisonPoint[];
+}

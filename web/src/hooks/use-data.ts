@@ -2,46 +2,48 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  fetchLiquidity,
-  fetchDebtStatus,
-  fetchRealRates,
-  fetchStockMetrics,
-  fetchStockHistory,
-  fetchStockIndicators,
-  fetchSentiment,
-  type LiquidityData,
-  type DebtStatusData,
-  type RealRatesData,
+  getLiquidity,
+  getDebtStatus,
+  getRealRates,
+  getStockMetrics,
+  getStockHistory,
+  getStockIndicators,
+  getSentiment,
+} from "@/lib/api-client";
+import {
+  type LiquidityPoint,
+  type DebtPoint,
+  type RealRatePoint,
   type StockMetrics,
   type StockHistoryPoint,
-  type StockIndicators,
-  type SentimentData,
-} from "@/lib/api";
+  type StockIndicatorsPoint,
+  type SentimentResponse,
+} from "@/types/api";
 
 // ============================================
 // Macro Hooks
 // ============================================
 
 export function useLiquidity() {
-  return useQuery<LiquidityData[], Error>({
+  return useQuery<LiquidityPoint[], Error>({
     queryKey: ["macro", "liquidity"],
-    queryFn: fetchLiquidity,
+    queryFn: getLiquidity,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
 export function useDebtStatus() {
-  return useQuery<DebtStatusData[], Error>({
+  return useQuery<DebtPoint[], Error>({
     queryKey: ["macro", "debt-status"],
-    queryFn: fetchDebtStatus,
+    queryFn: getDebtStatus,
     staleTime: 5 * 60 * 1000,
   });
 }
 
 export function useRealRates() {
-  return useQuery<RealRatesData[], Error>({
+  return useQuery<RealRatePoint[], Error>({
     queryKey: ["macro", "real-rates"],
-    queryFn: fetchRealRates,
+    queryFn: getRealRates,
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -57,7 +59,7 @@ export function useStockMetrics(
 ) {
   return useQuery<StockMetrics, Error>({
     queryKey: ["stock", "metrics", ticker, period, interval],
-    queryFn: () => fetchStockMetrics(ticker, period, interval),
+    queryFn: () => getStockMetrics(ticker, period, interval),
     enabled: !!ticker,
   });
 }
@@ -69,7 +71,7 @@ export function useStockHistory(
 ) {
   return useQuery<StockHistoryPoint[], Error>({
     queryKey: ["stock", "history", ticker, period, interval],
-    queryFn: () => fetchStockHistory(ticker, period, interval),
+    queryFn: () => getStockHistory(ticker, period, interval),
     enabled: !!ticker,
   });
 }
@@ -79,17 +81,17 @@ export function useStockIndicators(
   period: string = "1d",
   interval: string = "1m"
 ) {
-  return useQuery<StockIndicators[], Error>({
+  return useQuery<StockIndicatorsPoint[], Error>({
     queryKey: ["stock", "indicators", ticker, period, interval],
-    queryFn: () => fetchStockIndicators(ticker, period, interval),
+    queryFn: () => getStockIndicators(ticker, period, interval),
     enabled: !!ticker,
   });
 }
 
 export function useSentiment(ticker: string) {
-  return useQuery<SentimentData, Error>({
+  return useQuery<SentimentResponse, Error>({
     queryKey: ["sentiment", ticker],
-    queryFn: () => fetchSentiment(ticker),
+    queryFn: () => getSentiment(ticker),
     enabled: !!ticker,
   });
 }
