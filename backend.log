@@ -1,0 +1,51 @@
+INFO:     Will watch for changes in these directories: ['/home/chuck/Projects/cycle-navigator-dashboard']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [719149] using StatReload
+INFO:     Started server process [719194]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:38344 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46798 - "OPTIONS /api/macro/liquidity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46802 - "OPTIONS /api/macro/debt-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46810 - "OPTIONS /api/macro/real-rates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46826 - "GET /api/macro/liquidity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46798 - "GET /api/macro/debt-status HTTP/1.1" 200 OK
+/home/chuck/Projects/cycle-navigator-dashboard/backend/macro_service.py:153: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+  cpi_yoy = cpi.pct_change(periods=12)
+INFO:     127.0.0.1:46802 - "GET /api/macro/real-rates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57018 - "OPTIONS /api/stock/SPY?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57026 - "OPTIONS /api/stock/SPY/history?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57036 - "OPTIONS /api/stock/SPY/indicators?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57052 - "OPTIONS /api/sentiment/SPY HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57018 - "GET /api/stock/SPY/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57026 - "GET /api/stock/SPY/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57036 - "GET /api/sentiment/SPY HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57062 - "GET /api/stock/SPY?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57018 - "GET /api/stock/SPY?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57026 - "GET /api/stock/SPY/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57018 - "GET /api/stock/SPY/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57018 - "GET /api/stock/SPY?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57018 - "GET /api/stock/SPY/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:57026 - "GET /api/stock/SPY/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60964 - "OPTIONS /api/stock/TSLA?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60970 - "OPTIONS /api/stock/TSLA/history?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60974 - "OPTIONS /api/stock/TSLA/indicators?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60984 - "OPTIONS /api/sentiment/TSLA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60964 - "GET /api/stock/TSLA/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60970 - "GET /api/stock/TSLA/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60974 - "GET /api/sentiment/TSLA HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60994 - "GET /api/stock/TSLA?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60970 - "GET /api/stock/TSLA?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60970 - "GET /api/stock/TSLA/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60974 - "GET /api/stock/TSLA/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60970 - "GET /api/stock/TSLA?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60970 - "GET /api/stock/TSLA/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:60974 - "GET /api/stock/TSLA/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:44728 - "OPTIONS /api/macro/liquidity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44734 - "OPTIONS /api/macro/debt-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44748 - "OPTIONS /api/macro/real-rates HTTP/1.1" 200 OK
+/home/chuck/Projects/cycle-navigator-dashboard/backend/macro_service.py:153: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+  cpi_yoy = cpi.pct_change(periods=12)
+INFO:     127.0.0.1:44728 - "GET /api/macro/debt-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44754 - "GET /api/macro/liquidity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44734 - "GET /api/macro/real-rates HTTP/1.1" 200 OK
