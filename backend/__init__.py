@@ -1,7 +1,7 @@
 # Backend package initialization
 # This file makes the backend directory a proper Python package
 
-from backend.services import (
+from backend.stock_service import (
     fetch_stock_data,
     process_data,
     add_technical_indicators,

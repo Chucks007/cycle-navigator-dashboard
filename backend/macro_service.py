@@ -22,36 +22,30 @@ class MacroService:
         else:
             logger.warning("FRED_API_KEY not found in configuration.")
 
-        # Simple in-memory cache: {series_id: (timestamp, data)}
-        self._cache = {}
-        self._cache_expiry = timedelta(hours=24)
-
-    def _get_series(self, series_id: str) -> pd.Series:
+    @functools.lru_cache(maxsize=32)
+    def _get_series_cached(self, series_id: str, cache_key: str) -> pd.Series:
         """
-        Fetches a series from FRED with caching.
+        Calculates or fetches a FRED series, cached by (series_id, date).
         """
-        now = datetime.now()
-        
-        # Check cache
-        if series_id in self._cache:
-            timestamp, data = self._cache[series_id]
-            if now - timestamp < self._cache_expiry:
-                return data.copy()
-
         if not self.fred:
-            # Return empty series or raise error?
-            # Prompt says "handle 'API Key missing' errors gracefully"
             logger.error("Cannot fetch data: FRED API key missing.")
             return pd.Series(dtype=float)
 
         try:
             logger.info(f"Fetching {series_id} from FRED API...")
             series = self.fred.get_series(series_id)
-            self._cache[series_id] = (now, series)
             return series
         except Exception as e:
-            logger.error(f"Error fetching series {series_id}: {e}")
+            logger.error(f"Error fetching {series_id} from FRED: {e}")
             return pd.Series(dtype=float)
+
+    def _get_series(self, series_id: str) -> pd.Series:
+        """
+        Fetches a series from FRED with caching.
+        """
+        # Create a cache key based on current date to invalidate daily
+        cache_key = datetime.now().strftime('%Y-%m-%d')
+        return self._get_series_cached(series_id, cache_key)
 
     def _align_to_monthly(self, target_monthly_index: pd.DatetimeIndex, quarterly_series: pd.Series) -> pd.Series:
         """
