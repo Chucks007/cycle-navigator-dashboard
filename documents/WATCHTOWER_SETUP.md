@@ -64,7 +64,7 @@ docker-compose up -d
 
 This creates two containers:
 - `cycle-navigator-backend` - FastAPI service on port 8000
-- `cycle-navigator-frontend` - Streamlit service on port 8501
+- `cycle-navigator-web` - Next.js service on port 3000
 
 ---
 
@@ -83,7 +83,7 @@ docker run -d \
   -e WATCHTOWER_POLL_INTERVAL=300 \
   -e WATCHTOWER_CLEANUP=true \
   --restart unless-stopped \
-  containrrr/watchtower cycle-navigator-backend cycle-navigator-frontend
+  containrrr/watchtower cycle-navigator-backend cycle-navigator-web
 ```
 
 #### Podman:

@@ -16,16 +16,16 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  frontend:
+  web:
     build:
-      context: .
-      dockerfile: docker/frontend.Dockerfile
-    container_name: cycle-navigator-frontend
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: cycle-navigator-web
     ports:
-      - "8501:8501"
+      - "3000:3000"
     environment:
       - BACKEND_URL=http://backend:8000
-      - FRED_API_KEY=${FRED_API_KEY:-}
+      - NEXT_PUBLIC_API_URL=
     depends_on:
       backend:
         condition: service_healthy

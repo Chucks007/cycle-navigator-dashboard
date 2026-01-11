@@ -1,8 +1,17 @@
 # CI / CD Summary for Cycle Navigator Dashboard
 
+## Update: Headless Migration (2025-01-10)
+
+The architecture has moved to a Headless setup (Next.js + FastAPI). CI/CD pipelines require updates to support:
+- **Two Docker images**: `cycle-navigator-web` and `cycle-navigator-backend`.
+- **Frontend Build**: Requires Node.js setup and `npm run build`.
+- **E2E Tests**: Playwright scripts need to point to `localhost:3000` instead of `8501`.
+
+---
+
 Date: 2025-12-09
 
-This document records the CI/CD work performed for the Cycle Navigator Dashboard project. It captures decisions, implemented workflows, quick troubleshooting and how-tos so you can reference or onboard reviewers.
+This document records the CI/CD work performed for the Cycle Navigator Dashboard project. It captures decisions, implemented workflows, quick troubleshooting and how-tos.
 
 ---
 

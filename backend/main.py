@@ -118,3 +118,13 @@ def get_macro_real_rates():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching real rates: {str(e)}")
 
+@app.get("/api/macro/cpi")
+def get_macro_cpi():
+    """
+    Returns historical CPI data.
+    """
+    try:
+        return macro_service.get_cpi_series()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching CPI data: {str(e)}")
+

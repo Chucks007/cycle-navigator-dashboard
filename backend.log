@@ -49,3 +49,90 @@ INFO:     127.0.0.1:44748 - "OPTIONS /api/macro/real-rates HTTP/1.1" 200 OK
 INFO:     127.0.0.1:44728 - "GET /api/macro/debt-status HTTP/1.1" 200 OK
 INFO:     127.0.0.1:44754 - "GET /api/macro/liquidity HTTP/1.1" 200 OK
 INFO:     127.0.0.1:44734 - "GET /api/macro/real-rates HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'backend/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [719194]
+INFO:     Started server process [737214]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'backend/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [737214]
+INFO:     Started server process [738016]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'backend/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [738016]
+INFO:     Started server process [739401]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'backend/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [739401]
+INFO:     Started server process [739519]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:46514 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:46514 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52002 - "OPTIONS /api/macro/liquidity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52012 - "OPTIONS /api/macro/debt-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52028 - "OPTIONS /api/macro/real-rates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52034 - "GET /api/macro/liquidity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52002 - "GET /api/macro/debt-status HTTP/1.1" 200 OK
+/home/chuck/Projects/cycle-navigator-dashboard/backend/macro_service.py:153: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+  cpi_yoy = cpi.pct_change(periods=12)
+INFO:     127.0.0.1:52012 - "GET /api/macro/real-rates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44512 - "OPTIONS /api/stock/AAPL?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44526 - "OPTIONS /api/stock/AAPL/history?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44540 - "OPTIONS /api/stock/AAPL/indicators?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44548 - "OPTIONS /api/sentiment/AAPL HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44512 - "GET /api/stock/AAPL/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:44540 - "GET /api/sentiment/AAPL HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44526 - "GET /api/stock/AAPL/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:44560 - "GET /api/stock/AAPL?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:44526 - "GET /api/stock/AAPL?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:44526 - "GET /api/stock/AAPL/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:44512 - "GET /api/stock/AAPL/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:41356 - "GET /api/stock/AAPL?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:41360 - "GET /api/stock/AAPL/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:41364 - "GET /api/stock/AAPL/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:41370 - "GET /api/sentiment/AAPL HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41370 - "GET /api/stock/AAPL?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:41364 - "GET /api/stock/AAPL/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:41360 - "GET /api/stock/AAPL/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+/home/chuck/Projects/cycle-navigator-dashboard/backend/macro_service.py:153: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.
+  cpi_yoy = cpi.pct_change(periods=12)
+INFO:     127.0.0.1:41364 - "GET /api/macro/debt-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41360 - "GET /api/macro/liquidity HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41370 - "GET /api/macro/real-rates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49938 - "OPTIONS /api/stock/AMZN?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49944 - "OPTIONS /api/stock/AMZN/history?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49950 - "OPTIONS /api/stock/AMZN/indicators?period=1d&interval=1m HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49964 - "OPTIONS /api/sentiment/AMZN HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49938 - "GET /api/stock/AMZN/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49944 - "GET /api/stock/AMZN/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49950 - "GET /api/sentiment/AMZN HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49974 - "GET /api/stock/AMZN?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49938 - "GET /api/stock/AMZN?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49944 - "GET /api/stock/AMZN/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49938 - "GET /api/stock/AMZN/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49938 - "GET /api/stock/AMZN?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49938 - "GET /api/stock/AMZN/history?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+INFO:     127.0.0.1:49944 - "GET /api/stock/AMZN/indicators?period=1d&interval=1m HTTP/1.1" 500 Internal Server Error
+WARNING:  StatReload detected changes in 'backend/main.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [739519]
+INFO:     Started server process [761666]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
