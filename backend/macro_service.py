@@ -6,6 +6,7 @@ import numpy as np
 from fredapi import Fred
 
 from . import config
+from . import schemas
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,9 @@ class MacroService:
         # Format dates
         df['date'] = df['date'].dt.strftime('%Y-%m-%d')
         
-        return df.to_dict(orient='records')
+        # Replace NaN with None for Pydantic compatibility
+        records = df.replace({np.nan: None}).to_dict(orient='records')
+        return [schemas.LiquidityPoint(**r) for r in records]
 
     def get_debt_status(self):
         """
@@ -134,7 +137,8 @@ class MacroService:
         df.sort_values('date', ascending=False, inplace=True)
         df['date'] = df['date'].dt.strftime('%Y-%m-%d')
         
-        return df.to_dict(orient='records')
+        records = df.replace({np.nan: None}).to_dict(orient='records')
+        return [schemas.DebtPoint(**r) for r in records]
 
     def get_real_rates(self):
         """
@@ -176,7 +180,8 @@ class MacroService:
         df.sort_values('date', ascending=False, inplace=True)
         df['date'] = df['date'].dt.strftime('%Y-%m-%d')
 
-        return df.to_dict(orient='records')
+        records = df.replace({np.nan: None}).to_dict(orient='records')
+        return [schemas.RealRatePoint(**r) for r in records]
 
 
     def get_cpi_series(self):
@@ -197,7 +202,8 @@ class MacroService:
         # Let's keep consistent with other methods -> str for API, but we might need datetime helper for frontend.
         df['date'] = df['date'].dt.strftime('%Y-%m-%d')
         
-        return df.to_dict(orient='records')
+        records = df.replace({np.nan: None}).to_dict(orient='records')
+        return [schemas.CPIPoint(**r) for r in records]
 
 # Singleton instance
 macro_service = MacroService()

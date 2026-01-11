@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from typing import List
 
+from . import schemas
 from .services import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data, fetch_news_sentiment, fetch_risk_free_rate
 from .macro_service import macro_service
 
@@ -18,7 +20,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/api/stock/{ticker}")
+@app.get("/api/stock/{ticker}", response_model=schemas.StockMetrics)
 def get_stock_metrics(
     ticker: str,
     period: str = Query("1d", description="Time period (e.g., 1d, 5d, 1mo)"),
@@ -33,7 +35,7 @@ def get_stock_metrics(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/stock/{ticker}/history")
+@app.get("/api/stock/{ticker}/history", response_model=List[schemas.StockHistoryPoint])
 def get_stock_history(
     ticker: str,
     period: str = Query("1d"),
@@ -50,7 +52,7 @@ def get_stock_history(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/stock/{ticker}/indicators")
+@app.get("/api/stock/{ticker}/indicators", response_model=List[schemas.StockIndicatorsPoint])
 def get_stock_indicators(
     ticker: str,
     period: str = Query("1d"),
@@ -74,7 +76,7 @@ def health_check():
     return {"status": "ok"}
 
 
-@app.get("/api/sentiment/{ticker}")
+@app.get("/api/sentiment/{ticker}", response_model=schemas.SentimentResponse)
 def get_sentiment(ticker: str):
     """
     Get news sentiment analysis for a stock ticker.
@@ -88,7 +90,7 @@ def get_sentiment(ticker: str):
 
 # Macro Analysis Endpoints
 
-@app.get("/api/macro/liquidity")
+@app.get("/api/macro/liquidity", response_model=List[schemas.LiquidityPoint])
 def get_macro_liquidity():
     """
     Returns historical M2 Money Supply and YoY % growth.
@@ -98,7 +100,7 @@ def get_macro_liquidity():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching liquidity data: {str(e)}")
 
-@app.get("/api/macro/debt-status")
+@app.get("/api/macro/debt-status", response_model=List[schemas.DebtPoint])
 def get_macro_debt_status():
     """
     Returns the Interest-to-Tax ratio and individual components.
@@ -108,7 +110,7 @@ def get_macro_debt_status():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching debt status: {str(e)}")
 
-@app.get("/api/macro/real-rates")
+@app.get("/api/macro/real-rates", response_model=List[schemas.RealRatePoint])
 def get_macro_real_rates():
     """
     Returns (10-Year Treasury Yield - CPI Inflation Rate).
@@ -118,7 +120,7 @@ def get_macro_real_rates():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching real rates: {str(e)}")
 
-@app.get("/api/macro/cpi")
+@app.get("/api/macro/cpi", response_model=List[schemas.CPIPoint])
 def get_macro_cpi():
     """
     Returns historical CPI data.

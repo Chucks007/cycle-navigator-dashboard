@@ -45,17 +45,17 @@ def sample_stock_data():
 # Dashboard-specific wrapper for calculate_metrics that returns tuple
 def dashboard_calculate_metrics(data):
     """
-    Dashboard wrapper that converts dict to tuple.
+    Dashboard wrapper that converts dict/object to tuple.
     This mirrors the wrapper in stock_dashboard.py.
     """
     metrics = backend_calculate_metrics(data, risk_free_rate=0.04)
     return (
-        metrics['last_close'],
-        metrics['change'],
-        metrics['pct_change'],
-        metrics['high'],
-        metrics['low'],
-        metrics['volume'],
+        metrics.last_close,
+        metrics.change,
+        metrics.pct_change,
+        metrics.high,
+        metrics.low,
+        metrics.volume,
     )
 
 

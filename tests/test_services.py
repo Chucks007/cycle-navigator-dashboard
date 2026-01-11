@@ -159,9 +159,9 @@ class TestCalculateMetrics:
     """Tests for the calculate_metrics function."""
 
     def test_calculate_metrics_returns_dict(self, processed_stock_data):
-        """Test that calculate_metrics returns a dictionary."""
+        """Test that calculate_metrics returns a StockMetrics object."""
         result = calculate_metrics(processed_stock_data, risk_free_rate=0.04)
-        assert isinstance(result, dict)
+        assert hasattr(result, "last_close")
 
     def test_calculate_metrics_has_required_keys(self, processed_stock_data):
         """Test that the result contains all required keys."""
@@ -171,21 +171,21 @@ class TestCalculateMetrics:
             "volatility", "sharpe_ratio", "risk_free_rate"
         ]
         for key in required_keys:
-            assert key in result, f"Missing key: {key}"
+            assert hasattr(result, key), f"Missing key: {key}"
 
     def test_calculate_metrics_values_are_correct_types(self, processed_stock_data):
         """Test that metric values have correct types."""
         result = calculate_metrics(processed_stock_data, risk_free_rate=0.04)
-        assert isinstance(result["last_close"], float)
-        assert isinstance(result["change"], float)
-        assert isinstance(result["pct_change"], float)
-        assert isinstance(result["high"], float)
-        assert isinstance(result["low"], float)
-        assert isinstance(result["volume"], int)
+        assert isinstance(result.last_close, float)
+        assert isinstance(result.change, float)
+        assert isinstance(result.pct_change, float)
+        assert isinstance(result.high, float)
+        assert isinstance(result.low, float)
+        assert isinstance(result.volume, int)
         # Volatility and Sharpe can be float or nan (which is float)
-        assert isinstance(result["volatility"], float)
-        assert isinstance(result["sharpe_ratio"], float)
-        assert isinstance(result["risk_free_rate"], float)
+        assert isinstance(result.volatility, float)
+        assert isinstance(result.sharpe_ratio, float)
+        assert isinstance(result.risk_free_rate, float)
 
     def test_calculate_metrics_change_calculation(self):
         """Test that change is calculated correctly."""
@@ -198,9 +198,9 @@ class TestCalculateMetrics:
         result = calculate_metrics(data, risk_free_rate=0.04)
         
         # Change should be last_close - first_close = 110 - 100 = 10
-        assert result["change"] == pytest.approx(10.0)
+        assert result.change == pytest.approx(10.0)
         # Percent change = (10 / 100) * 100 = 10%
-        assert result["pct_change"] == pytest.approx(10.0)
+        assert result.pct_change == pytest.approx(10.0)
 
     def test_calculate_metrics_high_low(self):
         """Test that high/low are calculated correctly."""
@@ -212,8 +212,8 @@ class TestCalculateMetrics:
         })
         result = calculate_metrics(data, risk_free_rate=0.04)
         
-        assert result["high"] == pytest.approx(115.0)
-        assert result["low"] == pytest.approx(98.0)
+        assert result.high == pytest.approx(115.0)
+        assert result.low == pytest.approx(98.0)
 
     def test_calculate_metrics_volume_sum(self):
         """Test that volume is summed correctly."""
@@ -225,7 +225,7 @@ class TestCalculateMetrics:
         })
         result = calculate_metrics(data, risk_free_rate=0.04)
         
-        assert result["volume"] == 6000
+        assert result.volume == 6000
 
 
 # --- Tests for add_technical_indicators ---
@@ -412,12 +412,12 @@ class TestFetchNewsSentiment:
 
         result = fetch_news_sentiment("AAPL")
 
-        assert "sentiment_score" in result
-        assert "sentiment_label" in result
-        assert "news_count" in result
-        assert "headlines" in result
-        assert result["news_count"] == 2
-        assert len(result["headlines"]) == 2
+        assert hasattr(result, "sentiment_score")
+        assert hasattr(result, "sentiment_label")
+        assert hasattr(result, "news_count")
+        assert hasattr(result, "headlines")
+        assert result.news_count == 2
+        assert len(result.headlines) == 2
 
     @patch("backend.services.get_yf_import_error", return_value=None)
     @patch("backend.utils.yf.Ticker")
@@ -429,11 +429,12 @@ class TestFetchNewsSentiment:
 
         result = fetch_news_sentiment("UNKNOWN")
 
-        assert result["sentiment_score"] == 0.0
-        assert result["sentiment_label"] == "Neutral"
-        assert result["news_count"] == 0
-        assert result["headlines"] == []
-        assert "message" in result
+        assert result.sentiment_score == 0.0
+        assert result.sentiment_label == "Neutral"
+        assert result.news_count == 0
+        assert result.headlines == []
+        assert result.message is not None
+
     @patch("backend.services.get_yf_import_error", return_value=None)
     @patch("backend.utils.yf.Ticker")
     def test_fetch_news_sentiment_handles_exception(self, mock_ticker, mock_error):
@@ -442,9 +443,10 @@ class TestFetchNewsSentiment:
 
         result = fetch_news_sentiment("AAPL")
 
-        assert result["sentiment_score"] == 0.0
-        assert result["sentiment_label"] == "Neutral"
-        assert "message" in result
+        assert result.sentiment_score == 0.0
+        assert result.sentiment_label == "Neutral"
+        assert result.message is not None
+
     @patch("backend.services.get_yf_import_error", return_value=None)
     @patch("backend.utils.yf.Ticker")
     def test_fetch_news_sentiment_limits_headlines(self, mock_ticker, mock_error):
@@ -458,5 +460,5 @@ class TestFetchNewsSentiment:
 
         result = fetch_news_sentiment("AAPL")
 
-        assert result["news_count"] == 10
-        assert len(result["headlines"]) == 10
+        assert result.news_count == 10
+        assert len(result.headlines) == 10
