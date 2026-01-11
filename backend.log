@@ -136,3 +136,19 @@ INFO:     Finished server process [739519]
 INFO:     Started server process [761666]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'backend/comparison_service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [761666]
+INFO:     Started server process [766274]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'backend/comparison_service.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [766274]
+INFO:     Started server process [766982]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
