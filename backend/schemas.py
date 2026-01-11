@@ -84,5 +84,5 @@ class ComparisonPoint(BaseModel):
     Ratio: float
     Ratio_Normalized: float
 
-class ComparisonResult(BaseModel):
-    data: List[ComparisonPoint]
+class ComparisonResult(ComparisonPoint):
+    pass
