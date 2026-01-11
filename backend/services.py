@@ -4,6 +4,7 @@ import ta
 from textblob import TextBlob
 
 from . import config
+from . import schemas
 from .utils import get_yf, get_yf_import_error
 
 # --- Internal Helper Functions for News Fetching & Parsing ---
@@ -82,33 +83,43 @@ def _format_sentiment_response(headlines: list, ticker: str) -> dict:
         if yf_error:
             message = f"yfinance not available: {yf_error}"
             
-        return {
-            "sentiment_score": 0.0,
-            "sentiment_label": "Neutral",
-            "news_count": 0,
-            "headlines": [],
-            "message": message
-        }
+        return schemas.SentimentResponse(
+            sentiment_score=0.0,
+            sentiment_label="Neutral",
+            news_count=0,
+            headlines=[],
+            message=message
+        )
 
     # Extract scores excluding failed analysis if any (though we default to 0.0)
     scores = [h['score'] for h in headlines]
     
     if not scores: # Should not happen if headlines is not empty
-        return {
-            "sentiment_score": 0.0,
-            "sentiment_label": "Neutral",
-            "headlines": [],
-            "news_count": 0
-        }
+        return schemas.SentimentResponse(
+            sentiment_score=0.0,
+            sentiment_label="Neutral",
+            headlines=[],
+            news_count=0
+        )
 
     avg_score = sum(scores) / len(scores)
     
-    return {
-        "sentiment_score": round(avg_score, 3),
-        "sentiment_label": get_sentiment_label(avg_score),
-        "news_count": len(headlines),
-        "headlines": headlines
-    }
+    # Convert headlines (dicts) to SentimentArticle objects
+    formatted_headlines = [
+        schemas.SentimentArticle(
+            title=h['title'],
+            link=h['link'],
+            publisher=h['publisher'],
+            score=h['score']
+        ) for h in headlines
+    ]
+    
+    return schemas.SentimentResponse(
+        sentiment_score=round(avg_score, 3),
+        sentiment_label=get_sentiment_label(avg_score),
+        news_count=len(headlines),
+        headlines=formatted_headlines
+    )
 
 # --- Internal Helper Functions for Batch Prices ---
 
@@ -296,17 +307,17 @@ def calculate_metrics(data: pd.DataFrame, risk_free_rate: float) -> dict:
 
     volatility, sharpe_ratio = calculate_risk_metrics(data, risk_free_rate)
 
-    return {
-        "last_close": last_close,
-        "change": change,
-        "pct_change": pct_change,
-        "high": high,
-        "low": low,
-        "volume": volume,
-        "volatility": volatility,
-        "sharpe_ratio": sharpe_ratio,
-        "risk_free_rate": risk_free_rate
-    }
+    return schemas.StockMetrics(
+        last_close=last_close,
+        change=change,
+        pct_change=pct_change,
+        high=high,
+        low=low,
+        volume=volume,
+        volatility=volatility,
+        sharpe_ratio=sharpe_ratio,
+        risk_free_rate=risk_free_rate
+    )
 
 def analyze_sentiment(text: str) -> float:
     """

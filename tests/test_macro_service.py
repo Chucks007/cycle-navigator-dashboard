@@ -54,15 +54,15 @@ class TestMacroService(unittest.TestCase):
         self.assertTrue(len(result) > 0)
         
         # Sort by date usually done in method, but find specific date
-        jan_entry = next((item for item in result if item['date'] == '2023-01-01'), None)
+        jan_entry = next((item for item in result if item.date == '2023-01-01'), None)
         self.assertIsNotNone(jan_entry)
         # Interest 50 / Tax 100 * 100 = 50.0
-        self.assertAlmostEqual(jan_entry['ratio'], 50.0)
+        self.assertAlmostEqual(jan_entry.ratio, 50.0)
         
-        apr_entry = next((item for item in result if item['date'] == '2023-04-01'), None)
+        apr_entry = next((item for item in result if item.date == '2023-04-01'), None)
         self.assertIsNotNone(apr_entry)
         # Interest 60 / Tax 120 * 100 = 50.0
-        self.assertAlmostEqual(apr_entry['ratio'], 50.0)
+        self.assertAlmostEqual(apr_entry.ratio, 50.0)
 
     def test_get_liquidity_growth(self):
         service = MacroService()
@@ -79,9 +79,9 @@ class TestMacroService(unittest.TestCase):
         
         # Should have 1 record
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0]['date'], '2023-01-01')
-        self.assertAlmostEqual(result[0]['growth_rate'], 0.1)
-        self.assertEqual(result[0]['value'], 110.0)
+        self.assertEqual(result[0].date, '2023-01-01')
+        self.assertAlmostEqual(result[0].growth_rate, 0.1)
+        self.assertEqual(result[0].value, 110.0)
 
 if __name__ == '__main__':
     unittest.main()
