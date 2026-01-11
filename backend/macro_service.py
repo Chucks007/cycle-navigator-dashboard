@@ -178,5 +178,26 @@ class MacroService:
 
         return df.to_dict(orient='records')
 
+
+    def get_cpi_series(self):
+        """
+        Returns the raw CPI Index series (CPIAUCSL).
+        """
+        cpi = self._get_series('CPIAUCSL')
+        if cpi.empty:
+            return []
+
+        df = pd.DataFrame({'value': cpi})
+        df.dropna(inplace=True)
+        df.reset_index(inplace=True)
+        df.columns = ['date', 'value']
+        df.sort_values('date', ascending=False, inplace=True)
+        # Keep date as datetime for easier merging or convert? 
+        # API usually returns JSON strings, but internal usage might prefer datetime.
+        # Let's keep consistent with other methods -> str for API, but we might need datetime helper for frontend.
+        df['date'] = df['date'].dt.strftime('%Y-%m-%d')
+        
+        return df.to_dict(orient='records')
+
 # Singleton instance
 macro_service = MacroService()

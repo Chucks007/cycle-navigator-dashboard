@@ -13,6 +13,8 @@ def initialize_session_state():
         st.session_state.chart_type = 'Candlestick'
     if 'indicators' not in st.session_state:
         st.session_state.indicators = []
+    if 'inflation_adjusted' not in st.session_state:
+        st.session_state.inflation_adjusted = False
 
 def add_to_history(ticker):
     """Add ticker to search history, keeping last 5 unique entries."""
