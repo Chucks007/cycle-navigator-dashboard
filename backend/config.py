@@ -7,14 +7,28 @@ the application, making them easier to maintain and adjust.
 
 import json
 import os
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# Logger setup
+logger = logging.getLogger(__name__)
+
 # Financial Constants
 FRED_API_KEY = os.getenv("FRED_API_KEY")
+
+if not FRED_API_KEY:
+    logger.warning("FRED_API_KEY not found in configuration. Macro data features will be unavailable.")
+
 DEFAULT_RISK_FREE_RATE = 0.04  # 4% fallback rate when unable to fetch current rate
 TRADING_DAYS_PER_YEAR = 252  # Standard number of trading days per year
+
+# CORS Configuration
+CORS_ORIGINS = [
+    "http://localhost:5173",  # Vite default port
+    "http://localhost:3000",  # Next.js default port
+]
 
 # Technical Indicator Settings
 SMA_WINDOW = 20  # Simple Moving Average window

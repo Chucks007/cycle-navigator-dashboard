@@ -16,12 +16,14 @@ import pytest
 sys.modules['yfinance'] = MagicMock()
 
 from backend import config
-from backend.services import (
+from backend.stock_service import (
     add_technical_indicators,
     calculate_metrics,
     calculate_risk_metrics,
     fetch_stock_data,
     process_data,
+)
+from backend.sentiment_service import (
     analyze_sentiment,
     get_sentiment_label,
     fetch_news_sentiment,
