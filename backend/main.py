@@ -9,7 +9,10 @@ app = FastAPI()
 # Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite default port
+    allow_origins=[
+        "http://localhost:5173",  # Vite default port
+        "http://localhost:3000",  # Next.js default port
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -114,4 +117,14 @@ def get_macro_real_rates():
         return macro_service.get_real_rates()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching real rates: {str(e)}")
+
+@app.get("/api/macro/cpi")
+def get_macro_cpi():
+    """
+    Returns historical CPI data.
+    """
+    try:
+        return macro_service.get_cpi_series()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching CPI data: {str(e)}")
 
