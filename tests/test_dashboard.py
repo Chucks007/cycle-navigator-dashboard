@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-# Import the canonical implementations from backend.services for testing
-from backend.services import (
+# Import the canonical implementations from backend.stock_service for testing
+from backend.stock_service import (
     calculate_metrics as backend_calculate_metrics,
     process_data,
     add_technical_indicators,
