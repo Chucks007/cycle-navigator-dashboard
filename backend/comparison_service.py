@@ -47,14 +47,16 @@ def fetch_comparison_data(tickers: List[str], period: str = "1y") -> pd.DataFram
     Returns:
         DataFrame with Date index and ticker columns containing Close prices
     """
-    yf = get_yf()
-    error = get_yf_import_error()
-    
-    if error is not None:
-        raise Exception(f"yfinance not available: {error}")
-    
+    # Validate input early to provide clear errors regardless of optional
+    # dependency availability (helps tests and CI where yfinance may fail to import).
     if not tickers:
         raise ValueError("No tickers provided")
+
+    yf = get_yf()
+    error = get_yf_import_error()
+
+    if error is not None:
+        raise Exception(f"yfinance not available: {error}")
     
     try:
         # Download all tickers at once for efficiency

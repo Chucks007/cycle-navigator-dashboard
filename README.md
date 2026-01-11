@@ -17,15 +17,24 @@ Real_Time_Stock_Price_Dashboard/
 ```markdown
 # Cycle Navigator — Real-Time Stock Dashboard
 
-Small, opinionated Streamlit dashboard for viewing stock prices, basic technical indicators, and simple verification scripts. Originally created as a lightweight tool to monitor equities (candlesticks, SMA/EMA/RSI) and to exercise some automation checks.
+Next-generation headless dashboard for monitoring asset cycles, implementing Barbell Strategies, and tracking Macro Liquidity. Built with **Next.js 15 (React)**, **Tailwind CSS**, and **FastAPI**.
 
 ---
 
 ## Running with Docker Compose (Recommended)
 
-The easiest and most reliable way to run this application is with Docker Compose. This method runs the backend (FastAPI) and frontend (Streamlit) as separate containers, following Docker best practices for service isolation.
+The easiest and most reliable way to run this application is with Docker Compose. This method runs the backend (FastAPI) and frontend (Next.js) as separate containers.
 
-**1. Start Both Services:**
+**1. Configure Environment:**
+
+Create a `.env` file in the root directory (see `.env.example`):
+
+```bash
+cp .env.example .env
+# Edit .env and add your FRED_API_KEY
+```
+
+**2. Start Both Services:**
 
 From the root of the repository, run:
 
@@ -39,37 +48,30 @@ Or run in detached mode:
 docker-compose up --build -d
 ```
 
-**2. Access the Application:**
+**3. Access the Application:**
 
-- **Streamlit Frontend:** Open your browser and navigate to `http://localhost:8501`.
-- **FastAPI Backend:** The API is available at `http://localhost:8000`. You can access its health check at `http://localhost:8000/health`.
+- **Web Frontend:** Open [http://localhost:3000](http://localhost:3000).
+- **FastAPI Backend:** The API is available at [http://localhost:8000](http://localhost:8000).
+  - Health Check: [http://localhost:8000/health](http://localhost:8000/health)
+  - Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-**3. View Running Containers:**
+**4. View Running Containers:**
 
 ```bash
 docker ps
 ```
 
-You should see two containers: `cycle-navigator-backend` and `cycle-navigator-frontend`.
+You should see: `cycle-navigator-backend` and `cycle-navigator-web`.
 
-**4. Stopping the Services:**
+**5. Stopping the Services:**
 
 ```bash
 docker-compose down
 ```
 
-**5. Independent Service Control:**
-
-You can stop/start individual services without affecting the other:
-
-```bash
-docker-compose stop backend   # Stop only the backend
-docker-compose start backend  # Restart the backend
-```
-
 ### Using Podman Compose
 
-If you prefer Podman, you can use `podman-compose` as a drop-in replacement:
+If you use Podman:
 
 ```bash
 podman-compose up --build
@@ -77,27 +79,48 @@ podman-compose up --build
 
 ---
 
-## Project Overview
+## Architecture & Project Structure
 
-This repo contains:
+This project follows a Headless Architecture:
 
-- `stock_dashboard.py` — Streamlit app (main UI).
-- `backend/` — FastAPI helpers and small API that re-uses the same data functions.
-- `scripts/test_fred_api.py` and `scripts/verify_env.py` — small helpers for verifying FRED API connectivity and environment variables.
-- `requirements.txt` — All production dependencies for both frontend and backend.
-- `requirements-dev.txt` — Development and testing dependencies (includes production deps).
+- **`web/`**: Next.js 15 App Router application with Tailwind CSS and Shadcn UI.
+  - *Dockerized as `cycle-navigator-web`.*
+- **`backend/`**: FastAPI python service handling financial data processing and API requests.
+  - *Dockerized as `cycle-navigator-backend`.*
+- **`scripts/`**: Utility scripts (`test_fred_api.py`, etc.).
+- **`docker-compose.yml`**: Orchestrates the multi-container setup with internal networking.
 
-**Quick goals**: run the Streamlit app locally and optionally run the small FastAPI backend.
-
-**Note:** this README was updated to reflect the current structure and run instructions.
+**Key Features:**
+- 🏰 **Macro Watchtower**: Track Global Liquidity (M2) and Real Rates.
+- ⚖️ **Barbell Strategy**: Compare Hard Assets (Gold, BTC) vs Paper Assets (Stocks, Bonds).
+- 🔍 **Ticker Analysis**: Real-time price charts and technical indicators.
 
 <details>
-<summary>Local Development (without Containers)</summary>
+<summary>Local Development (No Docker)</summary>
 
-### Requirements
+### Prerequisites
+- Python 3.11+
+- Node.js 20+
 
-- Python 3.11+ (3.11 recommended to match container)
-- A virtualenv or venv for dependency isolation
+### 1. Start Backend
+```bash
+# Setup Python Environment
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Run Server
+uvicorn backend.main:app --reload --port 8000
+```
+
+### 2. Start Frontend
+```bash
+cd web
+npm install
+npm run dev
+# Access at http://localhost:3000
+```
+</details>
 
 Install system-level packages and create a virtual environment:
 

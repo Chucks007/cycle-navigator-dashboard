@@ -1,8 +1,10 @@
 # Base Dashboard Functionality Verification Report
 
+> **⚠️ NOTE: This report applies to the Legacy Streamlit application. Verification setup for the Next.js frontend is pending.**
+
 **Date:** November 26, 2025  
 **Test Type:** Automated (Playwright) + Visual Verification  
-**Status:** ✅ **PASSED**
+**Status:** ✅ **PASSED (Legacy)**
 
 ---
 
