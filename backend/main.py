@@ -91,22 +91,22 @@ def get_sentiment(ticker: str):
 # Macro Analysis Endpoints
 
 @app.get("/api/macro/liquidity", response_model=List[schemas.LiquidityPoint])
-def get_macro_liquidity():
+def get_macro_liquidity(days: int = Query(None, description="Number of days of history to return")):
     """
     Returns historical M2 Money Supply and YoY % growth.
     """
     try:
-        return macro_service.get_liquidity()
+        return macro_service.get_liquidity(days=days)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching liquidity data: {str(e)}")
 
 @app.get("/api/macro/debt-status", response_model=List[schemas.DebtPoint])
-def get_macro_debt_status():
+def get_macro_debt_status(days: int = Query(None, description="Number of days of history to return")):
     """
     Returns the Interest-to-Tax ratio and individual components.
     """
     try:
-        return macro_service.get_debt_status()
+        return macro_service.get_debt_status(days=days)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching debt status: {str(e)}")
 

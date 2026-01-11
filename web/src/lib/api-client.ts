@@ -87,12 +87,14 @@ class ApiClient {
   }
 
   // Macro
-  public async getLiquidity(): Promise<LiquidityPoint[]> {
-    return this.request<LiquidityPoint[]>('/api/macro/liquidity');
+  public async getLiquidity(days?: number): Promise<LiquidityPoint[]> {
+    const query = days ? `?days=${days}` : '';
+    return this.request<LiquidityPoint[]>(`/api/macro/liquidity${query}`);
   }
 
-  public async getDebtStatus(): Promise<DebtPoint[]> {
-    return this.request<DebtPoint[]>('/api/macro/debt-status');
+  public async getDebtStatus(days?: number): Promise<DebtPoint[]> {
+    const query = days ? `?days=${days}` : '';
+    return this.request<DebtPoint[]>(`/api/macro/debt-status${query}`);
   }
 
   public async getRealRates(): Promise<RealRatePoint[]> {
