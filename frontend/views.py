@@ -1,5 +1,7 @@
 import streamlit as st
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import pandas as pd
 import numpy as np
 from backend import config
 from backend.services import (
@@ -11,6 +13,7 @@ from backend.services import (
     fetch_batch_prices,
     fetch_risk_free_rate,
 )
+from backend.macro_service import macro_service
 from frontend.state import add_to_history
 from frontend.utils import get_sentiment_emoji
 from frontend.layout import render_sidebar
@@ -76,12 +79,108 @@ def render_overview_tab():
                         st.rerun()
                     st.markdown("---")
 
+
+def render_macro_tab():
+    """Render the Macro Watchtower tab."""
+    st.subheader("🏰 Macro Watchtower")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with st.spinner("Fetching macro data..."):
+        liquidity = macro_service.get_liquidity()
+        debt = macro_service.get_debt_status()
+        real_rates = macro_service.get_real_rates()
+        
+    # Liquidity Fuel
+    if liquidity:
+        curr_m2 = liquidity[0]['value'] / 1000 # Trillions
+        m2_growth = liquidity[0]['growth_rate'] * 100
+        col1.metric("Liquidity Fuel (M2)", f"${curr_m2:.2f}T", f"{m2_growth:.2f}% YoY")
+    else:
+        col1.metric("Liquidity Fuel (M2)", "N/A", "N/A")
+        
+    # Debt Pressure
+    if debt:
+        curr_ratio = debt[0]['ratio']
+        prev_ratio = debt[1]['ratio'] if len(debt) > 1 else 0
+        delta = curr_ratio - prev_ratio
+        col2.metric("Debt Pressure (Int/Tax)", f"{curr_ratio:.1f}%", f"{delta:.1f}%")
+    else:
+        col2.metric("Debt Pressure", "N/A", "N/A")
+        
+    # Real Yield
+    if real_rates:
+        curr_real = real_rates[0]['real_rate'] * 100
+        prev_real = real_rates[1]['real_rate'] * 100 if len(real_rates) > 1 else 0
+        delta_real = curr_real - prev_real
+        col3.metric("Real Yield (10Y - CPI)", f"{curr_real:.2f}%", f"{delta_real:.2f}%")
+    else:
+        col3.metric("Real Yield", "N/A", "N/A")
+
+    st.markdown("### The 'Melt-Up' Correlation")
+    
+    # Dual Axis Chart
+    sp500 = fetch_stock_data('^GSPC', '5y', '1d') # 5 years
+    
+    if sp500 is not None and not sp500.empty and liquidity:
+        sp500 = process_data(sp500)
+        
+        # Prepare M2 Dataframe
+        m2_df = pd.DataFrame(liquidity)
+        m2_df['date'] = pd.to_datetime(m2_df['date'])
+        # Localize M2 date to match stock data (US/Eastern) for plot alignment if needed, 
+        # but plotly usually handles mixed naive/aware ok on axis. 
+        # But let's be safe and make stock naive for plotting or both aware.
+        # Stock data is aware US/Eastern.
+        
+        m2_df = m2_df.sort_values('date')
+        
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+        
+        # Trace 1: S&P 500
+        fig.add_trace(
+            go.Scatter(x=sp500['Datetime'], y=sp500['Close'], name="S&P 500", 
+                       line=dict(color='#00F0FF', width=2)),
+            secondary_y=False
+        )
+        
+        # Trace 2: M2
+        fig.add_trace(
+            go.Scatter(x=m2_df['date'], y=m2_df['value'], name="M2 Money Supply",
+                       line=dict(color='#FF00FF', width=2, dash='dot'),
+                       fill='tozeroy', fillcolor='rgba(255, 0, 255, 0.1)'),
+            secondary_y=True
+        )
+        
+        fig.update_layout(
+            title_text="Global Liquidity vs. Asset Prices",
+            template="plotly_dark",
+            height=500,
+            hovermode="x unified",
+            legend=dict(orientation="h", y=1.1) 
+        )
+        
+        fig.update_yaxes(title_text="S&P 500 Price", secondary_y=False)
+        fig.update_yaxes(title_text="M2 Supply (Billions)", secondary_y=True)
+        
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.error("Could not load chart data.")
+
 def render_analysis_tab():
     """Render the Detailed Analysis tab content."""
     ticker = st.session_state.selected_ticker
     
     # Render Sidebar Settings
     render_sidebar()
+
+    st.sidebar.markdown("---")
+    st.sidebar.header("Purchasing Power")
+    use_real_value = st.sidebar.checkbox(
+        "View in Purchasing Power (CPI Adjusted)", 
+        value=st.session_state.get('inflation_adjusted', False),
+        key='inflation_adjusted'
+    )
     
     # --- Main Analysis Content ---
     st.header(f"📈 {ticker} Analysis")
@@ -95,6 +194,53 @@ def render_analysis_tab():
         
         if stock_data is not None:
             stock_data = process_data(stock_data)
+
+            # --- Inflation Adjustment Logic ---
+            if use_real_value:
+                try:
+                    cpi_data = macro_service.get_cpi_series()
+                    if cpi_data:
+                        cpi_df = pd.DataFrame(cpi_data)
+                        cpi_df['date'] = pd.to_datetime(cpi_df['date'])
+                        # Localize to US/Eastern to match stock_data 
+                        if cpi_df['date'].dt.tz is None:
+                             cpi_df['date'] = cpi_df['date'].dt.tz_localize('US/Eastern')
+                        
+                        cpi_df = cpi_df.set_index('date').sort_index()
+                        
+                        # Sort data for merge_asof
+                        stock_data = stock_data.sort_values('Datetime')
+                        
+                        combined = pd.merge_asof(
+                            stock_data[['Datetime']], 
+                            cpi_df, 
+                            left_on='Datetime', 
+                            right_index=True, 
+                            direction='backward'
+                        )
+                        
+                        # Assign CPI to original dataframe matching index/order
+                        # Note: merge_asof preserved order of left frame (stock_data)
+                        stock_data['cpi_at_t'] = combined['value']
+                        
+                        current_cpi = cpi_df['value'].iloc[-1]
+                        
+                        # Avoid division by zero/nan
+                        stock_data['adj_factor'] = current_cpi / stock_data['cpi_at_t']
+                        
+                        # Adjust Prices
+                        cols_to_adjust = ['Open', 'High', 'Low', 'Close']
+                        for col in cols_to_adjust:
+                            if col in stock_data.columns:
+                                stock_data[col] = stock_data[col] * stock_data['adj_factor']
+                        
+                        # Remove helper columns
+                        stock_data.drop(columns=['cpi_at_t', 'adj_factor'], inplace=True)
+                        
+                        st.info(f"💡 Prices adjusted to Real Value (CPI Adjusted). Base CPI: {current_cpi:.2f}")
+                except Exception as e:
+                    st.warning(f"Could not apply purchasing power adjustment: {e}")
+
             stock_data = add_technical_indicators(stock_data, fill_na=False)
             rfr = fetch_risk_free_rate()
             metrics = calculate_metrics(stock_data, rfr)
