@@ -84,10 +84,22 @@ export function SyncedAreaChart({
   formatYAxis,
   formatTooltip,
 }: SyncedChartProps) {
+  // Parse dates to timestamps to ensure X-axis scales correctly
+  const processedData = React.useMemo(() => {
+    return data.map((item) => {
+      const val = item[xDataKey];
+      // Check if this looks like a date string (YYYY-MM-DD) or similar
+      if (typeof val === "string" && !isNaN(Date.parse(val))) {
+        return { ...item, [xDataKey]: new Date(val).getTime() };
+      }
+      return item;
+    });
+  }, [data, xDataKey]);
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart
-        data={data}
+        data={processedData}
         syncId={syncId}
         margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
       >
@@ -101,15 +113,14 @@ export function SyncedAreaChart({
               x2="0"
               y2="1"
             >
-              <stop offset="5%" stopColor={line.stroke} stopOpacity={0.3} />
+              <stop offset="5%" stopColor={line.stroke} stopOpacity={0.5} />
               <stop offset="95%" stopColor={line.stroke} stopOpacity={0} />
             </linearGradient>
           ))}
         </defs>
         <CartesianGrid
           strokeDasharray="3 3"
-          stroke="currentColor"
-          className="text-border/30"
+          stroke="rgba(255,255,255,0.1)"
           vertical={false}
         />
         <XAxis
@@ -119,6 +130,9 @@ export function SyncedAreaChart({
           tickLine={false}
           axisLine={false}
           className="text-muted-foreground"
+          type="number"
+          domain={['dataMin', 'dataMax']}
+          scale="time"
         />
         <YAxis
           tickFormatter={formatYAxis}
@@ -144,6 +158,12 @@ export function SyncedAreaChart({
                 ]
               : undefined
           }
+           labelFormatter={(value) => {
+            if (typeof value === 'number') {
+              return new Date(value).toLocaleDateString("en-US", { month: "short", year: "numeric", day: "numeric" });
+            }
+            return String(value);
+          }}
         />
         {lines.map((line) => (
           <Area

@@ -24,18 +24,18 @@ import {
 // Macro Hooks
 // ============================================
 
-export function useLiquidity() {
+export function useLiquidity(days?: number) {
   return useQuery<LiquidityPoint[], Error>({
-    queryKey: ["macro", "liquidity"],
-    queryFn: getLiquidity,
+    queryKey: ["macro", "liquidity", days],
+    queryFn: () => getLiquidity(days),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
-export function useDebtStatus() {
+export function useDebtStatus(days?: number) {
   return useQuery<DebtPoint[], Error>({
-    queryKey: ["macro", "debt-status"],
-    queryFn: getDebtStatus,
+    queryKey: ["macro", "debt-status", days],
+    queryFn: () => getDebtStatus(days),
     staleTime: 5 * 60 * 1000,
   });
 }

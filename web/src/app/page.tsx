@@ -12,6 +12,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
+import { Button } from "@/components/ui/button";
+
 // Format helpers
 function formatLargeNumber(value: number): string {
   if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
@@ -20,14 +22,14 @@ function formatLargeNumber(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
+function formatDate(dateInput: string | number): string {
+  const date = new Date(dateInput);
   return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
 }
 
 // Liquidity (M2) Chart Component
-function LiquiditySection() {
-  const { data, isLoading, error } = useLiquidity();
+function LiquiditySection({ days }: { days?: number }) {
+  const { data, isLoading, error } = useLiquidity(days);
   const [adjustForInflation, setAdjustForInflation] = React.useState(false);
 
   if (error) {
@@ -41,10 +43,10 @@ function LiquiditySection() {
     );
   }
 
-  // Get the last 120 data points (10 years monthly)
+  // Use full data from backend (filtered by days)
   const chartData = React.useMemo(() => {
     if (!data) return [];
-    return data.slice(-120).map((item) => ({
+    return data.map((item) => ({
       ...item,
       date: item.date,
       value: item.value,
@@ -111,7 +113,7 @@ function LiquiditySection() {
             lines={[
               {
                 dataKey: "value",
-                stroke: "hsl(var(--chart-1))",
+                stroke: "#3b82f6",
                 name: "M2 (Billions)",
               },
             ]}
@@ -126,8 +128,8 @@ function LiquiditySection() {
 }
 
 // Debt Status Section
-function DebtStatusSection() {
-  const { data, isLoading, error } = useDebtStatus();
+function DebtStatusSection({ days }: { days?: number }) {
+  const { data, isLoading, error } = useDebtStatus(days);
 
   if (error) {
     return (
@@ -142,7 +144,7 @@ function DebtStatusSection() {
 
   const chartData = React.useMemo(() => {
     if (!data) return [];
-    return data.slice(-120).map((item) => ({
+    return data.map((item) => ({
       ...item,
       date: item.date,
     }));
@@ -190,7 +192,7 @@ function DebtStatusSection() {
             lines={[
               {
                 dataKey: "ratio",
-                stroke: "hsl(var(--chart-2))",
+                stroke: "#10b981",
                 name: "Ratio (%)",
               },
             ]}
@@ -205,8 +207,8 @@ function DebtStatusSection() {
 }
 
 // Real Rates Section
-function RealRatesSection() {
-  const { data, isLoading, error } = useRealRates();
+function RealRatesSection({ days }: { days?: number }) {
+  const { data, isLoading, error } = useRealRates(); // Real rates hook doesn't support days yet?
 
   if (error) {
     return (
@@ -221,11 +223,23 @@ function RealRatesSection() {
 
   const chartData = React.useMemo(() => {
     if (!data) return [];
-    return data.slice(-120).map((item) => ({
+    // If backend doesn't support days for real rates, we might need manual slice,
+    // but better to assuming consistent backend updates.
+    // For now we slice locally if 'days' is provided approximate or just show all/120.
+    // The previous code had .slice(-120). 
+    // If days is provided, we can filter locally.
+    let processed = data;
+    if (days) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        processed = data.filter(d => new Date(d.date) >= cutoff);
+    } 
+    
+    return processed.map((item) => ({
       ...item,
       date: item.date,
     }));
-  }, [data]);
+  }, [data, days]);
 
   const latestRealRate = chartData.length > 0 ? chartData[0].real_rate : 0;
   const previousRealRate = chartData.length > 1 ? chartData[1].real_rate : latestRealRate;
@@ -269,7 +283,7 @@ function RealRatesSection() {
             lines={[
               {
                 dataKey: "real_rate",
-                stroke: "hsl(var(--chart-3))",
+                stroke: "#8b5cf6",
                 name: "Real Rate (%)",
               },
             ]}
@@ -285,18 +299,39 @@ function RealRatesSection() {
 
 // Main Page Component
 export default function MacroWatchtowerPage() {
+  const [days, setDays] = React.useState<number | undefined>(undefined);
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Macro Watchtower</h1>
-        <p className="text-muted-foreground mt-1">
-          Monitor systemic risks and macroeconomic indicators
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Macro Watchtower</h1>
+          <p className="text-muted-foreground mt-1">
+            Monitor systemic risks and macroeconomic indicators
+          </p>
+        </div>
+        <div className="flex gap-2">
+            {[
+              { label: "1Y", value: 365 },
+              { label: "5Y", value: 1825 },
+              { label: "10Y", value: 3650 },
+              { label: "MAX", value: undefined },
+            ].map(({ label, value }) => (
+              <Button
+                key={label}
+                variant={days === value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDays(value)}
+              >
+                {label}
+              </Button>
+            ))}
+        </div>
       </div>
 
-      <LiquiditySection />
-      <DebtStatusSection />
-      <RealRatesSection />
+      <LiquiditySection days={days} />
+      <DebtStatusSection days={days} />
+      <RealRatesSection days={days} />
     </div>
   );
 }

@@ -66,7 +66,7 @@ class MacroService:
         aligned = quarterly_series.reindex(target_monthly_index, method='ffill')
         return aligned
 
-    def get_liquidity(self):
+    def get_liquidity(self, days: int = None):
         """
         Returns M2 Money Supply and YoY % growth.
         """
@@ -88,6 +88,11 @@ class MacroService:
         
         # Sort by date descending
         df.sort_values('date', ascending=False, inplace=True)
+
+        # Filter by days if provided
+        if days:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            df = df[df['date'] >= cutoff_date]
         
         # Format dates
         df['date'] = df['date'].dt.strftime('%Y-%m-%d')
@@ -96,7 +101,7 @@ class MacroService:
         records = df.replace({np.nan: None}).to_dict(orient='records')
         return [schemas.LiquidityPoint(**r) for r in records]
 
-    def get_debt_status(self):
+    def get_debt_status(self, days: int = None):
         """
         Returns Interest-to-Tax ratio and components.
         Aligns Quarterly data to Monthly for consistency if needed, 
@@ -135,6 +140,12 @@ class MacroService:
         df.reset_index(inplace=True)
         df.columns = ['date', 'interest_payments', 'tax_receipts', 'ratio']
         df.sort_values('date', ascending=False, inplace=True)
+
+        # Filter by days if provided
+        if days:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            df = df[df['date'] >= cutoff_date]
+
         df['date'] = df['date'].dt.strftime('%Y-%m-%d')
         
         records = df.replace({np.nan: None}).to_dict(orient='records')
