@@ -17,6 +17,7 @@ from backend.macro_service import macro_service
 from frontend.state import add_to_history
 from frontend.utils import get_sentiment_emoji
 from frontend.layout import render_sidebar
+from frontend.barbell_view import render_barbell_strategy
 
 def render_overview_tab():
     """Render the Market Overview tab content."""
@@ -166,6 +167,10 @@ def render_macro_tab():
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.error("Could not load chart data.")
+    
+    # --- Barbell Strategy Section ---
+    st.markdown("---")
+    render_barbell_strategy()
 
 def render_analysis_tab():
     """Render the Detailed Analysis tab content."""
