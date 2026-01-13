@@ -5,7 +5,7 @@ import logging
 
 from . import config
 from . import schemas
-from .utils import get_yf, get_yf_import_error
+from . import services
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +15,9 @@ def _fetch_raw_batch_data(tickers: list) -> pd.DataFrame:
     """
     Fetcher: Downloads batch price data for multiple tickers.
     """
-    yf = get_yf()
-    if get_yf_import_error() is not None:
-        raise Exception(f"yfinance not available: {get_yf_import_error()}")
+    yf = services.get_yf()
+    if services.get_yf_import_error() is not None:
+        raise Exception(f"yfinance not available: {services.get_yf_import_error()}")
 
     # Download batch data for 5 days to ensure we have previous close
     data = yf.download(tickers, period="5d", interval="1d", group_by='ticker', auto_adjust=False, progress=False)
@@ -75,10 +75,10 @@ def fetch_stock_data(ticker: str, period: str, interval: str) -> pd.DataFrame:
     Fetch stock data based on ticker, period, & interval through Yahoo Finance API.
     Raises Exception if data is empty or fetch fails.
     """
-    yf = get_yf()
-    error = get_yf_import_error()
+    yf = services.get_yf()
+    error = services.get_yf_import_error()
     if error is not None:
-         raise Exception(f"yfinance not available: {error}")
+        raise Exception(f"yfinance not available: {error}")
 
     try:
         if period == 'max':
@@ -127,12 +127,12 @@ def add_technical_indicators(data: pd.DataFrame, fill_na: bool = True) -> pd.Dat
 
 def fetch_risk_free_rate() -> float:
     """Fetches the current 10-Year Treasury Yield from yfinance."""
-    error = get_yf_import_error()
+    error = services.get_yf_import_error()
     if error is not None:
         logger.warning(f"Unable to fetch risk-free rate because yfinance import failed: {error}. Using default rate.")
         return config.DEFAULT_RISK_FREE_RATE
     
-    yf = get_yf()
+    yf = services.get_yf()
     try:
         treasury = yf.Ticker("^TNX")
         hist = treasury.history(period="5d")

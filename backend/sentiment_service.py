@@ -2,7 +2,7 @@ from textblob import TextBlob
 import logging
 
 from . import schemas
-from .utils import get_yf, get_yf_import_error
+from . import services
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +13,8 @@ def _get_raw_stock_news(ticker: str):
     Fetcher: Retrieves raw news objects from the yfinance API.
     Returns a list of news items (dicts) or empty list if failed/empty.
     """
-    yf = get_yf()
-    error = get_yf_import_error()
+    yf = services.get_yf()
+    error = services.get_yf_import_error()
     if error is not None:
         # If we can't import yfinance, we can't get new data
         return []
@@ -75,7 +75,7 @@ def _format_sentiment_response(headlines: list, ticker: str) -> dict:
     """
     Formatter: Aggregates scores and builds the final response dictionary.
     """
-    yf_error = get_yf_import_error()
+    yf_error = services.get_yf_import_error()
     
     if not headlines:
         message = "No recent news found for this ticker."
