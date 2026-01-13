@@ -33,8 +33,11 @@ interface ExpandableChartCardProps {
   detailedChart: React.ReactNode;
   /** Optional actions for the modal header */
   modalActions?: React.ReactNode;
+  /** Sidebar content for the modal (Metrics Summary) */
+  sidebarContent?: React.ReactNode;
   /** Loading state */
   isLoading?: boolean;
+
   /** Additional class name */
   className?: string;
   /** Whether this card is currently expanded (controlled mode) */
@@ -61,6 +64,7 @@ export function ExpandableChartCard({
   condensedChart,
   detailedChart,
   modalActions,
+  sidebarContent,
   isLoading = false,
   className,
   isExpanded,
@@ -189,17 +193,26 @@ export function ExpandableChartCard({
 
           {/* Modal actions (filters, toggles, etc.) */}
           {modalActions && (
-            <div className="flex flex-wrap gap-2 py-2 border-b border-border/50">
+            <div className="flex flex-wrap items-center justify-between gap-4 py-3 border-b border-border/50">
               {modalActions}
             </div>
           )}
 
-          {/* Detailed chart */}
-          <div className="min-h-[300px] md:min-h-[400px]">
-            {isLoading ? (
-              <ChartSkeleton height={400} />
-            ) : (
-              detailedChart
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-6 mt-4">
+            {/* Detailed chart */}
+            <div className="min-h-[300px] md:min-h-[400px]">
+              {isLoading ? (
+                <ChartSkeleton height={400} />
+              ) : (
+                detailedChart
+              )}
+            </div>
+
+            {/* Sidebar Stats */}
+            {sidebarContent && (
+              <div className="space-y-6 lg:border-l lg:pl-6 border-border/50">
+                {sidebarContent}
+              </div>
             )}
           </div>
         </DialogContent>

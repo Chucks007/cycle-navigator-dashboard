@@ -11,6 +11,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { calculateSMA, calculateEMA, getFinancialStats } from "@/lib/financial-math";
+import { TimeframeSelector, IndicatorToggle, type Timeframe } from "@/components/charts/chart-controls";
 
 // Format helpers
 function formatLargeNumber(value: number): string {
@@ -25,21 +27,101 @@ function formatDate(dateInput: string | number): string {
   return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
 }
 
+// Helper to filter data by timeframe
+const filterByTimeframe = <T extends { date: string | number }>(data: T[], timeframe: Timeframe): T[] => {
+  if (timeframe === "ALL") return data;
+  
+  const now = new Date();
+  const cutoff = new Date();
+  
+  switch(timeframe) {
+    case "1M": cutoff.setMonth(now.getMonth() - 1); break;
+    case "6M": cutoff.setMonth(now.getMonth() - 6); break;
+    case "1Y": cutoff.setFullYear(now.getFullYear() - 1); break;
+    case "5Y": cutoff.setFullYear(now.getFullYear() - 5); break;
+  }
+  
+  return data.filter(item => new Date(item.date) >= cutoff);
+}
+
+// Reusable Metric Summary Component
+function MetricSummarySidebar({ 
+  stats, 
+  title,
+  formatter = (v: number) => v.toFixed(2)
+}: { 
+  stats: { min: number; max: number; current: number; avg: number };
+  title: string;
+  formatter?: (v: number) => string;
+}) {
+  return (
+    <div className="space-y-4 text-sm">
+      <h4 className="font-semibold text-muted-foreground uppercase tracking-wider text-xs">{title} Stats</h4>
+      <div className="space-y-3">
+        <div className="flex justify-between items-center p-2 bg-muted/20 rounded">
+          <span className="text-muted-foreground">Current</span>
+          <span className="font-mono font-medium">{formatter(stats.current)}</span>
+        </div>
+        <div className="flex justify-between items-center p-2 rounded">
+          <span className="text-muted-foreground">All-Time High</span>
+          <span className="font-mono font-medium text-green-500">{formatter(stats.max)}</span>
+        </div>
+        <div className="flex justify-between items-center p-2 rounded">
+          <span className="text-muted-foreground">All-Time Low</span>
+          <span className="font-mono font-medium text-red-500">{formatter(stats.min)}</span>
+        </div>
+        <div className="flex justify-between items-center p-2 rounded">
+          <span className="text-muted-foreground">Average</span>
+          <span className="font-mono font-medium">{formatter(stats.avg)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Liquidity (M2) Chart Component
 function LiquidityCard({ days }: { days?: number }) {
   const { data, isLoading, error } = useLiquidity(days);
   const [adjustForInflation, setAdjustForInflation] = React.useState(false);
+  
+  // Local state for modal
+  const [timeframe, setTimeframe] = React.useState<Timeframe>("1Y");
+  const [showSMA, setShowSMA] = React.useState(false);
+  const [showEMA, setShowEMA] = React.useState(false);
 
   // Use full data from backend (filtered by days)
   const chartData = React.useMemo(() => {
     if (!data) return [];
-    return data.map((item) => ({
+    const mapped = data.map((item) => ({
       ...item,
       date: item.date,
       value: item.value,
-      growth_rate: (item.growth_rate ?? 0) * 100, // Convert to percentage, default 0
+      growth_rate: (item.growth_rate ?? 0) * 100,
     }));
+    return mapped;
   }, [data]);
+
+  // Derived data for detailed view (Filtered by local timeframe + Indicators)
+  const detailedData = React.useMemo(() => {
+    const filtered = filterByTimeframe(chartData, timeframe);
+    
+    // Calculate indicators on filtered data
+    const values = filtered.map(d => d.value);
+    const sma = calculateSMA(values, 20); // 20-period SMA
+    const ema = calculateEMA(values, 20); // 20-period EMA
+    
+    return filtered.map((d, i) => ({
+      ...d,
+      sma: sma[i],
+      ema: ema[i]
+    }));
+  }, [chartData, timeframe]);
+
+  // Stats for the sidebar
+  const stats = React.useMemo(() => {
+    const values = detailedData.map(d => d.value);
+    return getFinancialStats(values);
+  }, [detailedData]);
 
   const latestValue = chartData.length > 0 ? chartData[0].value : 0;
   const latestGrowth = chartData.length > 0 ? chartData[0].growth_rate : 0;
@@ -54,6 +136,13 @@ function LiquidityCard({ days }: { days?: number }) {
       </div>
     );
   }
+
+  // Define chart lines for detailed view
+  const detailedLines = [
+    { dataKey: "value", stroke: "#3b82f6", name: "M2 (Billions)" },
+    ...(showSMA ? [{ dataKey: "sma", stroke: "#fbbf24", name: "SMA (20)" }] : []),
+    ...(showEMA ? [{ dataKey: "ema", stroke: "#8b5cf6", name: "EMA (20)" }] : [])
+  ];
 
   return (
     <ExpandableChartCard
@@ -82,33 +171,44 @@ function LiquidityCard({ days }: { days?: number }) {
       }
       detailedChart={
         <SyncedAreaChart
-          data={chartData}
+          data={detailedData}
           xDataKey="date"
           syncId="macro-charts-modal"
           mode="detailed"
-          lines={[
-            {
-              dataKey: "value",
-              stroke: "#3b82f6",
-              name: "M2 (Billions)",
-            },
-          ]}
+          lines={detailedLines}
           formatXAxis={formatDate}
           formatYAxis={(v) => `$${(v / 1000).toFixed(0)}T`}
           height={400}
         />
       }
       modalActions={
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="inflation-adjust-m2-modal"
-            checked={adjustForInflation}
-            onCheckedChange={setAdjustForInflation}
-          />
-          <Label htmlFor="inflation-adjust-m2-modal" className="text-sm text-muted-foreground cursor-pointer">
-            Adjust for CPI
-          </Label>
-        </div>
+        <>
+           <div className="flex items-center gap-4">
+            <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+            <div className="h-6 w-px bg-border/50" />
+            <IndicatorToggle label="SMA 20" checked={showSMA} onChange={setShowSMA} color="#fbbf24" />
+            <IndicatorToggle label="EMA 20" checked={showEMA} onChange={setShowEMA} color="#8b5cf6" />
+           </div>
+           
+           {/* Original switch kept separate if needed, or merged */}
+           <div className="flex items-center space-x-2">
+            <Switch
+              id="inflation-adjust-m2-modal"
+              checked={adjustForInflation}
+              onCheckedChange={setAdjustForInflation}
+            />
+            <Label htmlFor="inflation-adjust-m2-modal" className="text-sm text-muted-foreground cursor-pointer">
+              CPI Adj
+            </Label>
+          </div>
+        </>
+      }
+      sidebarContent={
+        <MetricSummarySidebar 
+          stats={stats} 
+          title="Liquidity Analysis" 
+          formatter={(v) => formatLargeNumber(v * 1e9)}
+        />
       }
     />
   );
@@ -117,7 +217,11 @@ function LiquidityCard({ days }: { days?: number }) {
 // Debt Status Card
 function DebtStatusCard({ days }: { days?: number }) {
   const { data, isLoading, error } = useDebtStatus(days);
-
+  
+  // Local state for modal
+  const [timeframe, setTimeframe] = React.useState<Timeframe>("1Y");
+  const [showSMA, setShowSMA] = React.useState(false);
+  
   const chartData = React.useMemo(() => {
     if (!data) return [];
     return data.map((item) => ({
@@ -125,6 +229,24 @@ function DebtStatusCard({ days }: { days?: number }) {
       date: item.date,
     }));
   }, [data]);
+
+  // Derived detailed data
+  const detailedData = React.useMemo(() => {
+    const filtered = filterByTimeframe(chartData, timeframe);
+    const values = filtered.map(d => d.ratio);
+    const sma = calculateSMA(values, 20);
+    
+    return filtered.map((d, i) => ({
+      ...d,
+      sma: sma[i]
+    }));
+  }, [chartData, timeframe]);
+
+  // Stats
+  const stats = React.useMemo(() => {
+    const values = detailedData.map(d => d.ratio);
+    return getFinancialStats(values);
+  }, [detailedData]);
 
   const latestRatio = chartData.length > 0 ? chartData[0].ratio : 0;
   const previousRatio = chartData.length > 1 ? chartData[1].ratio : latestRatio;
@@ -146,6 +268,11 @@ function DebtStatusCard({ days }: { days?: number }) {
       </div>
     );
   }
+
+  const detailedLines = [
+    { dataKey: "ratio", stroke: "#10b981", name: "Ratio (%)" },
+    ...(showSMA ? [{ dataKey: "sma", stroke: "#fbbf24", name: "SMA (20)" }] : []),
+  ];
 
   return (
     <ExpandableChartCard
@@ -174,20 +301,28 @@ function DebtStatusCard({ days }: { days?: number }) {
       }
       detailedChart={
         <SyncedAreaChart
-          data={chartData}
+          data={detailedData}
           xDataKey="date"
           syncId="macro-charts-modal"
           mode="detailed"
-          lines={[
-            {
-              dataKey: "ratio",
-              stroke: "#10b981",
-              name: "Ratio (%)",
-            },
-          ]}
+          lines={detailedLines}
           formatXAxis={formatDate}
           formatYAxis={(v) => `${v.toFixed(0)}%`}
           height={400}
+        />
+      }
+      modalActions={
+        <div className="flex items-center gap-4">
+          <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+          <div className="h-6 w-px bg-border/50" />
+          <IndicatorToggle label="SMA 20" checked={showSMA} onChange={setShowSMA} color="#fbbf24" />
+        </div>
+      }
+      sidebarContent={
+        <MetricSummarySidebar 
+          stats={stats} 
+          title="Debt Analysis"
+          formatter={(v) => `${v.toFixed(2)}%`}
         />
       }
     />
@@ -197,22 +332,52 @@ function DebtStatusCard({ days }: { days?: number }) {
 // Real Rates Card
 function RealRatesCard({ days }: { days?: number }) {
   const { data, isLoading, error } = useRealRates();
+  
+  // Local state for modal
+  const [timeframe, setTimeframe] = React.useState<Timeframe>("1Y");
+  const [showSMA, setShowSMA] = React.useState(false);
 
   const chartData = React.useMemo(() => {
     if (!data) return [];
-    // Filter locally if days is provided
+    // Filter locally if days is provided (for grid view)
     let processed = data;
     if (days) {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - days);
       processed = data.filter((d) => new Date(d.date) >= cutoff);
     }
-
     return processed.map((item) => ({
       ...item,
       date: item.date,
     }));
   }, [data, days]);
+  
+  // Create FULL dataset for modal (ignoring grid-level 'days' prop if we want full history)
+  const fullData = React.useMemo(() => {
+     if (!data) return [];
+     return data.map((item) => ({
+      ...item,
+      date: item.date,
+    }));
+  }, [data]);
+
+  // Derived detailed data using fullData
+  const detailedData = React.useMemo(() => {
+    const filtered = filterByTimeframe(fullData, timeframe);
+    const values = filtered.map(d => d.real_rate);
+    const sma = calculateSMA(values, 50); // 50-period for rates
+    
+    return filtered.map((d, i) => ({
+      ...d,
+      sma: sma[i]
+    }));
+  }, [fullData, timeframe]);
+
+  // Stats
+  const stats = React.useMemo(() => {
+    const values = detailedData.map(d => d.real_rate);
+    return getFinancialStats(values);
+  }, [detailedData]);
 
   const latestRealRate = chartData.length > 0 ? chartData[0].real_rate : 0;
   const previousRealRate = chartData.length > 1 ? chartData[1].real_rate : latestRealRate;
@@ -234,6 +399,11 @@ function RealRatesCard({ days }: { days?: number }) {
       </div>
     );
   }
+  
+  const detailedLines = [
+    { dataKey: "real_rate", stroke: "#8b5cf6", name: "Real Rate (%)" },
+    ...(showSMA ? [{ dataKey: "sma", stroke: "#fbbf24", name: "SMA (50)" }] : []),
+  ];
 
   return (
     <ExpandableChartCard
@@ -262,20 +432,28 @@ function RealRatesCard({ days }: { days?: number }) {
       }
       detailedChart={
         <SyncedAreaChart
-          data={chartData}
+          data={detailedData}
           xDataKey="date"
           syncId="macro-charts-modal"
           mode="detailed"
-          lines={[
-            {
-              dataKey: "real_rate",
-              stroke: "#8b5cf6",
-              name: "Real Rate (%)",
-            },
-          ]}
+          lines={detailedLines}
           formatXAxis={formatDate}
           formatYAxis={(v) => `${v.toFixed(1)}%`}
           height={400}
+        />
+      }
+      modalActions={
+        <div className="flex items-center gap-4">
+          <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+          <div className="h-6 w-px bg-border/50" />
+          <IndicatorToggle label="SMA 50" checked={showSMA} onChange={setShowSMA} color="#fbbf24" />
+        </div>
+      }
+      sidebarContent={
+        <MetricSummarySidebar 
+          stats={stats} 
+          title="Rate Analysis"
+          formatter={(v) => `${v.toFixed(2)}%`}
         />
       }
     />
