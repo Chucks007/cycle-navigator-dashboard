@@ -1,12 +1,15 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
+import pandas as pd
+import numpy as np
 
 from . import schemas
 from . import config
 from .stock_service import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data, fetch_risk_free_rate
 from .sentiment_service import fetch_news_sentiment
 from .macro_service import macro_service
+from .market_service import market_service
 from .comparison_service import fetch_normalized_comparison, calculate_hard_vs_soft_ratio, HARD_ASSETS, SOFT_ASSETS
 
 app = FastAPI()
