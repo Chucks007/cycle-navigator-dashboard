@@ -26,6 +26,7 @@ class StockIndicatorsPoint(BaseModel):
     Datetime: str
     SMA_20: Optional[float] = None
     EMA_20: Optional[float] = None
+    EMA_21: Optional[float] = None
     RSI_14: Optional[float] = None
 
 # --- Sentiment ---
