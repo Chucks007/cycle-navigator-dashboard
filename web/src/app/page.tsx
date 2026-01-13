@@ -496,9 +496,20 @@ export default function MacroWatchtowerPage() {
 
         {/* High-Density Grid of Expandable Charts */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          <LiquidityCard days={days} />
-          <DebtStatusCard days={days} />
-          <RealRatesCard days={days} />
+          {/* Liquidity Section */}
+          <section id="liquidity">
+            <LiquidityCard days={days} />
+          </section>
+          
+          {/* Debt Metrics Section */}
+          <section id="debt">
+            <DebtStatusCard days={days} />
+          </section>
+          
+          {/* Interest Rates Section */}
+          <section id="rates">
+            <RealRatesCard days={days} />
+          </section>
         </div>
       </div>
     </ChartGridProvider>

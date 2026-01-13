@@ -330,11 +330,12 @@ function TickerAnalysisContent() {
       </div>
 
       {/* Charts Section */}
-      <Tabs defaultValue="price" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="price">Price History</TabsTrigger>
-          <TabsTrigger value="volume">Volume</TabsTrigger>
-        </TabsList>
+      <section id="price">
+        <Tabs defaultValue="price" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="price">Price History</TabsTrigger>
+            <TabsTrigger value="volume">Volume</TabsTrigger>
+          </TabsList>
 
         <TabsContent value="price">
           <ChartContainer
@@ -469,9 +470,11 @@ function TickerAnalysisContent() {
           </ChartContainer>
         </TabsContent>
       </Tabs>
+      </section>
 
       {/* Technical Indicators & Sentiment */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <section id="indicators">
+        <div className="grid gap-6 lg:grid-cols-2">
         {/* Technical Indicators */}
         <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/50 backdrop-blur-xl p-6">
           <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
@@ -594,7 +597,21 @@ function TickerAnalysisContent() {
             )}
           </div>
         </div>
-      </div>
+        </div>
+      </section>
+
+      {/* Fundamentals Section - Placeholder */}
+      <section id="fundamentals">
+        <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/50 backdrop-blur-xl p-6">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
+          <div className="relative z-10">
+            <h3 className="text-lg font-semibold mb-4">Fundamentals</h3>
+            <p className="text-muted-foreground text-center py-8">
+              Fundamental analysis coming soon...
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

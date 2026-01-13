@@ -242,7 +242,8 @@ export default function BarbellStrategyPage() {
 
   return (
     <div className="space-y-8">
-      <div>
+      {/* Overview Section */}
+      <section id="overview">
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
           <Scale className="h-8 w-8" />
           The Barbell Strategy
@@ -253,7 +254,7 @@ export default function BarbellStrategyPage() {
           <span className="text-cyan-500 font-medium">Paper Assets</span>{" "}
           (Stocks, Bonds) to track rotation into inflation hedges.
         </p>
-      </div>
+      </section>
 
       {/* Period Selector */}
       <Tabs value={period} onValueChange={setPeriod} className="w-full">
@@ -301,12 +302,12 @@ export default function BarbellStrategyPage() {
         )}
       </div>
 
-      {/* Performance Cards */}
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Performance Leaderboard</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      {/* Hard Assets Section */}
+      <section id="hard-assets">
+        <h3 className="text-lg font-semibold mb-4">Hard Assets Performance</h3>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {isLoading
-            ? Array(5)
+            ? Array(3)
                 .fill(0)
                 .map((_, i) => (
                   <div
@@ -314,17 +315,41 @@ export default function BarbellStrategyPage() {
                     className="h-32 animate-pulse rounded-lg bg-muted/20"
                   />
                 ))
-            : performance.map((asset) => (
-                <PerformanceCard key={asset.ticker} asset={asset} />
-              ))}
+            : performance
+                .filter((asset) => asset.assetType === "hard")
+                .map((asset) => (
+                  <PerformanceCard key={asset.ticker} asset={asset} />
+                ))}
         </div>
-      </div>
+      </section>
 
-      {/* Normalized Chart */}
-      <ChartContainer
-        title="Normalized Performance (Base 100)"
-        subtitle="All assets start at 100 for easy comparison"
-      >
+      {/* Paper Assets Section */}
+      <section id="paper-assets">
+        <h3 className="text-lg font-semibold mb-4">Paper Assets Performance</h3>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {isLoading
+            ? Array(2)
+                .fill(0)
+                .map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-32 animate-pulse rounded-lg bg-muted/20"
+                  />
+                ))
+            : performance
+                .filter((asset) => asset.assetType === "soft")
+                .map((asset) => (
+                  <PerformanceCard key={asset.ticker} asset={asset} />
+                ))}
+        </div>
+      </section>
+
+      {/* Comparison Section */}
+      <section id="comparison" className="space-y-6">
+        <ChartContainer
+          title="Normalized Performance (Base 100)"
+          subtitle="All assets start at 100 for easy comparison"
+        >
         {isLoading ? (
           <ChartSkeleton height={400} />
         ) : (
@@ -392,13 +417,13 @@ export default function BarbellStrategyPage() {
             </LineChart>
           </ResponsiveContainer>
         )}
-      </ChartContainer>
+        </ChartContainer>
 
-      {/* Hard vs Soft Ratio Chart */}
-      <ChartContainer
-        title="Hard Assets vs Paper Assets Ratio"
-        subtitle="Rising ratio indicates rotation into hard assets"
-      >
+        {/* Hard vs Soft Ratio Chart */}
+        <ChartContainer
+          title="Hard Assets vs Paper Assets Ratio"
+          subtitle="Rising ratio indicates rotation into hard assets"
+        >
         {isLoading ? (
           <ChartSkeleton height={300} />
         ) : (
@@ -456,7 +481,8 @@ export default function BarbellStrategyPage() {
             </AreaChart>
           </ResponsiveContainer>
         )}
-      </ChartContainer>
+        </ChartContainer>
+      </section>
     </div>
   );
 }

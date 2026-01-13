@@ -3,10 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { Providers } from "@/components/providers";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import { CommandSearch } from "@/components/command-search";
-import { Separator } from "@/components/ui/separator";
+import { TopNav } from "@/components/top-nav";
+import { SubNav } from "@/components/sub-nav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,19 +32,15 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-          <SidebarProvider defaultOpen>
-            <AppSidebar />
-            <SidebarInset>
-              <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
-                <SidebarTrigger className="-ml-1" />
-                <Separator orientation="vertical" className="mr-2 h-4" />
-                <CommandSearch />
-              </header>
-              <main className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="flex min-h-screen flex-col">
+            <TopNav />
+            <SubNav />
+            <main className="flex-1">
+              <div className="mx-auto max-w-screen-2xl p-4 md:p-6">
                 {children}
-              </main>
-            </SidebarInset>
-          </SidebarProvider>
+              </div>
+            </main>
+          </div>
         </Providers>
       </body>
     </html>
