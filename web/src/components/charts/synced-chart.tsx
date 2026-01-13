@@ -20,6 +20,8 @@ interface ChartContainerProps {
   title?: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  onClick?: () => void;
+  interactive?: boolean;
 }
 
 export function ChartContainer({
@@ -28,13 +30,25 @@ export function ChartContainer({
   title,
   subtitle,
   actions,
+  onClick,
+  interactive = false,
 }: ChartContainerProps) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border border-border/50 bg-card/50 p-6 backdrop-blur-xl",
+        "relative overflow-hidden rounded-xl border border-border/50 bg-card/50 p-6 backdrop-blur-xl transition-all duration-200",
+        interactive && "cursor-pointer hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5",
         className
       )}
+      onClick={onClick}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onKeyDown={interactive && onClick ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      } : undefined}
     >
       {/* Glassmorphism effect */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
@@ -72,7 +86,62 @@ interface SyncedChartProps {
   formatXAxis?: (value: string) => string;
   formatYAxis?: (value: number) => string;
   formatTooltip?: (value: number, name: string) => string;
+  /** Chart display mode: 'condensed' for sparklines, 'detailed' for full interactivity */
+  mode?: 'condensed' | 'detailed';
 }
+
+// Memoized sparkline component for performance in grid view
+const SparklineChart = React.memo(function SparklineChart({
+  data,
+  xDataKey,
+  lines,
+  height = 80,
+}: Pick<SyncedChartProps, 'data' | 'xDataKey' | 'lines' | 'height'>) {
+  // Downsample data for sparklines (take every nth point)
+  const sampledData = React.useMemo(() => {
+    if (data.length <= 50) return data;
+    const step = Math.ceil(data.length / 50);
+    return data.filter((_, i) => i % step === 0);
+  }, [data]);
+
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <AreaChart
+        data={sampledData}
+        margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+      >
+        <defs>
+          {lines.map((line) => (
+            <linearGradient
+              key={`sparkline-gradient-${line.dataKey}`}
+              id={`sparkline-gradient-${line.dataKey}`}
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop offset="5%" stopColor={line.stroke} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={line.stroke} stopOpacity={0} />
+            </linearGradient>
+          ))}
+        </defs>
+        {lines.map((line) => (
+          <Area
+            key={line.dataKey}
+            type="monotone"
+            dataKey={line.dataKey}
+            stroke={line.stroke}
+            strokeWidth={1.5}
+            strokeOpacity={0.8}
+            fill={`url(#sparkline-gradient-${line.dataKey})`}
+            dot={false}
+            isAnimationActive={false}
+          />
+        ))}
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+});
 
 export function SyncedAreaChart({
   data,
@@ -83,7 +152,20 @@ export function SyncedAreaChart({
   formatXAxis,
   formatYAxis,
   formatTooltip,
+  mode = 'detailed',
 }: SyncedChartProps) {
+  // For condensed mode, render optimized sparkline
+  if (mode === 'condensed') {
+    return (
+      <SparklineChart
+        data={data}
+        xDataKey={xDataKey}
+        lines={lines}
+        height={height}
+      />
+    );
+  }
+
   // Parse dates to timestamps to ensure X-axis scales correctly
   const processedData = React.useMemo(() => {
     return data.map((item) => {

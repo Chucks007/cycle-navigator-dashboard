@@ -1,17 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Activity, DollarSign, Percent, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useLiquidity, useDebtStatus, useRealRates } from "@/hooks/use-data";
-import { MetricCard, MetricCardSkeleton } from "@/components/ui/metric-card";
+import { SyncedAreaChart } from "@/components/charts/synced-chart";
 import {
-  ChartContainer,
-  SyncedAreaChart,
-  ChartSkeleton,
-} from "@/components/charts/synced-chart";
+  ExpandableChartCard,
+  ChartGridProvider,
+} from "@/components/charts/expandable-chart-card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-
 import { Button } from "@/components/ui/button";
 
 // Format helpers
@@ -28,20 +26,9 @@ function formatDate(dateInput: string | number): string {
 }
 
 // Liquidity (M2) Chart Component
-function LiquiditySection({ days }: { days?: number }) {
+function LiquidityCard({ days }: { days?: number }) {
   const { data, isLoading, error } = useLiquidity(days);
   const [adjustForInflation, setAdjustForInflation] = React.useState(false);
-
-  if (error) {
-    return (
-      <ChartContainer title="M2 Money Supply" className="col-span-full">
-        <div className="flex items-center justify-center h-[300px] text-destructive">
-          <AlertTriangle className="mr-2 h-5 w-5" />
-          Failed to load liquidity data
-        </div>
-      </ChartContainer>
-    );
-  }
 
   // Use full data from backend (filtered by days)
   const chartData = React.useMemo(() => {
@@ -57,90 +44,79 @@ function LiquiditySection({ days }: { days?: number }) {
   const latestValue = chartData.length > 0 ? chartData[0].value : 0;
   const latestGrowth = chartData.length > 0 ? chartData[0].growth_rate : 0;
 
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {isLoading ? (
-          <>
-            <MetricCardSkeleton />
-            <MetricCardSkeleton />
-          </>
-        ) : (
-          <>
-            <MetricCard
-              title="M2 Money Supply"
-              value={formatLargeNumber(latestValue * 1e9)}
-              subtitle="Total liquidity in the system"
-              icon={<DollarSign className="h-4 w-4" />}
-              change={latestGrowth}
-              changeLabel="YoY"
-              variant={latestGrowth > 0 ? "success" : "danger"}
-            />
-            <MetricCard
-              title="YoY Growth Rate"
-              value={`${latestGrowth.toFixed(2)}%`}
-              subtitle="Money supply expansion"
-              icon={<Activity className="h-4 w-4" />}
-              variant={latestGrowth > 5 ? "warning" : "default"}
-            />
-          </>
-        )}
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/50 bg-card/50 p-4">
+        <div className="flex items-center gap-2 text-destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <span className="text-sm">Failed to load M2 data</span>
+        </div>
       </div>
+    );
+  }
 
-      <ChartContainer
-        title="M2 Money Supply Trend"
-        subtitle="Federal Reserve monetary aggregate"
-        actions={
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="inflation-adjust-m2"
-              checked={adjustForInflation}
-              onCheckedChange={setAdjustForInflation}
-            />
-            <Label htmlFor="inflation-adjust-m2" className="text-sm text-muted-foreground cursor-pointer">
-              Adjust for CPI
-            </Label>
-          </div>
-        }
-      >
-        {isLoading ? (
-          <ChartSkeleton />
-        ) : (
-          <SyncedAreaChart
-            data={chartData}
-            xDataKey="date"
-            syncId="macro-charts"
-            lines={[
-              {
-                dataKey: "value",
-                stroke: "#3b82f6",
-                name: "M2 (Billions)",
-              },
-            ]}
-            formatXAxis={formatDate}
-            formatYAxis={(v) => `$${(v / 1000).toFixed(0)}T`}
-            height={300}
+  return (
+    <ExpandableChartCard
+      id="m2-liquidity"
+      title="M2 Money Supply"
+      subtitle="Federal Reserve monetary aggregate"
+      metricValue={formatLargeNumber(latestValue * 1e9)}
+      metricChange={latestGrowth}
+      changeLabel="YoY"
+      variant={latestGrowth > 0 ? "success" : "danger"}
+      isLoading={isLoading}
+      condensedChart={
+        <SyncedAreaChart
+          data={chartData}
+          xDataKey="date"
+          mode="condensed"
+          lines={[
+            {
+              dataKey: "value",
+              stroke: "#3b82f6",
+              name: "M2 (Billions)",
+            },
+          ]}
+          height={80}
+        />
+      }
+      detailedChart={
+        <SyncedAreaChart
+          data={chartData}
+          xDataKey="date"
+          syncId="macro-charts-modal"
+          mode="detailed"
+          lines={[
+            {
+              dataKey: "value",
+              stroke: "#3b82f6",
+              name: "M2 (Billions)",
+            },
+          ]}
+          formatXAxis={formatDate}
+          formatYAxis={(v) => `$${(v / 1000).toFixed(0)}T`}
+          height={400}
+        />
+      }
+      modalActions={
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="inflation-adjust-m2-modal"
+            checked={adjustForInflation}
+            onCheckedChange={setAdjustForInflation}
           />
-        )}
-      </ChartContainer>
-    </div>
+          <Label htmlFor="inflation-adjust-m2-modal" className="text-sm text-muted-foreground cursor-pointer">
+            Adjust for CPI
+          </Label>
+        </div>
+      }
+    />
   );
 }
 
-// Debt Status Section
-function DebtStatusSection({ days }: { days?: number }) {
+// Debt Status Card
+function DebtStatusCard({ days }: { days?: number }) {
   const { data, isLoading, error } = useDebtStatus(days);
-
-  if (error) {
-    return (
-      <ChartContainer title="Interest-to-Tax Ratio" className="col-span-full">
-        <div className="flex items-center justify-center h-[300px] text-destructive">
-          <AlertTriangle className="mr-2 h-5 w-5" />
-          Failed to load debt status data
-        </div>
-      </ChartContainer>
-    );
-  }
 
   const chartData = React.useMemo(() => {
     if (!data) return [];
@@ -154,87 +130,84 @@ function DebtStatusSection({ days }: { days?: number }) {
   const previousRatio = chartData.length > 1 ? chartData[1].ratio : latestRatio;
   const ratioChange = latestRatio - previousRatio;
 
-  const getVariant = () => {
+  const getVariant = (): "default" | "success" | "warning" | "danger" => {
     if (latestRatio > 30) return "danger";
     if (latestRatio > 20) return "warning";
     return "default";
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {isLoading ? (
-          <MetricCardSkeleton />
-        ) : (
-          <MetricCard
-            title="Interest-to-Tax Ratio"
-            value={`${latestRatio.toFixed(1)}%`}
-            subtitle="Fiscal stress indicator"
-            icon={<Percent className="h-4 w-4" />}
-            change={ratioChange}
-            changeLabel="MoM"
-            variant={getVariant()}
-          />
-        )}
-      </div>
-
-      <ChartContainer
-        title="Interest Payments vs Tax Receipts"
-        subtitle="Ratio indicates fiscal sustainability"
-      >
-        {isLoading ? (
-          <ChartSkeleton />
-        ) : (
-          <SyncedAreaChart
-            data={chartData}
-            xDataKey="date"
-            syncId="macro-charts"
-            lines={[
-              {
-                dataKey: "ratio",
-                stroke: "#10b981",
-                name: "Ratio (%)",
-              },
-            ]}
-            formatXAxis={formatDate}
-            formatYAxis={(v) => `${v.toFixed(0)}%`}
-            height={300}
-          />
-        )}
-      </ChartContainer>
-    </div>
-  );
-}
-
-// Real Rates Section
-function RealRatesSection({ days }: { days?: number }) {
-  const { data, isLoading, error } = useRealRates(); // Real rates hook doesn't support days yet?
-
   if (error) {
     return (
-      <ChartContainer title="Real Interest Rates" className="col-span-full">
-        <div className="flex items-center justify-center h-[300px] text-destructive">
-          <AlertTriangle className="mr-2 h-5 w-5" />
-          Failed to load real rates data
+      <div className="rounded-xl border border-destructive/50 bg-card/50 p-4">
+        <div className="flex items-center gap-2 text-destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <span className="text-sm">Failed to load debt data</span>
         </div>
-      </ChartContainer>
+      </div>
     );
   }
 
+  return (
+    <ExpandableChartCard
+      id="debt-status"
+      title="Interest-to-Tax Ratio"
+      subtitle="Fiscal stress indicator"
+      metricValue={`${latestRatio.toFixed(1)}%`}
+      metricChange={ratioChange}
+      changeLabel="MoM"
+      variant={getVariant()}
+      isLoading={isLoading}
+      condensedChart={
+        <SyncedAreaChart
+          data={chartData}
+          xDataKey="date"
+          mode="condensed"
+          lines={[
+            {
+              dataKey: "ratio",
+              stroke: "#10b981",
+              name: "Ratio (%)",
+            },
+          ]}
+          height={80}
+        />
+      }
+      detailedChart={
+        <SyncedAreaChart
+          data={chartData}
+          xDataKey="date"
+          syncId="macro-charts-modal"
+          mode="detailed"
+          lines={[
+            {
+              dataKey: "ratio",
+              stroke: "#10b981",
+              name: "Ratio (%)",
+            },
+          ]}
+          formatXAxis={formatDate}
+          formatYAxis={(v) => `${v.toFixed(0)}%`}
+          height={400}
+        />
+      }
+    />
+  );
+}
+
+// Real Rates Card
+function RealRatesCard({ days }: { days?: number }) {
+  const { data, isLoading, error } = useRealRates();
+
   const chartData = React.useMemo(() => {
     if (!data) return [];
-    // If backend doesn't support days for real rates, we might need manual slice,
-    // but better to assuming consistent backend updates.
-    // For now we slice locally if 'days' is provided approximate or just show all/120.
-    // The previous code had .slice(-120). 
-    // If days is provided, we can filter locally.
+    // Filter locally if days is provided
     let processed = data;
     if (days) {
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - days);
-        processed = data.filter(d => new Date(d.date) >= cutoff);
-    } 
-    
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      processed = data.filter((d) => new Date(d.date) >= cutoff);
+    }
+
     return processed.map((item) => ({
       ...item,
       date: item.date,
@@ -245,55 +218,67 @@ function RealRatesSection({ days }: { days?: number }) {
   const previousRealRate = chartData.length > 1 ? chartData[1].real_rate : latestRealRate;
   const rateChange = latestRealRate - previousRealRate;
 
-  const getVariant = () => {
+  const getVariant = (): "default" | "success" | "warning" | "danger" => {
     if (latestRealRate < -1) return "danger";
     if (latestRealRate < 0) return "warning";
     return "success";
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {isLoading ? (
-          <MetricCardSkeleton />
-        ) : (
-          <MetricCard
-            title="Real Interest Rate"
-            value={`${latestRealRate.toFixed(2)}%`}
-            subtitle="10Y Treasury minus CPI"
-            icon={<Activity className="h-4 w-4" />}
-            change={rateChange}
-            changeLabel="MoM"
-            variant={getVariant()}
-          />
-        )}
+  if (error) {
+    return (
+      <div className="rounded-xl border border-destructive/50 bg-card/50 p-4">
+        <div className="flex items-center gap-2 text-destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <span className="text-sm">Failed to load real rates</span>
+        </div>
       </div>
+    );
+  }
 
-      <ChartContainer
-        title="Real Interest Rate Trend"
-        subtitle="Negative = Financial repression"
-      >
-        {isLoading ? (
-          <ChartSkeleton />
-        ) : (
-          <SyncedAreaChart
-            data={chartData}
-            xDataKey="date"
-            syncId="macro-charts"
-            lines={[
-              {
-                dataKey: "real_rate",
-                stroke: "#8b5cf6",
-                name: "Real Rate (%)",
-              },
-            ]}
-            formatXAxis={formatDate}
-            formatYAxis={(v) => `${v.toFixed(1)}%`}
-            height={300}
-          />
-        )}
-      </ChartContainer>
-    </div>
+  return (
+    <ExpandableChartCard
+      id="real-rates"
+      title="Real Interest Rate"
+      subtitle="10Y Treasury minus CPI"
+      metricValue={`${latestRealRate.toFixed(2)}%`}
+      metricChange={rateChange}
+      changeLabel="MoM"
+      variant={getVariant()}
+      isLoading={isLoading}
+      condensedChart={
+        <SyncedAreaChart
+          data={chartData}
+          xDataKey="date"
+          mode="condensed"
+          lines={[
+            {
+              dataKey: "real_rate",
+              stroke: "#8b5cf6",
+              name: "Real Rate (%)",
+            },
+          ]}
+          height={80}
+        />
+      }
+      detailedChart={
+        <SyncedAreaChart
+          data={chartData}
+          xDataKey="date"
+          syncId="macro-charts-modal"
+          mode="detailed"
+          lines={[
+            {
+              dataKey: "real_rate",
+              stroke: "#8b5cf6",
+              name: "Real Rate (%)",
+            },
+          ]}
+          formatXAxis={formatDate}
+          formatYAxis={(v) => `${v.toFixed(1)}%`}
+          height={400}
+        />
+      }
+    />
   );
 }
 
@@ -302,15 +287,17 @@ export default function MacroWatchtowerPage() {
   const [days, setDays] = React.useState<number | undefined>(undefined);
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Macro Watchtower</h1>
-          <p className="text-muted-foreground mt-1">
-            Monitor systemic risks and macroeconomic indicators
-          </p>
-        </div>
-        <div className="flex gap-2">
+    <ChartGridProvider>
+      <div className="space-y-6">
+        {/* Header with timeframe controls */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Macro Watchtower</h1>
+            <p className="text-muted-foreground mt-1">
+              Monitor systemic risks and macroeconomic indicators
+            </p>
+          </div>
+          <div className="flex gap-2">
             {[
               { label: "1Y", value: 365 },
               { label: "5Y", value: 1825 },
@@ -326,12 +313,16 @@ export default function MacroWatchtowerPage() {
                 {label}
               </Button>
             ))}
+          </div>
+        </div>
+
+        {/* High-Density Grid of Expandable Charts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <LiquidityCard days={days} />
+          <DebtStatusCard days={days} />
+          <RealRatesCard days={days} />
         </div>
       </div>
-
-      <LiquiditySection days={days} />
-      <DebtStatusSection days={days} />
-      <RealRatesSection days={days} />
-    </div>
+    </ChartGridProvider>
   );
 }
