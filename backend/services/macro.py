@@ -49,19 +49,6 @@ class MacroService:
         cache_key = datetime.now().strftime('%Y-%m-%d')
         return self._get_series_cached(series_id, cache_key)
 
-    def _align_to_monthly(self, target_monthly_index: pd.DatetimeIndex, quarterly_series: pd.Series) -> pd.Series:
-        """
-        Aligns quarterly data to a monthly index using forward filling.
-        """
-        if quarterly_series.empty:
-            return pd.Series(index=target_monthly_index, data=np.nan)
-        
-        # Reindex to the monthly index, then forward fill
-        # We assume quarterly data points correspond to the start or end of quarter.
-        # Forward fill computes the value for subsequent months.
-        aligned = quarterly_series.reindex(target_monthly_index, method='ffill')
-        return aligned
-
     def _prepare_macro_response(self, df: pd.DataFrame, days: int = None) -> list:
         """
         Helper to standardize, filter, and format macro data for API response.
@@ -111,24 +98,34 @@ class MacroService:
         if interest.empty or tax.empty:
             return []
 
+        # Convert to DataFrame for alignment
+        df_interest = interest.to_frame(name='interest_payments')
+        df_tax = tax.to_frame(name='tax_receipts')
+
         # Create a common monthly index spanning the overlap
         start_date = max(interest.index.min(), tax.index.min())
         end_date = min(interest.index.max(), tax.index.max())
-        
-        # Generate monthly range
-        monthly_index = pd.date_range(start=start_date, end=end_date, freq='MS')
-        
-        interest_aligned = self._align_to_monthly(monthly_index, interest)
-        tax_aligned = self._align_to_monthly(monthly_index, tax)
-        
-        # Calculate Ratio: (Interest / Tax) * 100
-        ratio = (interest_aligned / tax_aligned) * 100
 
-        df = pd.DataFrame({
-            'interest_payments': interest_aligned,
-            'tax_receipts': tax_aligned,
-            'ratio': ratio
-        })
+        if pd.isnull(start_date) or pd.isnull(end_date) or start_date > end_date:
+            return []
+
+        # Generate monthly range target
+        monthly_index = pd.date_range(start=start_date, end=end_date, freq='MS')
+        df_target = pd.DataFrame(index=monthly_index)
+
+        # Align both series to the monthly target using the helper
+        # We align interest first, then align tax to that, or align both to target.
+        # Aligning each to target guarantees we get the monthly structure
+        
+        # Note: We align quartely data to monthly, so we MUST ffill
+        aligned = utils.align_dataframes(df_target, df_interest, method='ffill')
+        aligned = utils.align_dataframes(aligned, df_tax, method='ffill')
+
+        # Calculate Ratio: (Interest / Tax) * 100
+        aligned['ratio'] = (aligned['interest_payments'] / aligned['tax_receipts']) * 100
+
+        # Select columns and drop NaNs
+        df = aligned[['interest_payments', 'tax_receipts', 'ratio']].copy()
         df.dropna(inplace=True)
         
         records = self._prepare_macro_response(df, days)
@@ -150,19 +147,17 @@ class MacroService:
         # GS10 is in Percent (e.g. 4.2). Convert to decimal to match CPI YoY
         gs10_decimal = gs10 / 100.0
 
-        # Align series to common index
-        common_index = gs10_decimal.index.intersection(cpi_yoy.index)
-        gs10_aligned = gs10_decimal.loc[common_index]
-        cpi_aligned = cpi_yoy.loc[common_index]
+        # Convert to DataFrames
+        df_gs10 = gs10_decimal.to_frame(name='treasury_yield_10y')
+        df_cpi = cpi_yoy.to_frame(name='cpi_inflation')
+
+        # Align utilizing the helper 
+        aligned = utils.align_dataframes(df_gs10, df_cpi, method='ffill')
 
         # Real Rate = 10Y Yield - CPI Inflation
-        real_rate = gs10_aligned - cpi_aligned
+        aligned['real_rate'] = aligned['treasury_yield_10y'] - aligned['cpi_inflation']
 
-        df = pd.DataFrame({
-            'treasury_yield_10y': gs10_aligned,
-            'cpi_inflation': cpi_aligned,
-            'real_rate': real_rate
-        })
+        df = aligned[['treasury_yield_10y', 'cpi_inflation', 'real_rate']].copy()
         df.dropna(inplace=True)
         
         records = self._prepare_macro_response(df)

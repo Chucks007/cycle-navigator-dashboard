@@ -144,6 +144,13 @@ def get_sentiment_label(score: float) -> str:
 def fetch_news_sentiment(ticker: str) -> dict:
     """
     Orchestrator: Fetches, parses, analyzes, and formats news sentiment.
+    
+    Returns:
+        schemas.SentimentResponse: A dictionary (or Pydantic model) containing:
+        - sentiment_score (float): Average sentiment score.
+        - sentiment_label (str): Bullish/Bearish/Neutral.
+        - news_count (int): Number of articles analyzed.
+        - headlines (List[SentimentArticle]): List of analyzed articles.
     """
     # 1. Fetch raw data
     raw_news = _get_raw_stock_news(ticker)

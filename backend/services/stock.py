@@ -77,6 +77,9 @@ def fetch_stock_data(ticker: str, period: str, interval: str) -> pd.DataFrame:
     """
     Fetch stock data based on ticker, period, & interval through Yahoo Finance API.
     Raises Exception if data is empty or fetch fails.
+    
+    Returns:
+        pd.DataFrame: DataFrame containing OHLCV data for the requested ticker.
     """
     yf = services.get_yf()
     error = services.get_yf_import_error()
@@ -91,14 +94,19 @@ def fetch_stock_data(ticker: str, period: str, interval: str) -> pd.DataFrame:
             data = yf.download(ticker, period=period, interval=interval, auto_adjust=False)
 
         if data.empty:
+            logger.warning(f"Fetch successful but no data found for ticker: {ticker}")
             raise ValueError(f"No data found for {ticker}.")
         return data
     except Exception as e:
+        logger.error(f"Failed to fetch stock data for {ticker}: {e}")
         raise Exception(f"Error fetching data: {e}")
 
 def process_data(data: pd.DataFrame) -> pd.DataFrame:
     """
     Format the date & time to ensure it is timezone aware with correct formatting.
+    
+    Returns:
+        pd.DataFrame: Processed DataFrame with 'Datetime' column and standardized index.
     """
     data = common_utils.standardize_dataframe(data, reset_index=True)
     # Rename 'date' -> 'Datetime' for compatibility with existing schemas
@@ -109,6 +117,9 @@ def process_data(data: pd.DataFrame) -> pd.DataFrame:
 def add_technical_indicators(data: pd.DataFrame, fill_na: bool = True) -> pd.DataFrame:
     """
     Add technical indicators (SMA, EMA, RSI).
+    
+    Returns:
+        pd.DataFrame: DataFrame with additional columns: 'SMA_20', 'EMA_20', 'RSI_14'.
     """
     close_prices = data['Close'].squeeze()
 
@@ -121,13 +132,18 @@ def add_technical_indicators(data: pd.DataFrame, fill_na: bool = True) -> pd.Dat
     return data
 
 def fetch_risk_free_rate() -> float:
-    """Fetches the current 10-Year Treasury Yield from yfinance."""
-    error = utils.get_yf_import_error()
+    """
+    Fetches the current 10-Year Treasury Yield from yfinance.
+    
+    Returns:
+        float: The latest yield as a decimal (e.g. 0.045).
+    """
+    error = services.get_yf_import_error()
     if error is not None:
         logger.warning(f"Unable to fetch risk-free rate because yfinance import failed: {error}. Using default rate.")
         return config.DEFAULT_RISK_FREE_RATE
     
-    yf = utils.get_yf()
+    yf = services.get_yf()
 
     try:
         treasury = yf.Ticker("^TNX")
@@ -180,6 +196,9 @@ def calculate_metrics(data: pd.DataFrame, risk_free_rate: float) -> dict:
     """
     Calculate basic metrics from stock data.
     Takes risk_free_rate as input to avoid API calls inside a calculation function.
+    
+    Returns:
+        schemas.StockMetrics: Pydantic model with calculated metrics (last_close, change, volatility, etc.).
     """
     last_close = float(data['Close'].iloc[-1].item())
     prev_close = float(data['Close'].iloc[0].item())

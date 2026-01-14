@@ -14,23 +14,7 @@ class TestMacroService(unittest.TestCase):
     def tearDown(self):
         self.mock_fred_patcher.stop()
 
-    def test_align_to_monthly(self):
-        service = MacroService()
-        
-        # Create quarterly data: Jan 1, Apr 1
-        dates = pd.to_datetime(['2023-01-01', '2023-04-01'])
-        quarterly = pd.Series([100.0, 110.0], index=dates)
-        
-        # Target monthly index: Jan, Feb, Mar, Apr
-        monthly_index = pd.date_range(start='2023-01-01', end='2023-04-01', freq='MS')
-        
-        aligned = service._align_to_monthly(monthly_index, quarterly)
-        
-        self.assertEqual(len(aligned), 4)
-        self.assertEqual(aligned.loc['2023-01-01'], 100.0)
-        self.assertEqual(aligned.loc['2023-02-01'], 100.0) # Forward fill
-        self.assertEqual(aligned.loc['2023-03-01'], 100.0) # Forward fill
-        self.assertEqual(aligned.loc['2023-04-01'], 110.0)
+
 
     def test_get_debt_status_calculation(self):
         service = MacroService()
