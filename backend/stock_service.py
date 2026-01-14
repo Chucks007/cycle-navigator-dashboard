@@ -6,6 +6,7 @@ import logging
 from . import config
 from . import schemas
 from . import services
+from . import utils
 
 logger = logging.getLogger(__name__)
 
@@ -96,19 +97,9 @@ def process_data(data: pd.DataFrame) -> pd.DataFrame:
     """
     Format the date & time to ensure it is timezone aware with correct formatting.
     """
-    if data.index.tz is None:
-        data.index = data.index.tz_localize('UTC')
-    data.index = data.index.tz_convert('US/Eastern')
-    data.reset_index(inplace=True)
-
-    if isinstance(data.columns, pd.MultiIndex):
-        data.columns = data.columns.get_level_values(0)
-
-    first_col = data.columns[0]
-    if first_col != 'Datetime':
-        data.rename(columns={first_col: 'Datetime'}, inplace=True)
-    data['Datetime'] = pd.to_datetime(data['Datetime'])
-
+    data = utils.standardize_dataframe(data, reset_index=True)
+    # Rename 'date' -> 'Datetime' for compatibility with existing schemas
+    data = data.rename(columns={'date': 'Datetime'})
     return data
 
 def add_technical_indicators(data: pd.DataFrame, fill_na: bool = True) -> pd.DataFrame:

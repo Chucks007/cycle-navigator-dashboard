@@ -7,6 +7,7 @@ from fredapi import Fred
 
 from . import config
 from . import schemas
+from . import utils
 
 logger = logging.getLogger(__name__)
 
@@ -60,69 +61,66 @@ class MacroService:
         aligned = quarterly_series.reindex(target_monthly_index, method='ffill')
         return aligned
 
+    def _prepare_macro_response(self, df: pd.DataFrame, days: int = None) -> list:
+        """
+        Helper to standardize, filter, and format macro data for API response.
+        """
+        # Standardize: Clean MultiIndex, Fix TZ (Keep UTC for Macro), Reset Index -> 'date' col
+        df = utils.standardize_dataframe(df, timezone='UTC', reset_index=True)
+        
+        # Filter by days if provided
+        if days and 'date' in df.columns:
+            # df['date'] is now UTC aware because of standardize_dataframe
+            
+            cutoff_date = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=days)
+            
+            try:
+                df = df[df['date'] >= cutoff_date]
+            except TypeError:
+                # Fallback if mismatch
+                 df = df[df['date'] >= cutoff_date.tz_localize(None)]
+        
+        return utils.format_for_api(df)
+
     def get_liquidity(self, days: int = None):
         """
         Returns M2 Money Supply and YoY % growth.
         """
-        m2 = self._get_series('M2SL') # Billions
+        m2 = self._get_series(config.FRED_SERIES_M2) # Billions
         if m2.empty:
-            return {}
+            return []
 
         # Calculate YoY Growth (12 months)
-        # Growth should be decimal (e.g. 0.05 for 5%)
         m2_growth = m2.pct_change(periods=12)
 
-        # Prepare DataFrame for JSON response
+        # Prepare DataFrame
         df = pd.DataFrame({'value': m2, 'growth_rate': m2_growth})
         df.dropna(inplace=True)
         
-        # Reset index to make date a column
-        df.reset_index(inplace=True)
-        df.columns = ['date', 'value', 'growth_rate']
-        
-        # Sort by date descending
-        df.sort_values('date', ascending=False, inplace=True)
-
-        # Filter by days if provided
-        if days:
-            cutoff_date = datetime.now() - timedelta(days=days)
-            df = df[df['date'] >= cutoff_date]
-        
-        # Format dates
-        df['date'] = df['date'].dt.strftime('%Y-%m-%d')
-        
-        # Replace NaN with None for Pydantic compatibility
-        records = df.replace({np.nan: None}).to_dict(orient='records')
+        records = self._prepare_macro_response(df, days)
         return [schemas.LiquidityPoint(**r) for r in records]
 
     def get_debt_status(self, days: int = None):
         """
         Returns Interest-to-Tax ratio and components.
-        Aligns Quarterly data to Monthly for consistency if needed, 
-        but calculating on Quarterly availability is safer for the ratio itself.
-        However, to plot on same timeline as others, we might want monthly.
-        Let's provide the raw quarterly aligned to monthly availability.
         """
-        interest = self._get_series('A091RC1Q027SBEA') # Quarterly, Billions
-        tax = self._get_series('W006RC1Q027SBEA')      # Quarterly, Billions
+        interest = self._get_series(config.FRED_SERIES_INTEREST) # Quarterly, Billions
+        tax = self._get_series(config.FRED_SERIES_TAX)      # Quarterly, Billions
 
         if interest.empty or tax.empty:
-            return {}
+            return []
 
         # Create a common monthly index spanning the overlap
         start_date = max(interest.index.min(), tax.index.min())
         end_date = min(interest.index.max(), tax.index.max())
         
-        # We'll use the Interest index as base if we want quarterly output,
-        # but the requirements mention "Frequency Alignment: ... align quarterly ... with monthly".
-        # So let's generate a monthly range.
+        # Generate monthly range
         monthly_index = pd.date_range(start=start_date, end=end_date, freq='MS')
         
         interest_aligned = self._align_to_monthly(monthly_index, interest)
         tax_aligned = self._align_to_monthly(monthly_index, tax)
         
         # Calculate Ratio: (Interest / Tax) * 100
-        # The prompt says: "Logic: (Interest Payments / Tax Receipts) * 100"
         ratio = (interest_aligned / tax_aligned) * 100
 
         df = pd.DataFrame({
@@ -131,39 +129,24 @@ class MacroService:
             'ratio': ratio
         })
         df.dropna(inplace=True)
-        df.reset_index(inplace=True)
-        df.columns = ['date', 'interest_payments', 'tax_receipts', 'ratio']
-        df.sort_values('date', ascending=False, inplace=True)
-
-        # Filter by days if provided
-        if days:
-            cutoff_date = datetime.now() - timedelta(days=days)
-            df = df[df['date'] >= cutoff_date]
-
-        df['date'] = df['date'].dt.strftime('%Y-%m-%d')
         
-        records = df.replace({np.nan: None}).to_dict(orient='records')
+        records = self._prepare_macro_response(df, days)
         return [schemas.DebtPoint(**r) for r in records]
 
     def get_real_rates(self):
         """
         Returns (10-Year Treasury Yield - CPI Inflation Rate).
         """
-        # GS10 is Monthly 10-Year Treasury Constant Maturity Rate (Percent)
-        # If user insisted on DGS10 (Daily), we would need to resample. 
-        # Using GS10 for monthly alignment.
-        gs10 = self._get_series('GS10') 
-        cpi = self._get_series('CPIAUCSL')
+        gs10 = self._get_series(config.FRED_SERIES_10Y_YIELD)
+        cpi = self._get_series(config.FRED_SERIES_CPI)
 
         if gs10.empty or cpi.empty:
-            return {}
+            return []
 
         # CPI YoY Inflation Rate (Decimal)
         cpi_yoy = cpi.pct_change(periods=12)
 
-        # GS10 is in Percent (e.g. 4.2). Convert to decimal to match CPI YoY?
-        # "Percentage Handling: Ensure inflation and growth rates are returned as decimals"
-        # If GS10 is 4.2 (percent), decimal is 0.042.
+        # GS10 is in Percent (e.g. 4.2). Convert to decimal to match CPI YoY
         gs10_decimal = gs10 / 100.0
 
         # Align series to common index
@@ -180,12 +163,8 @@ class MacroService:
             'real_rate': real_rate
         })
         df.dropna(inplace=True)
-        df.reset_index(inplace=True)
-        df.columns = ['date', 'treasury_yield_10y', 'cpi_inflation', 'real_rate']
-        df.sort_values('date', ascending=False, inplace=True)
-        df['date'] = df['date'].dt.strftime('%Y-%m-%d')
-
-        records = df.replace({np.nan: None}).to_dict(orient='records')
+        
+        records = self._prepare_macro_response(df)
         return [schemas.RealRatePoint(**r) for r in records]
 
 
@@ -193,21 +172,14 @@ class MacroService:
         """
         Returns the raw CPI Index series (CPIAUCSL).
         """
-        cpi = self._get_series('CPIAUCSL')
+        cpi = self._get_series(config.FRED_SERIES_CPI)
         if cpi.empty:
             return []
 
         df = pd.DataFrame({'value': cpi})
         df.dropna(inplace=True)
-        df.reset_index(inplace=True)
-        df.columns = ['date', 'value']
-        df.sort_values('date', ascending=False, inplace=True)
-        # Keep date as datetime for easier merging or convert? 
-        # API usually returns JSON strings, but internal usage might prefer datetime.
-        # Let's keep consistent with other methods -> str for API, but we might need datetime helper for frontend.
-        df['date'] = df['date'].dt.strftime('%Y-%m-%d')
         
-        records = df.replace({np.nan: None}).to_dict(orient='records')
+        records = self._prepare_macro_response(df)
         return [schemas.CPIPoint(**r) for r in records]
 
 # Singleton instance

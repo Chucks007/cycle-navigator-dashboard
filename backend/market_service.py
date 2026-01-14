@@ -3,6 +3,7 @@ import functools
 from datetime import datetime
 import pandas as pd
 from .utils import get_yf
+from . import utils
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +34,9 @@ class MarketService:
         if df.empty:
             return df
 
-        # Clean data
-        # Check for MultiIndex columns (common in new yfinance if multiple tickers or sometimes even single)
-        if isinstance(df.columns, pd.MultiIndex):
-            # If the second level is the ticker name, drop it
-            if df.columns.nlevels == 2:
-                 df.columns = df.columns.droplevel(1)
-        
-        # Ensure we have standard columns
-        # yfinance typically returns: Open, High, Low, Close, Adj Close, Volume
-        return df
+        # Clean data using shared utility
+        # Keep index as DatetimeIndex for subsequent indicator calculations
+        return utils.standardize_dataframe(df, reset_index=False)
 
     def get_indicators(self, ticker: str, period: str = "2y", interval: str = "1wk") -> pd.DataFrame:
         """
