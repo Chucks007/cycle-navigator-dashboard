@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import pandas as pd
 import numpy as np
+import logging
+from requests.exceptions import ConnectionError, Timeout, RequestException
 
 from . import schemas
 from . import config
@@ -12,6 +14,8 @@ from .services import macro_service
 from .services import market_service
 
 from .comparison_service import fetch_normalized_comparison, calculate_hard_vs_soft_ratio, HARD_ASSETS, SOFT_ASSETS
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -24,7 +28,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/api/stock/{ticker}", response_model=schemas.StockMetrics)
+ERROR_RESPONSES = {
+    400: {"description": "Invalid Request / Bad Input"},
+    502: {"description": "Upstream Provider Error (FRED/Yahoo/Connectivity)"},
+    500: {"description": "Internal Server Error"}
+}
+
+@app.get("/api/stock/{ticker}", response_model=schemas.StockMetrics, responses=ERROR_RESPONSES)
 def get_stock_metrics(
     ticker: str,
     period: str = Query("1d", description="Time period (e.g., 1d, 5d, 1mo)"),
@@ -36,10 +46,17 @@ def get_stock_metrics(
         rfr = fetch_risk_free_rate()
         metrics = calculate_metrics(data, rfr)
         return metrics
+    except ValueError as e:
+        logger.warning(f"Bad request for ticker {ticker}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+        logger.error(f"Upstream error fetching {ticker}: {e}")
+        raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Unexpected error in get_stock_metrics for {ticker}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@app.get("/api/stock/{ticker}/history", response_model=List[schemas.StockHistoryPoint])
+@app.get("/api/stock/{ticker}/history", response_model=List[schemas.StockHistoryPoint], responses=ERROR_RESPONSES)
 def get_stock_history(
     ticker: str,
     period: str = Query("1d"),
@@ -53,10 +70,17 @@ def get_stock_history(
         data['Datetime'] = data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
         result = data[['Datetime', 'Open', 'High', 'Low', 'Close', 'Volume']].to_dict(orient='records')
         return result
+    except ValueError as e:
+        logger.warning(f"Bad request history {ticker}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+        logger.error(f"Upstream error history {ticker}: {e}")
+        raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Unexpected error in get_stock_history for {ticker}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@app.get("/api/stock/{ticker}/indicators", response_model=List[schemas.StockIndicatorsPoint])
+@app.get("/api/stock/{ticker}/indicators", response_model=List[schemas.StockIndicatorsPoint], responses=ERROR_RESPONSES)
 def get_stock_indicators(
     ticker: str,
     period: str = Query("1d"),
@@ -72,15 +96,22 @@ def get_stock_indicators(
         cols = ['Datetime', 'SMA_20', 'EMA_20', 'RSI_14']
         result = data[cols].to_dict(orient='records')
         return result
+    except ValueError as e:
+        logger.warning(f"Bad request indicators {ticker}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+        logger.error(f"Upstream error indicators {ticker}: {e}")
+        raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Unexpected error in get_stock_indicators for {ticker}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 
-@app.get("/api/sentiment/{ticker}", response_model=schemas.SentimentResponse)
+@app.get("/api/sentiment/{ticker}", response_model=schemas.SentimentResponse, responses=ERROR_RESPONSES)
 def get_sentiment(ticker: str):
     """
     Get news sentiment analysis for a stock ticker.
@@ -89,53 +120,78 @@ def get_sentiment(ticker: str):
     try:
         sentiment_data = fetch_news_sentiment(ticker)
         return sentiment_data
+    except ValueError as e:
+         raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+         raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Unexpected error in get_sentiment for {ticker}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 # Macro Analysis Endpoints
 
-@app.get("/api/macro/liquidity", response_model=List[schemas.LiquidityPoint])
+@app.get("/api/macro/liquidity", response_model=List[schemas.LiquidityPoint], responses=ERROR_RESPONSES)
 def get_macro_liquidity(days: int = Query(None, description="Number of days of history to return")):
     """
     Returns historical M2 Money Supply and YoY % growth.
     """
     try:
         return macro_service.get_liquidity(days=days)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+        raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
     except Exception as e:
+        logger.exception("Error fetching liquidity data")
         raise HTTPException(status_code=500, detail=f"Error fetching liquidity data: {str(e)}")
 
-@app.get("/api/macro/debt-status", response_model=List[schemas.DebtPoint])
+@app.get("/api/macro/debt-status", response_model=List[schemas.DebtPoint], responses=ERROR_RESPONSES)
 def get_macro_debt_status(days: int = Query(None, description="Number of days of history to return")):
     """
     Returns the Interest-to-Tax ratio and individual components.
     """
     try:
         return macro_service.get_debt_status(days=days)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+        raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
     except Exception as e:
+        logger.exception("Error fetching debt status")
         raise HTTPException(status_code=500, detail=f"Error fetching debt status: {str(e)}")
 
-@app.get("/api/macro/real-rates", response_model=List[schemas.RealRatePoint])
+@app.get("/api/macro/real-rates", response_model=List[schemas.RealRatePoint], responses=ERROR_RESPONSES)
 def get_macro_real_rates():
     """
     Returns (10-Year Treasury Yield - CPI Inflation Rate).
     """
     try:
         return macro_service.get_real_rates()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+        raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
     except Exception as e:
+        logger.exception("Error fetching real rates")
         raise HTTPException(status_code=500, detail=f"Error fetching real rates: {str(e)}")
 
-@app.get("/api/macro/cpi", response_model=List[schemas.CPIPoint])
+@app.get("/api/macro/cpi", response_model=List[schemas.CPIPoint], responses=ERROR_RESPONSES)
 def get_macro_cpi():
     """
     Returns historical CPI data.
     """
     try:
         return macro_service.get_cpi_series()
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+        raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
     except Exception as e:
+        logger.exception("Error fetching CPI data")
         raise HTTPException(status_code=500, detail=f"Error fetching CPI data: {str(e)}")
 
 
-@app.get("/api/comparison/barbell", response_model=List[schemas.ComparisonResult])
+@app.get("/api/comparison/barbell", response_model=List[schemas.ComparisonResult], responses=ERROR_RESPONSES)
 def get_barbell_comparison(period: str = Query("1y", description="Time period (e.g. 1y, ytd)")):
     """
     Fetch normalized comparison data for Barbell Strategy (Hard vs Soft Assets).
@@ -168,7 +224,14 @@ def get_barbell_comparison(period: str = Query("1y", description="Time period (e
         result = ratio_df[['date', 'Hard_Index', 'Soft_Index', 'Ratio', 'Ratio_Normalized']].to_dict(orient='records')
         return result
 
+    except ValueError as e:
+        logger.warning(f"Bad request barbell: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+        logger.error(f"Upstream error barbell: {e}")
+        raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
     except Exception as e:
+        logger.exception("Unexpected error in get_barbell_comparison")
         raise HTTPException(status_code=500, detail=str(e))
 
 
