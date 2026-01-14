@@ -25,6 +25,8 @@ def get_yf_import_error():
     return _yf_import_error
 
 import pandas as pd
+import numpy as np
+from typing import List, Dict, Optional
 
 def align_dataframes(
     df1: pd.DataFrame, 
@@ -70,3 +72,72 @@ def align_dataframes(
         aligned = aligned.ffill() # pandas 2.0+ uses ffill() vs fillna(method='ffill')
         
     return aligned
+
+def standardize_dataframe(df: pd.DataFrame, timezone: str = 'US/Eastern', reset_index: bool = True) -> pd.DataFrame:
+    """
+    Standardize DataFrame from financial sources.
+    - Handles MultiIndex columns (drops level 1)
+    - Timezone conversion (UTC -> target timezone)
+    - Reset index (optional, default True) and rename time column to 'date'
+    """
+    df = df.copy()
+
+    # Handle MultiIndex columns
+    if isinstance(df.columns, pd.MultiIndex):
+        if df.columns.nlevels == 2:
+            df.columns = df.columns.droplevel(1)
+
+    # Timezone conversion
+    # Ensure index is DatetimeIndex for this operation
+    if isinstance(df.index, pd.DatetimeIndex):
+        if df.index.tz is None:
+            df.index = df.index.tz_localize('UTC')
+        
+        # Convert to target timezone
+        # Use simple string for timezone to avoid pytz dependency if not installed, 
+        # though pandas handles it well usually.
+        if timezone:
+            try:
+                df.index = df.index.tz_convert(timezone)
+            except Exception:
+                # Fallback if timezone not found or error
+                pass
+    
+    if reset_index:
+        df = df.reset_index()
+        # Rename standard index name to 'date' if it comes out as 'Date' or 'index' or 'Datetime'
+        # Map common variants to 'date'
+        cols = {
+            'Date': 'date',
+            'Datetime': 'date',
+            'index': 'date'
+        }
+        df = df.rename(columns=cols)
+        
+    return df
+
+def format_for_api(df: pd.DataFrame, date_format: str = '%Y-%m-%d') -> List[Dict]:
+    """
+    Format DataFrame for API response.
+    - Sort descending by date
+    - Handle NaN -> None
+    - Format dates to string
+    """
+    # Create copy to avoid mutating input
+    d = df.copy()
+    
+    # Ensure 'date' column exists for sorting/formatting
+    if 'date' in d.columns:
+        # Sort
+        d = d.sort_values('date', ascending=False)
+        
+        # Format date
+        # Check if it's actually datetime
+        if pd.api.types.is_datetime64_any_dtype(d['date']):
+            d['date'] = d['date'].dt.strftime(date_format)
+            
+    # Replace NaN with None
+    # We use replace({np.nan: None}) which handles NaNs in float columns
+    records = d.replace({np.nan: None}).to_dict(orient='records')
+    return records
+

@@ -21,6 +21,13 @@ FRED_API_KEY = os.getenv("FRED_API_KEY")
 if not FRED_API_KEY:
     logger.warning("FRED_API_KEY not found in configuration. Macro data features will be unavailable.")
 
+# FRED Series IDs
+FRED_SERIES_M2 = 'M2SL'
+FRED_SERIES_INTEREST = 'A091RC1Q027SBEA'
+FRED_SERIES_TAX = 'W006RC1Q027SBEA'
+FRED_SERIES_10Y_YIELD = 'GS10'
+FRED_SERIES_CPI = 'CPIAUCSL'
+
 DEFAULT_RISK_FREE_RATE = 0.04  # 4% fallback rate when unable to fetch current rate
 TRADING_DAYS_PER_YEAR = 252  # Standard number of trading days per year
 
