@@ -6,10 +6,11 @@ import numpy as np
 
 from . import schemas
 from . import config
-from .stock_service import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data, fetch_risk_free_rate
-from .sentiment_service import fetch_news_sentiment
-from .macro_service import macro_service
-from .market_service import market_service
+from .services.stock import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data, fetch_risk_free_rate
+from .services.sentiment import fetch_news_sentiment
+from .services import macro_service
+from .services import market_service
+
 from .comparison_service import fetch_normalized_comparison, calculate_hard_vs_soft_ratio, HARD_ASSETS, SOFT_ASSETS
 
 app = FastAPI()
