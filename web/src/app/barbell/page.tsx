@@ -208,16 +208,25 @@ export default function BarbellStrategyPage() {
   const ratioData = React.useMemo(() => {
     if (!data) return [];
     
-    return data.map((point) => {
-      const hardValues = selectedHard.map((t) => point[t as keyof typeof point] as number);
-      const softValues = selectedSoft.map((t) => point[t as keyof typeof point] as number);
+    return data.map((point: any) => {
+      const getPrice = (ticker: string) => {
+        let val = point[ticker];
+        // Robust key lookup
+        if (!val && ticker === 'GLD') val = point['GC=F'];
+        if (!val && ticker === 'SPY') val = point['^GSPC'];
+        return Number(val || 0);
+      };
+
+      const hardValues = selectedHard.map((t) => getPrice(t));
+      const softValues = selectedSoft.map((t) => getPrice(t));
       
-      const hardAvg = hardValues.length > 0 
-        ? hardValues.reduce((a, b) => a + b, 0) / hardValues.length 
-        : 100;
-      const softAvg = softValues.length > 0 
-        ? softValues.reduce((a, b) => a + b, 0) / softValues.length 
-        : 100;
+      const hardSum = hardValues.reduce((a, b) => a + b, 0);
+      const hardAvg = hardValues.length > 0 ? hardSum / hardValues.length : 0;
+      
+      const softSum = softValues.reduce((a, b) => a + b, 0);
+      const softAvg = softValues.length > 0 ? softSum / softValues.length : 0;
+
+      if (hardAvg <= 0 || softAvg <= 0) return null;
       
       return {
         date: point.date,
@@ -225,7 +234,7 @@ export default function BarbellStrategyPage() {
         softIndex: softAvg,
         ratio: (hardAvg / softAvg) * 100,
       };
-    });
+    }).filter((item): item is NonNullable<typeof item> => Boolean(item));
   }, [data, selectedHard, selectedSoft]);
 
   const latestRatio = ratioData.length > 0 ? ratioData[ratioData.length - 1].ratio : 100;
@@ -458,38 +467,26 @@ export default function BarbellStrategyPage() {
           isLoading={isLoading}
           condensedChart={
             <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={ratioData.slice(-60)} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="ratioGradientCondensed" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area
+              <LineChart data={ratioData.slice(-60)} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                <Line
                   type="monotone"
                   dataKey="ratio"
-                  stroke="hsl(var(--chart-4))"
-                  strokeWidth={1.5}
-                  fill="url(#ratioGradientCondensed)"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
                   dot={false}
                   name="Hard/Soft Ratio"
+                  connectNulls={true}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', marginTop: '0px' }} />
-              </AreaChart>
+              </LineChart>
             </ResponsiveContainer>
           }
           detailedChart={
             <ResponsiveContainer width="100%" height={400}>
-              <AreaChart
+              <LineChart
                 data={ratioData}
                 margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
               >
-                <defs>
-                  <linearGradient id="ratioGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="currentColor"
@@ -521,16 +518,17 @@ export default function BarbellStrategyPage() {
                   labelStyle={{ color: "hsl(var(--foreground))" }}
                   formatter={(value) => [typeof value === 'number' ? value.toFixed(2) : '', 'Ratio']}
                 />
-                <Area
+                <Line
                   type="monotone"
                   dataKey="ratio"
-                  stroke="hsl(var(--chart-4))"
-                  strokeWidth={2}
-                  fill="url(#ratioGradient)"
+                  name="Hard/Soft Ratio"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
                   dot={false}
                   activeDot={{ r: 4 }}
+                  connectNulls={true}
                 />
-              </AreaChart>
+              </LineChart>
             </ResponsiveContainer>
           }
         />
