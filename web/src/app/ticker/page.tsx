@@ -148,6 +148,15 @@ function TickerAnalysisContent() {
   const [ticker, setTicker] = React.useState(initialTicker);
   const [inputValue, setInputValue] = React.useState(initialTicker);
 
+  // Sync state when URL changes
+  React.useEffect(() => {
+    const currentSymbol = searchParams.get("symbol") || "AAPL";
+    if (currentSymbol !== ticker) {
+      setTicker(currentSymbol);
+      setInputValue(currentSymbol);
+    }
+  }, [searchParams, ticker]);
+
   // Fetch data
   const { data: metrics, isLoading: metricsLoading, error: metricsError } = useStockMetrics(ticker);
   const { data: history, isLoading: historyLoading } = useStockHistory(ticker);
@@ -158,7 +167,6 @@ function TickerAnalysisContent() {
     e.preventDefault();
     const newTicker = inputValue.toUpperCase().trim();
     if (newTicker) {
-      setTicker(newTicker);
       router.push(`/ticker?symbol=${newTicker}`);
     }
   };
