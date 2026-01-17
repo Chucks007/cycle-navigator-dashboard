@@ -9,6 +9,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,7 +23,8 @@ import {
   AlertTriangle,
   Gauge,
 } from "lucide-react";
-import { ChartContainer, ChartSkeleton } from "@/components/charts/synced-chart";
+import { ChartSkeleton } from "@/components/charts/synced-chart";
+import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { MetricCard, MetricCardSkeleton } from "@/components/ui/metric-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -346,14 +348,47 @@ function TickerAnalysisContent() {
           </TabsList>
 
         <TabsContent value="price">
-          <ChartContainer
+          <ExpandableChartCard
+            id="price-history"
             title={`${ticker} Price History`}
             subtitle="Last 6 months of trading data"
-          >
-            {historyLoading ? (
-              <ChartSkeleton height={350} />
-            ) : (
-              <ResponsiveContainer width="100%" height={350}>
+            metricValue={metrics?.last_close ? `$${metrics.last_close.toFixed(2)}` : undefined}
+            metricChange={priceChangePct}
+            changeLabel="Day"
+            variant={isPositive ? "success" : "danger"}
+            isLoading={historyLoading}
+            condensedChart={
+              <ResponsiveContainer width="100%" height={160}>
+                <AreaChart data={chartData.slice(-30)} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="priceGradientCondensed" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="5%"
+                        stopColor={isPositive ? "#10b981" : "#ef4444"}
+                        stopOpacity={0.3}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor={isPositive ? "#10b981" : "#ef4444"}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey="close"
+                    stroke={isPositive ? "#10b981" : "#ef4444"}
+                    strokeWidth={1.5}
+                    fill="url(#priceGradientCondensed)"
+                    dot={false}
+                    name="Price"
+                  />
+                  <Legend wrapperStyle={{ fontSize: '11px', marginTop: '0px' }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            }
+            detailedChart={
+              <ResponsiveContainer width="100%" height={400}>
                 <AreaChart
                   data={chartData}
                   margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -415,19 +450,32 @@ function TickerAnalysisContent() {
                   />
                 </AreaChart>
               </ResponsiveContainer>
-            )}
-          </ChartContainer>
+            }
+          />
         </TabsContent>
 
         <TabsContent value="volume">
-          <ChartContainer
+          <ExpandableChartCard
+            id="volume-chart"
             title={`${ticker} Trading Volume`}
             subtitle="Last 30 days"
-          >
-            {historyLoading ? (
-              <ChartSkeleton height={350} />
-            ) : (
-              <ResponsiveContainer width="100%" height={350}>
+            isLoading={historyLoading}
+            condensedChart={
+              <ResponsiveContainer width="100%" height={160}>
+                <BarChart data={volumeData.slice(-15)} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                  <Bar
+                    dataKey="volume"
+                    fill="hsl(var(--chart-2))"
+                    radius={[2, 2, 0, 0]}
+                    opacity={0.8}
+                    name="Volume"
+                  />
+                  <Legend wrapperStyle={{ fontSize: '11px', marginTop: '0px' }} />
+                </BarChart>
+              </ResponsiveContainer>
+            }
+            detailedChart={
+              <ResponsiveContainer width="100%" height={400}>
                 <BarChart
                   data={volumeData}
                   margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
@@ -474,8 +522,8 @@ function TickerAnalysisContent() {
                   />
                 </BarChart>
               </ResponsiveContainer>
-            )}
-          </ChartContainer>
+            }
+          />
         </TabsContent>
       </Tabs>
       </section>

@@ -146,7 +146,7 @@ export function ExpandableChartCard({
           )}
 
           {/* Sparkline chart */}
-          <div className="h-[80px] -mx-2 -mb-2">
+          <div className="h-[160px] w-full mt-4">
             {isLoading ? (
               <div className="h-full flex items-center justify-center">
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
