@@ -15,7 +15,8 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, Scale, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { ChartContainer, ChartSkeleton } from "@/components/charts/synced-chart";
+import { ChartSkeleton } from "@/components/charts/synced-chart";
+import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { MetricCard, MetricCardSkeleton } from "@/components/ui/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -346,142 +347,193 @@ export default function BarbellStrategyPage() {
 
       {/* Comparison Section */}
       <section id="comparison" className="space-y-6">
-        <ChartContainer
+        <ExpandableChartCard
+          id="normalized-performance"
           title="Normalized Performance (Base 100)"
           subtitle="All assets start at 100 for easy comparison"
-        >
-        {isLoading ? (
-          <ChartSkeleton height={400} />
-        ) : (
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart
-              data={data}
-              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="currentColor"
-                className="text-border/30"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="date"
-                tickFormatter={formatDate}
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                className="text-muted-foreground"
-              />
-              <YAxis
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                className="text-muted-foreground"
-                width={60}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--popover))",
-                  borderColor: "hsl(var(--border))",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                }}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
-                formatter={(value) => [typeof value === 'number' ? value.toFixed(2) : '', '']}
-              />
-              <Legend />
-              {selectedHard.map((ticker) => (
-                <Line
-                  key={ticker}
-                  type="monotone"
-                  dataKey={ticker}
-                  name={HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.name}
-                  stroke={HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color}
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
+          isLoading={isLoading}
+          condensedChart={
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={data?.slice(-60)} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                <Legend wrapperStyle={{ fontSize: '10px', marginTop: '0px' }} />
+                {selectedHard.map((ticker) => (
+                  <Line
+                    key={ticker}
+                    type="monotone"
+                    dataKey={ticker}
+                    stroke={HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color}
+                    strokeWidth={1.5}
+                    dot={false}
+                  />
+                ))}
+                {selectedSoft.map((ticker) => (
+                  <Line
+                    key={ticker}
+                    type="monotone"
+                    dataKey={ticker}
+                    stroke={SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color}
+                    strokeWidth={1.5}
+                    dot={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          }
+          detailedChart={
+            <ResponsiveContainer width="100%" height={400}>
+              <LineChart
+                data={data}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="currentColor"
+                  className="text-border/30"
+                  vertical={false}
                 />
-              ))}
-              {selectedSoft.map((ticker) => (
-                <Line
-                  key={ticker}
-                  type="monotone"
-                  dataKey={ticker}
-                  name={SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.name}
-                  stroke={SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color}
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatDate}
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
                 />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-        </ChartContainer>
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
+                  width={60}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--popover))",
+                    borderColor: "hsl(var(--border))",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                  }}
+                  labelStyle={{ color: "hsl(var(--foreground))" }}
+                  formatter={(value) => [typeof value === 'number' ? value.toFixed(2) : '', '']}
+                />
+                <Legend />
+                {selectedHard.map((ticker) => (
+                  <Line
+                    key={ticker}
+                    type="monotone"
+                    dataKey={ticker}
+                    name={HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.name}
+                    stroke={HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                ))}
+                {selectedSoft.map((ticker) => (
+                  <Line
+                    key={ticker}
+                    type="monotone"
+                    dataKey={ticker}
+                    name={SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.name}
+                    stroke={SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color}
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          }
+        />
 
         {/* Hard vs Soft Ratio Chart */}
-        <ChartContainer
+        <ExpandableChartCard
+          id="hard-soft-ratio"
           title="Hard Assets vs Paper Assets Ratio"
           subtitle="Rising ratio indicates rotation into hard assets"
-        >
-        {isLoading ? (
-          <ChartSkeleton height={300} />
-        ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart
-              data={ratioData}
-              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="ratioGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="currentColor"
-                className="text-border/30"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="date"
-                tickFormatter={formatDate}
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                className="text-muted-foreground"
-              />
-              <YAxis
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                className="text-muted-foreground"
-                width={60}
-                domain={["dataMin - 5", "dataMax + 5"]}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--popover))",
-                  borderColor: "hsl(var(--border))",
-                  borderRadius: "8px",
-                }}
-                labelStyle={{ color: "hsl(var(--foreground))" }}
-                formatter={(value) => [typeof value === 'number' ? value.toFixed(2) : '', 'Ratio']}
-              />
-              <Area
-                type="monotone"
-                dataKey="ratio"
-                stroke="hsl(var(--chart-4))"
-                strokeWidth={2}
-                fill="url(#ratioGradient)"
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-        </ChartContainer>
+          metricValue={latestRatio.toFixed(1)}
+          metricChange={ratioChange}
+          changeLabel={`Since ${period} start`}
+          variant={ratioChange > 0 ? "success" : "warning"}
+          isLoading={isLoading}
+          condensedChart={
+            <ResponsiveContainer width="100%" height={160}>
+              <AreaChart data={ratioData.slice(-60)} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="ratioGradientCondensed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="monotone"
+                  dataKey="ratio"
+                  stroke="hsl(var(--chart-4))"
+                  strokeWidth={1.5}
+                  fill="url(#ratioGradientCondensed)"
+                  dot={false}
+                  name="Hard/Soft Ratio"
+                />
+                <Legend wrapperStyle={{ fontSize: '11px', marginTop: '0px' }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          }
+          detailedChart={
+            <ResponsiveContainer width="100%" height={400}>
+              <AreaChart
+                data={ratioData}
+                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="ratioGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="currentColor"
+                  className="text-border/30"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatDate}
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
+                />
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  className="text-muted-foreground"
+                  width={60}
+                  domain={["dataMin - 5", "dataMax + 5"]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--popover))",
+                    borderColor: "hsl(var(--border))",
+                    borderRadius: "8px",
+                  }}
+                  labelStyle={{ color: "hsl(var(--foreground))" }}
+                  formatter={(value) => [typeof value === 'number' ? value.toFixed(2) : '', 'Ratio']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="ratio"
+                  stroke="hsl(var(--chart-4))"
+                  strokeWidth={2}
+                  fill="url(#ratioGradient)"
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          }
+        />
       </section>
     </div>
   );
