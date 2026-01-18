@@ -263,24 +263,39 @@ export function transformRiskBandsToSeries(
     opacity?: number;
   }
 ): ExtraSeriesConfig[] {
-  const { lineWidth = 1, showLabels = true } = options ?? {};
+  const { lineWidth = 1, showLabels = true, opacity } = options ?? {};
 
-  return bands.map((band) => ({
-    data: band.values
-      .filter((v) => v.value != null && isFinite(v.value))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .map((v) => ({
-        time: toChartTime(v.date),
-        value: v.value,
-      })),
-    color: band.color,
-    lineWidth,
-    priceLineVisible: false,
-    lastValueVisible: false,
-    title: showLabels ? band.name : undefined,
-    // Custom properties for band styling
-    lineStyle: band.std_multiplier === 0 ? 0 : 2, // Solid for center, dashed for others
-  }));
+  return bands.map((band) => {
+    // Apply opacity if provided, otherwise keep original color
+    // For non-center bands, we might want to reduce opacity slightly by default if not specified
+    let finalColor = band.color;
+    if (opacity !== undefined) {
+      if (band.color.startsWith("#")) {
+        const r = parseInt(band.color.slice(1, 3), 16);
+        const g = parseInt(band.color.slice(3, 5), 16);
+        const b = parseInt(band.color.slice(5, 7), 16);
+        finalColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+      }
+    }
+
+    return {
+      data: band.values
+        .filter((v) => v.value != null && isFinite(v.value))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .map((v) => ({
+          time: toChartTime(v.date),
+          value: v.value,
+        })),
+      color: finalColor,
+      lineWidth,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      title: showLabels ? band.name : undefined,
+      // Custom properties for band styling
+      // Solid for center (Fair Value), dashed for others
+      lineStyle: band.std_multiplier === 0 ? 0 : 2, 
+    };
+  });
 }
 
 /**

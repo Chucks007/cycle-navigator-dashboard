@@ -43,6 +43,7 @@ export function RiskChart({ ticker, title }: RiskChartProps) {
     return transformRiskBandsToSeries(riskData.bands, {
       lineWidth: 1,
       showLabels: false, // Too many labels can clutter the chart
+      opacity: 0.5,
     });
   }, [riskData, showBands]);
 

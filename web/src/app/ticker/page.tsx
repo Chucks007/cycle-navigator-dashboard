@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense } from "react";
+import { cn } from "@/lib/utils";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search,
@@ -19,23 +20,30 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogScaleToggle, TimeframeSelector, type Timeframe } from "@/components/charts/chart-controls";
+import {
+  LogScaleToggle,
+  TimeframeSelector,
+  type Timeframe,
+  RegressionBandsToggle,
+} from "@/components/charts/chart-controls";
 import {
   useStockMetrics,
   useStockHistory,
   useStockIndicators,
   useSentiment,
+  useRiskData,
 } from "@/hooks/use-data";
-import { cn } from "@/lib/utils";
 import {
   transformToLineDataWithKey,
   transformToOHLCData,
   transformToHistogramData,
+  transformRiskBandsToSeries,
   toChartTime,
   type ChartDataPoint,
   type OHLCDataPoint,
   type HistogramDataPoint,
 } from "@/lib/chart-utils";
+import { RiskScoreCard } from "@/components/charts/risk-chart";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -212,6 +220,11 @@ function TickerAnalysisContent() {
   const { data: indicators, isLoading: indicatorsLoading } = useStockIndicators(ticker, period, interval);
   const { data: sentiment, isLoading: sentimentLoading } = useSentiment(ticker);
 
+  // Risk Data (Only relevant for BTC/ETH, but safe to call for others - handles errors gracefully)
+  const isCrypto = ticker === "BTC" || ticker === "ETH" || ticker === "BTC-USD" || ticker === "ETH-USD";
+  const [showRiskBands, setShowRiskBands] = React.useState(false);
+  const { data: riskData } = useRiskData(ticker, isCrypto); // Always fetch if crypto, control visibility with state
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const newTicker = inputValue.toUpperCase().trim();
@@ -276,6 +289,16 @@ function TickerAnalysisContent() {
         value: point.Volume,
       }));
   }, [history]);
+
+  // Risk Bands Series
+  const riskBandSeries = React.useMemo(() => {
+    if (!riskData?.bands || !showRiskBands) return [];
+    return transformRiskBandsToSeries(riskData.bands, {
+      lineWidth: 1,
+      showLabels: false,
+      opacity: 0.5,
+    });
+  }, [riskData, showRiskBands]);
 
   if (metricsError) {
     return (
@@ -417,6 +440,8 @@ function TickerAnalysisContent() {
               icon={<Gauge className="h-4 w-4" />}
               variant={metrics?.sharpe_ratio && metrics.sharpe_ratio > 1 ? "success" : "default"}
             />
+            {/* Risk Score Card (if available) */}
+            {isCrypto && <RiskScoreCard ticker={ticker} />}
           </>
         )}
       </div>
@@ -457,6 +482,7 @@ function TickerAnalysisContent() {
                   seriesType="Candlestick"
                   logScale={logScale}
                   height={400}
+                  extraSeries={riskBandSeries}
                   fitContent
                 />
               ) : (
@@ -470,6 +496,7 @@ function TickerAnalysisContent() {
                   }}
                   logScale={logScale}
                   height={400}
+                  extraSeries={riskBandSeries}
                   fitContent
                 />
               )
@@ -482,6 +509,16 @@ function TickerAnalysisContent() {
                   <ChartTypeToggle value={chartType} onChange={setChartType} />
                   <div className="h-6 w-px bg-border/50" />
                   <LogScaleToggle checked={logScale} onChange={setLogScale} />
+                  {isCrypto && (
+                    <>
+                      <div className="h-6 w-px bg-border/50" />
+                      <RegressionBandsToggle 
+                        checked={showRiskBands} 
+                        onChange={setShowRiskBands}
+                        disabled={!riskData}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             }
