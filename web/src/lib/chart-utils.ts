@@ -62,7 +62,21 @@ export function toChartTime(dateInput: string | number | Date): Time {
     return dateInput as Time;
   }
 
-  // Parse ISO string and convert to YYYY-MM-DD
+  // Handle YYYY-MM-DD HH:MM:SS format
+  if (typeof dateInput === "string" && (dateInput.includes(" ") || dateInput.includes("T"))) {
+    const d = new Date(dateInput);
+    if (!isNaN(d.getTime())) {
+      // If midnight (00:00:00), treat as daily data (return YYYY-MM-DD to avoid weekend gaps)
+      // We check the string parts to avoid timezone conversion issues
+      const timePart = dateInput.split(/[ T]/)[1]; // Get time part after space or T
+      if (timePart && (timePart === "00:00:00" || timePart.startsWith("00:00:00"))) {
+        return dateInput.split(/[ T]/)[0] as Time;
+      }
+      return Math.floor(d.getTime() / 1000) as UTCTimestamp;
+    }
+  }
+
+  // Parse ISO string and convert to YYYY-MM-DD (Fallback)
   const date = new Date(dateInput);
   return date.toISOString().split("T")[0] as Time;
 }

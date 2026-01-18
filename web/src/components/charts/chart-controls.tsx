@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export type Timeframe = "1M" | "6M" | "1Y" | "5Y" | "ALL";
+export type Timeframe = "1D" | "1W" | "1M" | "6M" | "1Y" | "5Y" | "ALL";
 
 interface TimeframeSelectorProps {
   value: Timeframe;
@@ -15,7 +15,7 @@ interface TimeframeSelectorProps {
 }
 
 export function TimeframeSelector({ value, onChange, className }: TimeframeSelectorProps) {
-  const options: Timeframe[] = ["1M", "6M", "1Y", "5Y", "ALL"];
+  const options: Timeframe[] = ["1D", "1W", "1M", "6M", "1Y", "5Y", "ALL"];
   
   return (
     <div className={cn("inline-flex items-center rounded-lg border p-1 bg-muted/50", className)}>

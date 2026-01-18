@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogScaleToggle } from "@/components/charts/chart-controls";
+import { LogScaleToggle, TimeframeSelector, type Timeframe } from "@/components/charts/chart-controls";
 import {
   useStockMetrics,
   useStockHistory,
@@ -31,6 +31,7 @@ import {
   transformToLineDataWithKey,
   transformToOHLCData,
   transformToHistogramData,
+  toChartTime,
   type ChartDataPoint,
   type OHLCDataPoint,
   type HistogramDataPoint,
@@ -182,6 +183,19 @@ function TickerAnalysisContent() {
   const initialTicker = searchParams.get("symbol") || "AAPL";
   const [ticker, setTicker] = React.useState(initialTicker);
   const [inputValue, setInputValue] = React.useState(initialTicker);
+  const [timeframe, setTimeframe] = React.useState<Timeframe>("6M"); // Default to 6M to match previous subtitle intent
+
+  const timeframeConfig = {
+    "1D": { period: "1d", interval: "1m" },
+    "1W": { period: "5d", interval: "15m" },
+    "1M": { period: "1mo", interval: "60m" },
+    "6M": { period: "6mo", interval: "1d" },
+    "1Y": { period: "1y", interval: "1d" },
+    "5Y": { period: "5y", interval: "1wk" },
+    "ALL": { period: "max", interval: "1mo" },
+  };
+
+  const { period, interval } = timeframeConfig[timeframe];
 
   // Sync state when URL changes
   React.useEffect(() => {
@@ -194,8 +208,8 @@ function TickerAnalysisContent() {
 
   // Fetch data
   const { data: metrics, isLoading: metricsLoading, error: metricsError } = useStockMetrics(ticker);
-  const { data: history, isLoading: historyLoading } = useStockHistory(ticker);
-  const { data: indicators, isLoading: indicatorsLoading } = useStockIndicators(ticker);
+  const { data: history, isLoading: historyLoading } = useStockHistory(ticker, period, interval);
+  const { data: indicators, isLoading: indicatorsLoading } = useStockIndicators(ticker, period, interval);
   const { data: sentiment, isLoading: sentimentLoading } = useSentiment(ticker);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -222,7 +236,7 @@ function TickerAnalysisContent() {
       .slice()
       .sort((a, b) => new Date(a.Datetime).getTime() - new Date(b.Datetime).getTime())
       .map((point) => ({
-        time: point.Datetime.split("T")[0] as import("lightweight-charts").Time,
+        time: toChartTime(point.Datetime),
         value: point.Close,
       }));
   }, [history]);
@@ -258,7 +272,7 @@ function TickerAnalysisContent() {
       .slice(-30)
       .sort((a, b) => new Date(a.Datetime).getTime() - new Date(b.Datetime).getTime())
       .map((point) => ({
-        time: point.Datetime.split("T")[0] as import("lightweight-charts").Time,
+        time: toChartTime(point.Datetime),
         value: point.Volume,
       }));
   }, [history]);
@@ -419,7 +433,11 @@ function TickerAnalysisContent() {
           <ExpandableChartCard
             id="price-history"
             title={`${ticker} Price History`}
-            subtitle="Last 6 months of trading data"
+            subtitle={
+              timeframe === "ALL" 
+                ? "All available trading data" 
+                : `Trading data for the last ${timeframe}`
+            }
             metricValue={metrics?.last_close ? `$${metrics.last_close.toFixed(2)}` : undefined}
             metricChange={priceChangePct}
             changeLabel="Day"
@@ -457,10 +475,14 @@ function TickerAnalysisContent() {
               )
             }
             modalActions={
-              <div className="flex items-center gap-4">
-                <ChartTypeToggle value={chartType} onChange={setChartType} />
-                <div className="h-6 w-px bg-border/50" />
-                <LogScaleToggle checked={logScale} onChange={setLogScale} />
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                 <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+                 <div className="hidden sm:block h-6 w-px bg-border/50" />
+                 <div className="flex items-center gap-4">
+                  <ChartTypeToggle value={chartType} onChange={setChartType} />
+                  <div className="h-6 w-px bg-border/50" />
+                  <LogScaleToggle checked={logScale} onChange={setLogScale} />
+                </div>
               </div>
             }
           />
@@ -470,7 +492,11 @@ function TickerAnalysisContent() {
           <ExpandableChartCard
             id="volume-chart"
             title={`${ticker} Trading Volume`}
-            subtitle="Last 30 days"
+            subtitle={
+              timeframe === "ALL" 
+                ? "All available volume data" 
+                : `Volume data for the last ${timeframe}`
+            }
             isLoading={historyLoading}
             condensedChart={
               <SparklineChart
@@ -486,6 +512,11 @@ function TickerAnalysisContent() {
                 height={400}
                 fitContent
               />
+            }
+            modalActions={
+              <div className="flex items-center gap-4">
+                 <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+              </div>
             }
           />
         </TabsContent>
