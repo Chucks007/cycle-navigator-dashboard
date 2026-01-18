@@ -72,6 +72,8 @@ export function ExpandableChartCard({
 }: ExpandableChartCardProps) {
   // Internal state for uncontrolled mode
   const [internalOpen, setInternalOpen] = React.useState(false);
+  // Key to force re-render of charts when modal opens (triggers ResponsiveContainer resize)
+  const [chartKey, setChartKey] = React.useState(0);
   
   // Use controlled or uncontrolled mode
   const isOpen = isExpanded ?? internalOpen;
@@ -80,6 +82,8 @@ export function ExpandableChartCard({
   const handleCardClick = React.useCallback(() => {
     if (!isLoading) {
       setIsOpen(true);
+      // Trigger chart resize after modal animation completes
+      setTimeout(() => setChartKey((k) => k + 1), 100);
     }
   }, [isLoading, setIsOpen]);
 
@@ -199,8 +203,8 @@ export function ExpandableChartCard({
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-6 mt-4">
-            {/* Detailed chart */}
-            <div className="min-h-[300px] md:min-h-[400px]">
+            {/* Detailed chart - key forces re-render on open for ResponsiveContainer resize */}
+            <div className="min-h-[300px] md:min-h-[400px]" key={chartKey}>
               {isLoading ? (
                 <ChartSkeleton height={400} />
               ) : (
