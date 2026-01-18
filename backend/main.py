@@ -12,6 +12,7 @@ from .services.stock import add_technical_indicators, calculate_metrics, fetch_s
 from .services.sentiment import fetch_news_sentiment
 from .services import macro_service
 from .services import market_service
+from .services import risk as risk_service
 
 from .comparison_service import fetch_normalized_comparison, calculate_hard_vs_soft_ratio, HARD_ASSETS, SOFT_ASSETS
 
@@ -233,5 +234,52 @@ def get_barbell_comparison(period: str = Query("1y", description="Time period (e
     except Exception as e:
         logger.exception("Unexpected error in get_barbell_comparison")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Risk / Regression Bands Endpoints ---
+
+@app.get("/api/v1/risk/{ticker}", response_model=schemas.RiskResponse, responses=ERROR_RESPONSES)
+def get_risk_data(ticker: str):
+    """
+    Get full risk data including logarithmic regression bands for an asset.
+    
+    Returns risk score (0.0-1.0), fair value bands, and current price position.
+    Best used for charting with band overlays.
+    
+    Supported tickers: BTC, ETH (and their -USD variants)
+    """
+    try:
+        result = risk_service.get_risk_data(ticker)
+        return result
+    except ValueError as e:
+        logger.warning(f"Bad request risk {ticker}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+        logger.error(f"Upstream error risk {ticker}: {e}")
+        raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
+    except Exception as e:
+        logger.exception(f"Unexpected error in get_risk_data for {ticker}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+@app.get("/api/v1/risk/{ticker}/score", response_model=schemas.RiskScoreResponse, responses=ERROR_RESPONSES)
+def get_risk_score(ticker: str):
+    """
+    Get lightweight risk score data for an asset (faster, for dashboard cards).
+    
+    Returns just the risk score, current band, price, and fair value.
+    """
+    try:
+        result = risk_service.get_risk_score_only(ticker)
+        return result
+    except ValueError as e:
+        logger.warning(f"Bad request risk score {ticker}: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except (ConnectionError, Timeout, RequestException) as e:
+        logger.error(f"Upstream error risk score {ticker}: {e}")
+        raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
+    except Exception as e:
+        logger.exception(f"Unexpected error in get_risk_score for {ticker}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 

@@ -289,6 +289,7 @@ export function LightweightChart({
         const extraLine = chart.addSeries(LineSeries, {
           color: config.color,
           lineWidth: config.lineWidth ?? 1,
+          lineStyle: config.lineStyle ?? 0, // 0=Solid, 2=Dashed
           priceLineVisible: config.priceLineVisible ?? false,
           lastValueVisible: config.lastValueVisible ?? false,
           title: config.title,
@@ -397,6 +398,7 @@ export function LightweightChart({
       const extraLine = chartRef.current!.addSeries(LineSeries, {
         color: config.color,
         lineWidth: config.lineWidth ?? 1,
+        lineStyle: config.lineStyle ?? 0, // 0=Solid, 2=Dashed
         priceLineVisible: config.priceLineVisible ?? false,
         lastValueVisible: config.lastValueVisible ?? false,
         title: config.title,

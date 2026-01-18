@@ -87,3 +87,50 @@ export interface ComparisonPoint {
 export interface ComparisonResult {
   data: ComparisonPoint[];
 }
+
+// Risk / Regression Bands
+
+export interface RiskBandValue {
+  date: string;
+  value: number;
+}
+
+export interface RiskBand {
+  level: number;
+  name: string;
+  color: string;
+  std_multiplier: number;
+  values: RiskBandValue[];
+}
+
+export interface CurrentBand {
+  level: number;
+  name: string;
+  color: string;
+}
+
+export interface RegressionParams {
+  a: number;
+  b: number;
+  std: number;
+}
+
+export interface RiskResponse {
+  ticker: string;
+  current_risk: number;
+  current_band: CurrentBand;
+  current_price: number;
+  fair_value: number;
+  bands: RiskBand[];
+  regression_params: RegressionParams;
+  inception_date: string;
+  data_points: number;
+}
+
+export interface RiskScoreResponse {
+  ticker: string;
+  current_risk: number;
+  current_band: CurrentBand;
+  current_price: number;
+  fair_value: number;
+}
