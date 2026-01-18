@@ -39,6 +39,13 @@ interface ChartColors {
   borderDownColor?: string;
 }
 
+interface LegendData {
+  date: string;
+  value: string;
+  percentChange?: string;
+  color?: string;
+}
+
 interface LightweightChartProps {
   /** Data for line/area/histogram series */
   data?: ChartDataPoint[];
@@ -52,6 +59,13 @@ interface LightweightChartProps {
   autoScale?: boolean;
   /** Enable logarithmic scale (critical for "Melt-Up" thesis) */
   logScale?: boolean;
+  /** Price format options */
+  priceFormat?: {
+    type?: 'price' | 'volume' | 'percent' | 'custom';
+    precision?: number;
+    minMove?: number;
+    formatter?: (price: number) => string;
+  };
   /** Chart height in pixels */
   height?: number;
   /** Additional CSS class name */
@@ -94,7 +108,7 @@ function getChartOptions(theme: string | undefined): DeepPartial<ChartOptions> {
       horzLines: { color: isDark ? "#27272a" : "#f4f4f5" },
     },
     crosshair: {
-      mode: 1, // CrosshairMode.Normal
+      mode: 0, // CrosshairMode.Magnet
       vertLine: {
         color: isDark ? "#71717a" : "#a1a1aa",
         width: 1,
@@ -180,6 +194,7 @@ export function LightweightChart({
   extraSeries,
   priceLineVisible = false,
   lastValueVisible = true,
+  priceFormat,
   onCrosshairMove,
   crosshairTime,
   syncId,
@@ -191,8 +206,9 @@ export function LightweightChart({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const chartRef = React.useRef<IChartApi | null>(null);
   const mainSeriesRef = React.useRef<ISeriesApi<SeriesType> | null>(null);
-  const extraSeriesRefs = React.useRef<ISeriesApi<"Line">[]>([]);
+  const extraSeriesRefs = React.useRef<ISeriesApi<"Line" | "Area">[]>([]);
   const { resolvedTheme } = useTheme();
+  const [legendData, setLegendData] = React.useState<LegendData | null>(null);
 
   // Create chart and series
   React.useEffect(() => {
@@ -229,6 +245,7 @@ export function LightweightChart({
           priceLineVisible,
           lastValueVisible,
           title,
+          priceFormat,
         } as DeepPartial<LineStyleOptions & SeriesOptionsCommon>);
         break;
       case "Area":
@@ -240,6 +257,7 @@ export function LightweightChart({
           priceLineVisible,
           lastValueVisible,
           title,
+          priceFormat,
         } as DeepPartial<AreaStyleOptions & SeriesOptionsCommon>);
         break;
       case "Candlestick":
@@ -254,6 +272,7 @@ export function LightweightChart({
           priceLineVisible,
           lastValueVisible,
           title,
+          priceFormat,
         } as DeepPartial<CandlestickStyleOptions & SeriesOptionsCommon>);
         break;
       case "Histogram":
@@ -262,6 +281,7 @@ export function LightweightChart({
           priceLineVisible,
           lastValueVisible,
           title,
+          priceFormat,
         } as DeepPartial<HistogramStyleOptions & SeriesOptionsCommon>);
         break;
       default:
@@ -271,6 +291,7 @@ export function LightweightChart({
           priceLineVisible,
           lastValueVisible,
           title,
+          priceFormat,
         } as DeepPartial<LineStyleOptions & SeriesOptionsCommon>);
     }
 
@@ -286,31 +307,38 @@ export function LightweightChart({
     // Add extra series (overlays)
     if (extraSeries && extraSeries.length > 0) {
       extraSeriesRefs.current = extraSeries.map((config) => {
-        const extraLine = chart.addSeries(LineSeries, {
-          color: config.color,
-          lineWidth: config.lineWidth ?? 1,
-          lineStyle: config.lineStyle ?? 0, // 0=Solid, 2=Dashed
-          priceLineVisible: config.priceLineVisible ?? false,
-          lastValueVisible: config.lastValueVisible ?? false,
-          title: config.title,
-        } as DeepPartial<LineStyleOptions & SeriesOptionsCommon>);
+        let extraLine;
+        if (config.seriesType === "Area") {
+          extraLine = chart.addSeries(AreaSeries, {
+            lineColor: config.color,
+            topColor: config.topColor,
+            bottomColor: config.bottomColor,
+            lineWidth: config.lineWidth ?? 1,
+            lineStyle: config.lineStyle ?? 0,
+            priceLineVisible: config.priceLineVisible ?? false,
+            lastValueVisible: config.lastValueVisible ?? false,
+            title: config.title,
+            priceFormat,
+          } as DeepPartial<AreaStyleOptions & SeriesOptionsCommon>);
+        } else {
+          extraLine = chart.addSeries(LineSeries, {
+            color: config.color,
+            lineWidth: config.lineWidth ?? 1,
+            lineStyle: config.lineStyle ?? 0, // 0=Solid, 2=Dashed
+            priceLineVisible: config.priceLineVisible ?? false,
+            lastValueVisible: config.lastValueVisible ?? false,
+            title: config.title,
+            priceFormat,
+          } as DeepPartial<LineStyleOptions & SeriesOptionsCommon>);
+        }
         extraLine.setData(config.data);
-        return extraLine;
+        return extraLine as ISeriesApi<"Line" | "Area">;
       });
     }
 
     // Fit content
     if (fitContent) {
       chart.timeScale().fitContent();
-    }
-
-    // Subscribe to crosshair move for synchronization
-    if (onCrosshairMove) {
-      chart.subscribeCrosshairMove((param: MouseEventParams<Time>) => {
-        const time = param.time ?? null;
-        const logicalRange = chart.timeScale().getVisibleLogicalRange();
-        onCrosshairMove(time, logicalRange);
-      });
     }
 
     // Cleanup
@@ -418,6 +446,84 @@ export function LightweightChart({
     });
   }, [logScale, autoScale]);
 
+  // Handle crosshair (Sync + Legend)
+  React.useEffect(() => {
+    if (!chartRef.current) return;
+
+    const handleCrosshairMove = (param: MouseEventParams<Time>) => {
+      // Sync
+      if (onCrosshairMove) {
+        const time = param.time ?? null;
+        const logicalRange = chartRef.current?.timeScale().getVisibleLogicalRange() ?? null;
+        onCrosshairMove(time, logicalRange);
+      }
+
+      // Legend
+      if (param.time && mainSeriesRef.current && param.seriesData.size > 0) {
+        const seriesData = param.seriesData.get(mainSeriesRef.current);
+        let val: number | null = null;
+        
+        if (seriesData) {
+            if ('value' in seriesData) val = (seriesData as any).value;
+            else if ('close' in seriesData) val = (seriesData as any).close;
+        }
+
+        if (val !== null) {
+          const sourceData = data || ohlcData || [];
+          const idx = (sourceData as any[]).findIndex((d: any) => d.time === param.time);
+          
+          let pctStr = "";
+          let color = undefined;
+
+          if (idx > 0) {
+             const prev = (sourceData as any[])[idx - 1];
+             const prevVal = 'value' in prev ? prev.value : prev.close;
+             if (prevVal !== 0) {
+               const change = ((val - prevVal) / prevVal) * 100;
+               pctStr = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+               color = change >= 0 ? "#22c55e" : "#ef4444";
+             }
+          }
+
+          let valStr = val.toString();
+          if (priceFormat?.formatter) {
+             valStr = priceFormat.formatter(val);
+          } else if (priceFormat?.precision !== undefined) {
+             valStr = val.toFixed(priceFormat.precision);
+          } else {
+             valStr = val.toLocaleString(undefined, { maximumFractionDigits: 2 });
+          }
+          
+          let dateStr = "";
+          if (typeof param.time === 'string') {
+            dateStr = param.time;
+          } else if (typeof param.time === 'number') {
+             dateStr = new Date(param.time * 1000).toISOString().split('T')[0];
+          } else {
+             const bd = param.time as { day: number; month: number; year: number };
+             dateStr = `${bd.year}-${String(bd.month).padStart(2, '0')}-${String(bd.day).padStart(2, '0')}`;
+          }
+
+          setLegendData({
+            date: dateStr,
+            value: valStr,
+            percentChange: pctStr,
+            color
+          });
+          return;
+        }
+      }
+      setLegendData(null);
+    };
+
+    chartRef.current.subscribeCrosshairMove(handleCrosshairMove);
+    return () => {
+        try {
+           chartRef.current?.unsubscribeCrosshairMove(handleCrosshairMove);
+        } catch(e) {}
+    };
+  }, [data, ohlcData, onCrosshairMove, priceFormat]);
+
   // Handle resize
   React.useEffect(() => {
     if (!containerRef.current || !chartRef.current) return;
@@ -456,11 +562,28 @@ export function LightweightChart({
   }, [crosshairTime]);
 
   return (
-    <div
-      ref={containerRef}
-      className={cn("w-full", className)}
-      style={{ height }}
-    />
+    <div className="relative w-full">
+      {legendData && (
+        <div className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm border rounded-md p-2 shadow-sm text-xs pointer-events-none transition-opacity duration-150">
+          <div className="flex flex-col gap-0.5">
+            <div className="text-muted-foreground font-mono">{legendData.date}</div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold font-mono">{legendData.value}</span>
+              {legendData.percentChange && (
+                <span style={{ color: legendData.color }} className="font-mono">
+                  {legendData.percentChange}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        className={cn("w-full", className)}
+        style={{ height }}
+      />
+    </div>
   );
 }
 

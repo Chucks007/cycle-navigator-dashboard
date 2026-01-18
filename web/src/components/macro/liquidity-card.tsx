@@ -103,6 +103,15 @@ export function LiquidityCard({ days }: { days?: number }) {
     return series;
   }, [detailedData, showSMA, showEMA]);
 
+  // Formatter for axis and legend
+  const priceFormat = React.useMemo(() => ({
+    type: 'custom' as const,
+    formatter: (price: number) => {
+        if (price >= 1000) return `$${(price / 1000).toFixed(2)}T`;
+        return `$${price.toFixed(0)}B`;
+    }
+  }), []);
+
   // Stats for the sidebar
   const stats = React.useMemo(() => {
     const values = detailedData.map(d => d.value);
@@ -153,6 +162,7 @@ export function LiquidityCard({ days }: { days?: number }) {
           logScale={logScale}
           height={400}
           fitContent
+          priceFormat={priceFormat}
         />
       }
       modalActions={

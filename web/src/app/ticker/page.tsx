@@ -304,6 +304,14 @@ function TickerAnalysisContent() {
     });
   }, [riskData, showRiskBands]);
 
+  // Price formatting
+  const priceFormat = React.useMemo(() => {
+    if (isCrypto) {
+      return { type: 'price' as const, precision: 1, minMove: 0.1 };
+    }
+    return { type: 'price' as const, precision: 2, minMove: 0.01 };
+  }, [isCrypto]);
+
   if (metricsError) {
     return (
       <div className="space-y-8">
@@ -453,11 +461,19 @@ function TickerAnalysisContent() {
       {/* Charts Section */}
       <section id="price">
         <Tabs defaultValue="price" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="price">Price History</TabsTrigger>
-            <TabsTrigger value="volume">Volume</TabsTrigger>
-            {isCrypto && <TabsTrigger value="risk">Risk Model</TabsTrigger>}
-          </TabsList>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <TabsList>
+              <TabsTrigger value="price">Price History</TabsTrigger>
+              <TabsTrigger value="volume">Volume</TabsTrigger>
+              {isCrypto && <TabsTrigger value="risk">Risk Model</TabsTrigger>}
+            </TabsList>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+              <ChartTypeToggle value={chartType} onChange={setChartType} />
+              <LogScaleToggle checked={useLogScale} onChange={setUseLogScale} />
+            </div>
+          </div>
 
         <TabsContent value="price">
           <ExpandableChartCard
@@ -489,6 +505,7 @@ function TickerAnalysisContent() {
                   height={400}
                   extraSeries={riskBandSeries}
                   fitContent
+                  priceFormat={priceFormat}
                 />
               ) : (
                 <LightweightChart
@@ -503,6 +520,7 @@ function TickerAnalysisContent() {
                   height={400}
                   extraSeries={riskBandSeries}
                   fitContent
+                  priceFormat={priceFormat}
                 />
               )
             }

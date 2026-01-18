@@ -40,6 +40,12 @@ export interface ExtraSeriesConfig {
   title?: string;
   /** Line style: 0 = Solid, 1 = Dotted, 2 = Dashed, 3 = LargeDashed, 4 = SparseDotted */
   lineStyle?: number;
+  /** Series type for the overlay */
+  seriesType?: "Line" | "Area";
+  /** Optional topColor for Area series */
+  topColor?: string;
+  /** Optional bottomColor for Area series */
+  bottomColor?: string;
 }
 
 /**
