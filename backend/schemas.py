@@ -87,3 +87,47 @@ class ComparisonPoint(BaseModel):
 
 class ComparisonResult(ComparisonPoint):
     pass
+
+
+# --- Risk / Regression Bands ---
+
+class RiskBandValue(BaseModel):
+    date: str
+    value: float
+
+class RiskBand(BaseModel):
+    level: int
+    name: str
+    color: str
+    std_multiplier: float
+    values: List[RiskBandValue]
+
+class CurrentBand(BaseModel):
+    level: int
+    name: str
+    color: str
+
+class RegressionParams(BaseModel):
+    a: float
+    b: float
+    std: float
+
+class RiskResponse(BaseModel):
+    """Full risk data response with bands for charting."""
+    ticker: str
+    current_risk: float
+    current_band: CurrentBand
+    current_price: float
+    fair_value: float
+    bands: List[RiskBand]
+    regression_params: RegressionParams
+    inception_date: str
+    data_points: int
+
+class RiskScoreResponse(BaseModel):
+    """Lightweight risk score response for dashboard cards."""
+    ticker: str
+    current_risk: float
+    current_band: CurrentBand
+    current_price: float
+    fair_value: float

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { TrendingUp } from "lucide-react";
 
 export type Timeframe = "1D" | "1W" | "1M" | "6M" | "1Y" | "5Y" | "ALL";
 
@@ -73,6 +74,30 @@ export function LogScaleToggle({ checked, onChange, className }: LogScaleToggleP
       <Label htmlFor={id} className="text-sm cursor-pointer flex items-center gap-1.5">
         <span className="font-mono text-xs bg-muted/50 px-1.5 py-0.5 rounded">LOG</span>
         Scale
+      </Label>
+    </div>
+  );
+}
+
+interface RegressionBandsToggleProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  className?: string;
+  disabled?: boolean;
+}
+
+/**
+ * Toggle for showing logarithmic regression "Fair Value" bands on the chart.
+ * Only applicable for assets with regression data (BTC, ETH).
+ */
+export function RegressionBandsToggle({ checked, onChange, className, disabled }: RegressionBandsToggleProps) {
+  const id = React.useId();
+  return (
+    <div className={cn("flex items-center space-x-2", className, disabled && "opacity-50")}>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} disabled={disabled} />
+      <Label htmlFor={id} className={cn("text-sm cursor-pointer flex items-center gap-1.5", disabled && "cursor-not-allowed")}>
+        <TrendingUp className="w-3.5 h-3.5 text-violet-500" />
+        <span>Regression Bands</span>
       </Label>
     </div>
   );

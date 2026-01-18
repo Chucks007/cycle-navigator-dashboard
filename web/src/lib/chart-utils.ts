@@ -38,6 +38,14 @@ export interface ExtraSeriesConfig {
   priceLineVisible?: boolean;
   lastValueVisible?: boolean;
   title?: string;
+  /** Line style: 0 = Solid, 1 = Dotted, 2 = Dashed, 3 = LargeDashed, 4 = SparseDotted */
+  lineStyle?: number;
+  /** Series type for the overlay */
+  seriesType?: "Line" | "Area";
+  /** Optional topColor for Area series */
+  topColor?: string;
+  /** Optional bottomColor for Area series */
+  bottomColor?: string;
 }
 
 /**
@@ -238,4 +246,107 @@ export function downsampleData<T>(data: T[], targetPoints: number = 50): T[] {
   if (data.length <= targetPoints) return data;
   const step = Math.ceil(data.length / targetPoints);
   return data.filter((_, i) => i % step === 0);
+}
+
+/**
+ * Transform risk band data from API into ExtraSeriesConfig format for chart overlay.
+ * 
+ * @param bands - Array of RiskBand objects from API
+ * @param options - Configuration options for the series
+ * @returns Array of ExtraSeriesConfig for use with LightweightChart
+ */
+export function transformRiskBandsToSeries(
+  bands: Array<{
+    level: number;
+    name: string;
+    color: string;
+    std_multiplier: number;
+    values: Array<{ date: string; value: number }>;
+  }>,
+  options?: {
+    lineWidth?: number;
+    showLabels?: boolean;
+    opacity?: number;
+  }
+): ExtraSeriesConfig[] {
+  const { lineWidth = 1, showLabels = true, opacity } = options ?? {};
+
+  return bands.map((band) => {
+    // Apply opacity if provided, otherwise keep original color
+    // For non-center bands, we might want to reduce opacity slightly by default if not specified
+    let finalColor = band.color;
+    if (opacity !== undefined) {
+      if (band.color.startsWith("#")) {
+        const r = parseInt(band.color.slice(1, 3), 16);
+        const g = parseInt(band.color.slice(3, 5), 16);
+        const b = parseInt(band.color.slice(5, 7), 16);
+        finalColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+      }
+    }
+
+    return {
+      data: band.values
+        .filter((v) => v.value != null && isFinite(v.value))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .map((v) => ({
+          time: toChartTime(v.date),
+          value: v.value,
+        })),
+      color: finalColor,
+      lineWidth,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      title: showLabels ? band.name : undefined,
+      // Custom properties for band styling
+      // Solid for center (Fair Value), dashed for others
+      lineStyle: band.std_multiplier === 0 ? 0 : 2, 
+    };
+  });
+}
+
+/**
+ * Get the band name for a given risk score.
+ * Useful for tooltips and hover states.
+ */
+export function getRiskBandName(riskScore: number): string {
+  // Map risk score (0-1) to band names
+  const bands = [
+    { max: 0.083, name: "Fire Sale" },
+    { max: 0.166, name: "Deep Value" },
+    { max: 0.333, name: "Undervalued" },
+    { max: 0.416, name: "Below Fair" },
+    { max: 0.583, name: "Fair Value" },
+    { max: 0.666, name: "Above Fair" },
+    { max: 0.833, name: "Overvalued" },
+    { max: 0.916, name: "Bubble Zone" },
+    { max: 1.0, name: "Maximum Bubble" },
+  ];
+
+  for (const band of bands) {
+    if (riskScore <= band.max) {
+      return band.name;
+    }
+  }
+  return "Maximum Bubble";
+}
+
+/**
+ * Get the color for a given risk score.
+ * Returns a gradient from violet (low risk) to red (high risk).
+ */
+export function getRiskBandColor(riskScore: number): string {
+  const colors = [
+    "#7c3aed", // Violet - Fire Sale
+    "#8b5cf6", // Purple - Deep Value
+    "#3b82f6", // Blue - Undervalued
+    "#06b6d4", // Cyan - Below Fair
+    "#22c55e", // Green - Fair Value
+    "#eab308", // Yellow - Above Fair
+    "#f97316", // Orange - Overvalued
+    "#ef4444", // Red - Bubble Zone
+    "#dc2626", // Dark Red - Maximum Bubble
+  ];
+
+  const index = Math.min(Math.floor(riskScore * colors.length), colors.length - 1);
+  return colors[index];
 }

@@ -6,6 +6,7 @@ import { ChartGridProvider } from "@/components/charts/expandable-chart-card";
 import { LiquidityCard } from "@/components/macro/liquidity-card";
 import { DebtStatusCard } from "@/components/macro/debt-status-card";
 import { RealRatesCard } from "@/components/macro/real-rates-card";
+import { RiskChart } from "@/components/charts/risk-chart";
 
 export function MacroDashboard() {
   const [days, setDays] = React.useState<number | undefined>(undefined);
@@ -55,6 +56,11 @@ export function MacroDashboard() {
           {/* Interest Rates Section */}
           <section id="rates">
             <RealRatesCard days={days} />
+          </section>
+
+          {/* Global Risk Section - Bitcoin Fair Value */}
+          <section id="risk">
+            <RiskChart ticker="BTC-USD" title="Logarithmic Regression Corridors" />
           </section>
         </div>
       </div>

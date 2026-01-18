@@ -5,7 +5,9 @@ import {
   SentimentResponse,
   LiquidityPoint,
   DebtPoint,
-  RealRatePoint
+  RealRatePoint,
+  RiskResponse,
+  RiskScoreResponse,
 } from '@/types/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -101,6 +103,15 @@ class ApiClient {
     return this.request<RealRatePoint[]>('/api/macro/real-rates');
   }
 
+  // Risk / Regression Bands
+  public async getRiskData(ticker: string): Promise<RiskResponse> {
+    return this.request<RiskResponse>(`/api/v1/risk/${ticker}`);
+  }
+
+  public async getRiskScore(ticker: string): Promise<RiskScoreResponse> {
+    return this.request<RiskScoreResponse>(`/api/v1/risk/${ticker}/score`);
+  }
+
   // Health
   public async checkHealth(): Promise<{ status: string }> {
     return this.request<{ status: string }>('/health');
@@ -117,4 +128,6 @@ export const getSentiment = (ticker: string) => apiClient.getSentiment(ticker);
 export const getLiquidity = (days?: number) => apiClient.getLiquidity(days);
 export const getDebtStatus = (days?: number) => apiClient.getDebtStatus(days);
 export const getRealRates = () => apiClient.getRealRates();
+export const getRiskData = (ticker: string) => apiClient.getRiskData(ticker);
+export const getRiskScore = (ticker: string) => apiClient.getRiskScore(ticker);
 export const checkHealth = () => apiClient.checkHealth();

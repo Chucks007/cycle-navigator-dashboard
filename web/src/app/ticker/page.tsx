@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Suspense } from "react";
+import { cn } from "@/lib/utils";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Search,
@@ -19,23 +20,30 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogScaleToggle, TimeframeSelector, type Timeframe } from "@/components/charts/chart-controls";
+import {
+  LogScaleToggle,
+  TimeframeSelector,
+  type Timeframe,
+  RegressionBandsToggle,
+} from "@/components/charts/chart-controls";
 import {
   useStockMetrics,
   useStockHistory,
   useStockIndicators,
   useSentiment,
+  useRiskData,
 } from "@/hooks/use-data";
-import { cn } from "@/lib/utils";
 import {
   transformToLineDataWithKey,
   transformToOHLCData,
   transformToHistogramData,
+  transformRiskBandsToSeries,
   toChartTime,
   type ChartDataPoint,
   type OHLCDataPoint,
   type HistogramDataPoint,
 } from "@/lib/chart-utils";
+import { RiskScoreCard, RiskChart } from "@/components/charts/risk-chart";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -180,10 +188,13 @@ function TickerPageSkeleton() {
 function TickerAnalysisContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTicker = searchParams.get("symbol") || "AAPL";
+  const initialTicker = searchParams.get("symbol") || "BTC-USD";
   const [ticker, setTicker] = React.useState(initialTicker);
   const [inputValue, setInputValue] = React.useState(initialTicker);
-  const [timeframe, setTimeframe] = React.useState<Timeframe>("6M"); // Default to 6M to match previous subtitle intent
+  const [timeframe, setTimeframe] = React.useState<Timeframe>("ALL"); 
+
+  const [useLogScale, setUseLogScale] = React.useState(true);
+  const [chartType, setChartType] = React.useState<"line" | "candlestick">("line");
 
   const timeframeConfig = {
     "1D": { period: "1d", interval: "1m" },
@@ -199,7 +210,8 @@ function TickerAnalysisContent() {
 
   // Sync state when URL changes
   React.useEffect(() => {
-    const currentSymbol = searchParams.get("symbol") || "AAPL";
+    // Default to BTC-USD if no symbol provided
+    const currentSymbol = searchParams.get("symbol") || "BTC-USD";
     if (currentSymbol !== ticker) {
       setTicker(currentSymbol);
       setInputValue(currentSymbol);
@@ -211,6 +223,11 @@ function TickerAnalysisContent() {
   const { data: history, isLoading: historyLoading } = useStockHistory(ticker, period, interval);
   const { data: indicators, isLoading: indicatorsLoading } = useStockIndicators(ticker, period, interval);
   const { data: sentiment, isLoading: sentimentLoading } = useSentiment(ticker);
+
+  // Risk Data (Only relevant for BTC/ETH, but safe to call for others - handles errors gracefully)
+  const isCrypto = ticker === "BTC" || ticker === "ETH" || ticker === "BTC-USD" || ticker === "ETH-USD";
+  const [showRiskBands, setShowRiskBands] = React.useState(false);
+  const { data: riskData } = useRiskData(ticker, isCrypto); // Always fetch if crypto, control visibility with state
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,8 +243,8 @@ function TickerAnalysisContent() {
   const isPositive = priceChange >= 0;
 
   // Chart view state
-  const [chartType, setChartType] = React.useState<"line" | "candlestick">("line");
-  const [logScale, setLogScale] = React.useState(false);
+  // const [chartType, setChartType] = React.useState<"line" | "candlestick">("line"); // Removed: Duplicate
+  // const [logScale, setLogScale] = React.useState(false); // Removed: Duplicate / renamed to useLogScale
 
   // Transform history data for LightweightChart
   const lineChartData = React.useMemo((): ChartDataPoint[] => {
@@ -276,6 +293,24 @@ function TickerAnalysisContent() {
         value: point.Volume,
       }));
   }, [history]);
+
+  // Risk Bands Series
+  const riskBandSeries = React.useMemo(() => {
+    if (!riskData?.bands || !showRiskBands) return [];
+    return transformRiskBandsToSeries(riskData.bands, {
+      lineWidth: 1,
+      showLabels: false,
+      opacity: 0.15, // Low opacity so bands don't obscure price action
+    });
+  }, [riskData, showRiskBands]);
+
+  // Price formatting
+  const priceFormat = React.useMemo(() => {
+    if (isCrypto) {
+      return { type: 'price' as const, precision: 1, minMove: 0.1 };
+    }
+    return { type: 'price' as const, precision: 2, minMove: 0.01 };
+  }, [isCrypto]);
 
   if (metricsError) {
     return (
@@ -417,6 +452,8 @@ function TickerAnalysisContent() {
               icon={<Gauge className="h-4 w-4" />}
               variant={metrics?.sharpe_ratio && metrics.sharpe_ratio > 1 ? "success" : "default"}
             />
+            {/* Risk Score Card (if available) */}
+            {isCrypto && <RiskScoreCard ticker={ticker} />}
           </>
         )}
       </div>
@@ -424,10 +461,19 @@ function TickerAnalysisContent() {
       {/* Charts Section */}
       <section id="price">
         <Tabs defaultValue="price" className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="price">Price History</TabsTrigger>
-            <TabsTrigger value="volume">Volume</TabsTrigger>
-          </TabsList>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <TabsList>
+              <TabsTrigger value="price">Price History</TabsTrigger>
+              <TabsTrigger value="volume">Volume</TabsTrigger>
+              {isCrypto && <TabsTrigger value="risk">Risk Model</TabsTrigger>}
+            </TabsList>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+              <ChartTypeToggle value={chartType} onChange={setChartType} />
+              <LogScaleToggle checked={useLogScale} onChange={setUseLogScale} />
+            </div>
+          </div>
 
         <TabsContent value="price">
           <ExpandableChartCard
@@ -455,9 +501,11 @@ function TickerAnalysisContent() {
                 <LightweightChart
                   ohlcData={ohlcChartData}
                   seriesType="Candlestick"
-                  logScale={logScale}
+                  logScale={useLogScale}
                   height={400}
+                  extraSeries={riskBandSeries}
                   fitContent
+                  priceFormat={priceFormat}
                 />
               ) : (
                 <LightweightChart
@@ -468,9 +516,11 @@ function TickerAnalysisContent() {
                     topColor: isPositive ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)",
                     bottomColor: "transparent",
                   }}
-                  logScale={logScale}
+                  logScale={useLogScale}
                   height={400}
+                  extraSeries={riskBandSeries}
                   fitContent
+                  priceFormat={priceFormat}
                 />
               )
             }
@@ -481,7 +531,17 @@ function TickerAnalysisContent() {
                  <div className="flex items-center gap-4">
                   <ChartTypeToggle value={chartType} onChange={setChartType} />
                   <div className="h-6 w-px bg-border/50" />
-                  <LogScaleToggle checked={logScale} onChange={setLogScale} />
+                  <LogScaleToggle checked={useLogScale} onChange={setUseLogScale} />
+                  {isCrypto && (
+                    <>
+                      <div className="h-6 w-px bg-border/50" />
+                      <RegressionBandsToggle 
+                        checked={showRiskBands} 
+                        onChange={setShowRiskBands}
+                        disabled={!riskData}
+                      />
+                    </>
+                  )}
                 </div>
               </div>
             }
@@ -520,6 +580,12 @@ function TickerAnalysisContent() {
             }
           />
         </TabsContent>
+        
+        {isCrypto && (
+          <TabsContent value="risk">
+            <RiskChart ticker={ticker} />
+          </TabsContent>
+        )}
       </Tabs>
       </section>
 

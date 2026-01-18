@@ -18,7 +18,7 @@ interface ExpandableChartCardProps {
   /** Card title */
   title: string;
   /** Optional subtitle */
-  subtitle?: string;
+  subtitle?: React.ReactNode;
   /** Primary metric value displayed prominently */
   metricValue?: string;
   /** Metric change indicator (positive/negative) */
