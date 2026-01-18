@@ -13,13 +13,21 @@ import {
   YAxis,
   Legend,
 } from "recharts";
-import { TrendingUp, TrendingDown, Scale, AlertTriangle } from "lucide-react";
+import { TrendingUp, TrendingDown, Scale, AlertTriangle, Maximize2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ChartSkeleton } from "@/components/charts/synced-chart";
 import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
+import { ExpandableMetricCard } from "@/components/charts/expandable-metric-card";
 import { MetricCard, MetricCardSkeleton } from "@/components/ui/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 // Asset definitions
@@ -96,6 +104,11 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function formatDateFull(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 // Performance Summary Card
 interface AssetPerformance {
   ticker: string;
@@ -106,50 +119,582 @@ interface AssetPerformance {
   color: string;
 }
 
-function PerformanceCard({ asset }: { asset: AssetPerformance }) {
+// Sparkline component for mini charts in cards
+function Sparkline({
+  data,
+  dataKey,
+  color,
+  height = 60,
+}: {
+  data: any[];
+  dataKey: string;
+  color: string;
+  height?: number;
+}) {
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id={`gradient-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+            <stop offset="95%" stopColor={color} stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey={dataKey}
+          stroke={color}
+          strokeWidth={1.5}
+          fill={`url(#gradient-${dataKey})`}
+          dot={false}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+// Expandable Performance Card with integrated sparkline
+interface ExpandablePerformanceCardProps {
+  asset: AssetPerformance;
+  data: any[];
+  isLoading?: boolean;
+}
+
+function ExpandablePerformanceCard({
+  asset,
+  data,
+  isLoading = false,
+}: ExpandablePerformanceCardProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [chartKey, setChartKey] = React.useState(0);
+
   const isPositive = asset.pctGain >= 0;
   
+  // Get sparkline data (last 30 points)
+  const sparklineData = React.useMemo(() => {
+    if (!data || data.length === 0) return [];
+    return data.slice(-30).map((point) => ({
+      date: point.date,
+      value: point[asset.ticker] ?? 0,
+    }));
+  }, [data, asset.ticker]);
+
+  const handleOpen = React.useCallback(() => {
+    if (!isLoading) {
+      setIsOpen(true);
+      // Trigger chart resize after modal animation
+      setTimeout(() => setChartKey((k) => k + 1), 100);
+    }
+  }, [isLoading]);
+
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-lg border p-4 backdrop-blur-xl transition-all duration-300 hover:border-primary/50",
-        "border-border/50 bg-card/50"
-      )}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
-      <div className="relative z-10">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <div
-              className="h-3 w-3 rounded-full"
-              style={{ backgroundColor: asset.color }}
-            />
-            <span className="font-mono font-medium">{asset.ticker}</span>
-          </div>
-          <Badge variant={asset.assetType === "hard" ? "default" : "secondary"}>
-            {asset.assetType === "hard" ? "🪨 Hard" : "📄 Paper"}
-          </Badge>
+    <>
+      {/* Clickable Card */}
+      <div
+        className={cn(
+          "group relative overflow-hidden rounded-lg border p-4 backdrop-blur-xl",
+          "border-border/50 bg-card/50",
+          "transition-all duration-200 cursor-pointer",
+          "hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+          isLoading && "pointer-events-none opacity-70"
+        )}
+        onClick={handleOpen}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleOpen();
+          }
+        }}
+        aria-label={`Expand ${asset.name} details`}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
+        
+        {/* Expand icon indicator */}
+        <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+          <Maximize2 className="h-4 w-4 text-muted-foreground" />
         </div>
-        <p className="text-sm text-muted-foreground">{asset.name}</p>
-        <div className="mt-3 flex items-center justify-between">
-          <span className="text-2xl font-bold">{asset.currentValue.toFixed(1)}</span>
-          <div
-            className={cn(
-              "flex items-center gap-1 text-sm font-medium",
-              isPositive ? "text-emerald-500" : "text-red-500"
-            )}
-          >
-            {isPositive ? (
-              <TrendingUp className="h-4 w-4" />
+
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <div
+                className="h-3 w-3 rounded-full"
+                style={{ backgroundColor: asset.color }}
+              />
+              <span className="font-mono font-medium">{asset.ticker}</span>
+            </div>
+            <Badge variant={asset.assetType === "hard" ? "default" : "secondary"}>
+              {asset.assetType === "hard" ? "🪨 Hard" : "📄 Paper"}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">{asset.name}</p>
+          
+          {/* Sparkline */}
+          <div className="mt-2 h-[50px]">
+            {isLoading ? (
+              <div className="h-full animate-pulse rounded bg-muted/20" />
             ) : (
-              <TrendingDown className="h-4 w-4" />
+              <Sparkline
+                data={sparklineData}
+                dataKey="value"
+                color={asset.color}
+                height={50}
+              />
             )}
-            {isPositive ? "+" : ""}
-            {asset.pctGain.toFixed(2)}%
+          </div>
+          
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-2xl font-bold">{asset.currentValue.toFixed(1)}</span>
+            <div
+              className={cn(
+                "flex items-center gap-1 text-sm font-medium",
+                isPositive ? "text-emerald-500" : "text-red-500"
+              )}
+            >
+              {isPositive ? (
+                <TrendingUp className="h-4 w-4" />
+              ) : (
+                <TrendingDown className="h-4 w-4" />
+              )}
+              {isPositive ? "+" : ""}
+              {asset.pctGain.toFixed(2)}%
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Expanded Modal */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent
+          className="max-w-[90vw] w-full max-h-[90vh] overflow-auto sm:max-w-[85vw] md:max-w-4xl lg:max-w-5xl"
+          showCloseButton={true}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-3">
+              <div
+                className="h-4 w-4 rounded-full"
+                style={{ backgroundColor: asset.color }}
+              />
+              {asset.name} ({asset.ticker}) Detail
+            </DialogTitle>
+            <DialogDescription>
+              Historical price action and trend analysis (normalized to base 100)
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Metric summary */}
+          <div className="flex items-baseline gap-3 py-2">
+            <span className="text-3xl font-bold">
+              {asset.currentValue.toFixed(1)}
+            </span>
+            <span
+              className={cn(
+                "text-sm font-medium",
+                isPositive ? "text-green-500" : "text-red-500"
+              )}
+            >
+              {isPositive ? "+" : ""}{asset.pctGain.toFixed(2)}%
+            </span>
+            <Badge variant={asset.assetType === "hard" ? "default" : "secondary"}>
+              {asset.assetType === "hard" ? "🪨 Hard Asset" : "📄 Paper Asset"}
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-6 mt-4">
+            {/* Detailed chart */}
+            <div className="min-h-[300px] md:min-h-[400px]" key={chartKey}>
+              <ResponsiveContainer width="100%" height={400}>
+                <AreaChart
+                  data={data}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id={`detail-gradient-${asset.ticker}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={asset.color} stopOpacity={0.4} />
+                      <stop offset="95%" stopColor={asset.color} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="currentColor"
+                    className="text-border/30"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={formatDate}
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    className="text-muted-foreground"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    className="text-muted-foreground"
+                    width={60}
+                    domain={["dataMin - 5", "dataMax + 5"]}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--popover))",
+                      borderColor: "hsl(var(--border))",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                    }}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    labelFormatter={formatDateFull}
+                    formatter={(value) => [
+                      typeof value === "number" ? value.toFixed(2) : "",
+                      asset.name,
+                    ]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey={asset.ticker}
+                    name={asset.name}
+                    stroke={asset.color}
+                    strokeWidth={2}
+                    fill={`url(#detail-gradient-${asset.ticker})`}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Sidebar Stats */}
+            <div className="space-y-4 lg:border-l lg:pl-6 border-border/50">
+              <h4 className="font-semibold text-sm text-muted-foreground">STATISTICS</h4>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Current Index</span>
+                  <span className="font-mono font-medium">{asset.currentValue.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Period Change</span>
+                  <span className={cn(
+                    "font-mono font-medium",
+                    isPositive ? "text-emerald-500" : "text-red-500"
+                  )}>
+                    {isPositive ? "+" : ""}{asset.pctGain.toFixed(2)}%
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Asset Type</span>
+                  <span className="font-medium">
+                    {asset.assetType === "hard" ? "Hard Asset" : "Paper Asset"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Data Points</span>
+                  <span className="font-mono">{data?.length ?? 0}</span>
+                </div>
+              </div>
+              
+              <hr className="border-border/50" />
+              
+              <div className="text-xs text-muted-foreground">
+                <p>
+                  {asset.assetType === "hard" 
+                    ? "Hard assets like gold and Bitcoin serve as inflation hedges and store of value during monetary uncertainty."
+                    : "Paper assets like stocks and bonds provide growth and income but are subject to inflation risk."
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// Expandable bucket card for Defensive/Offensive groupings
+interface BucketCardProps {
+  title: string;
+  description: string;
+  assets: AssetPerformance[];
+  data: any[];
+  bucketType: "defensive" | "offensive";
+  isLoading?: boolean;
+}
+
+function ExpandableBucketCard({
+  title,
+  description,
+  assets,
+  data,
+  bucketType,
+  isLoading = false,
+}: BucketCardProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [chartKey, setChartKey] = React.useState(0);
+
+  // Calculate bucket average performance
+  const avgPerformance = React.useMemo(() => {
+    if (assets.length === 0) return 0;
+    return assets.reduce((sum, a) => sum + a.pctGain, 0) / assets.length;
+  }, [assets]);
+
+  // Get sparkline data for the bucket (average of all assets)
+  const sparklineData = React.useMemo(() => {
+    if (!data || data.length === 0) return [];
+    const tickers = assets.map((a) => a.ticker);
+    return data.slice(-30).map((point) => {
+      const values = tickers.map((t) => point[t] ?? 0);
+      const avg = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+      return { date: point.date, value: avg };
+    });
+  }, [data, assets]);
+
+  const handleOpen = React.useCallback(() => {
+    if (!isLoading) {
+      setIsOpen(true);
+      setTimeout(() => setChartKey((k) => k + 1), 100);
+    }
+  }, [isLoading]);
+
+  const isPositive = avgPerformance >= 0;
+  const bucketColor = bucketType === "defensive" ? "#FFD700" : "#00D4FF";
+
+  return (
+    <>
+      {/* Clickable Card */}
+      <div
+        className={cn(
+          "group relative overflow-hidden rounded-xl border p-5 backdrop-blur-xl",
+          "border-border/50 bg-card/50",
+          "transition-all duration-200 cursor-pointer",
+          "hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+          isLoading && "pointer-events-none opacity-70"
+        )}
+        onClick={handleOpen}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleOpen();
+          }
+        }}
+        aria-label={`Expand ${title} details`}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
+        
+        {/* Expand icon indicator */}
+        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+          <Maximize2 className="h-4 w-4 text-muted-foreground" />
+        </div>
+
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold">{title}</h3>
+            <Badge variant={bucketType === "defensive" ? "default" : "secondary"}>
+              {bucketType === "defensive" ? "🛡️ Defensive" : "⚔️ Offensive"}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">{description}</p>
+          
+          {/* Mini asset chips */}
+          <div className="flex flex-wrap gap-2 mb-3">
+            {assets.map((asset) => (
+              <div
+                key={asset.ticker}
+                className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-muted/30 text-xs"
+              >
+                <div
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: asset.color }}
+                />
+                <span className="font-mono">{asset.ticker}</span>
+              </div>
+            ))}
+          </div>
+          
+          {/* Sparkline */}
+          <div className="h-[60px]">
+            {isLoading ? (
+              <div className="h-full animate-pulse rounded bg-muted/20" />
+            ) : (
+              <Sparkline
+                data={sparklineData}
+                dataKey="value"
+                color={bucketColor}
+                height={60}
+              />
+            )}
+          </div>
+          
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Avg. Performance</span>
+            <div
+              className={cn(
+                "flex items-center gap-1 text-lg font-bold",
+                isPositive ? "text-emerald-500" : "text-red-500"
+              )}
+            >
+              {isPositive ? (
+                <TrendingUp className="h-5 w-5" />
+              ) : (
+                <TrendingDown className="h-5 w-5" />
+              )}
+              {isPositive ? "+" : ""}
+              {avgPerformance.toFixed(2)}%
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded Modal */}
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogContent
+          className="max-w-[90vw] w-full max-h-[90vh] overflow-auto sm:max-w-[85vw] md:max-w-5xl lg:max-w-6xl"
+          showCloseButton={true}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-xl">{title} Analysis</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
+          </DialogHeader>
+
+          {/* Summary metrics */}
+          <div className="flex flex-wrap items-center gap-4 py-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold">
+                {isPositive ? "+" : ""}{avgPerformance.toFixed(2)}%
+              </span>
+              <span className="text-sm text-muted-foreground">Avg. Return</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {assets.map((asset) => (
+                <Badge
+                  key={asset.ticker}
+                  variant="outline"
+                  className="font-mono"
+                  style={{ borderColor: asset.color, color: asset.color }}
+                >
+                  {asset.ticker}: {asset.pctGain >= 0 ? "+" : ""}{asset.pctGain.toFixed(1)}%
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 mt-4">
+            {/* Detailed chart showing all assets in bucket */}
+            <div className="min-h-[300px] md:min-h-[400px]" key={chartKey}>
+              <ResponsiveContainer width="100%" height={400}>
+                <LineChart
+                  data={data}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="currentColor"
+                    className="text-border/30"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={formatDate}
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    className="text-muted-foreground"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    className="text-muted-foreground"
+                    width={60}
+                    domain={["dataMin - 5", "dataMax + 5"]}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--popover))",
+                      borderColor: "hsl(var(--border))",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                    }}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    labelFormatter={formatDateFull}
+                    formatter={(value, name) => [
+                      typeof value === "number" ? value.toFixed(2) : "",
+                      name,
+                    ]}
+                  />
+                  <Legend />
+                  {assets.map((asset) => (
+                    <Line
+                      key={asset.ticker}
+                      type="monotone"
+                      dataKey={asset.ticker}
+                      name={asset.name}
+                      stroke={asset.color}
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Sidebar with individual asset stats */}
+            <div className="space-y-4 lg:border-l lg:pl-6 border-border/50">
+              <h4 className="font-semibold text-sm text-muted-foreground">ASSET BREAKDOWN</h4>
+              <div className="space-y-4">
+                {assets.map((asset) => {
+                  const isAssetPositive = asset.pctGain >= 0;
+                  return (
+                    <div key={asset.ticker} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="h-3 w-3 rounded-full"
+                            style={{ backgroundColor: asset.color }}
+                          />
+                          <span className="font-medium">{asset.name}</span>
+                        </div>
+                        <span className="font-mono text-sm">{asset.ticker}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Current</span>
+                        <span className="font-mono">{asset.currentValue.toFixed(1)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Change</span>
+                        <span className={cn(
+                          "font-mono",
+                          isAssetPositive ? "text-emerald-500" : "text-red-500"
+                        )}>
+                          {isAssetPositive ? "+" : ""}{asset.pctGain.toFixed(2)}%
+                        </span>
+                      </div>
+                      <hr className="border-border/30 mt-2" />
+                    </div>
+                  );
+                })}
+              </div>
+              
+              <div className="text-xs text-muted-foreground mt-4">
+                <p>
+                  {bucketType === "defensive"
+                    ? "Defensive assets provide protection during market downturns and inflationary periods."
+                    : "Offensive assets aim for capital appreciation during risk-on market conditions."
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -204,6 +749,10 @@ export default function BarbellStrategyPage() {
     return results.sort((a, b) => b.pctGain - a.pctGain);
   }, [data, selectedHard, selectedSoft]);
 
+  // Group assets by bucket type
+  const hardAssets = performance.filter((a) => a.assetType === "hard");
+  const softAssets = performance.filter((a) => a.assetType === "soft");
+
   // Calculate Hard vs Soft ratio
   const ratioData = React.useMemo(() => {
     if (!data) return [];
@@ -240,6 +789,9 @@ export default function BarbellStrategyPage() {
   const latestRatio = ratioData.length > 0 ? ratioData[ratioData.length - 1].ratio : 100;
   const firstRatio = ratioData.length > 0 ? ratioData[0].ratio : 100;
   const ratioChange = latestRatio - firstRatio;
+  
+  const latestHardIndex = ratioData.length > 0 ? ratioData[ratioData.length - 1].hardIndex : 100;
+  const latestSoftIndex = ratioData.length > 0 ? ratioData[ratioData.length - 1].softIndex : 100;
 
   if (error) {
     return (
@@ -277,7 +829,7 @@ export default function BarbellStrategyPage() {
         </TabsList>
       </Tabs>
 
-      {/* Ratio Summary */}
+      {/* Ratio Summary - Expandable Metric Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         {isLoading ? (
           <>
@@ -287,32 +839,307 @@ export default function BarbellStrategyPage() {
           </>
         ) : (
           <>
-            <MetricCard
-              title="Hard/Soft Ratio"
-              value={`${latestRatio.toFixed(1)}`}
-              subtitle="Rising = Hard assets outperforming"
-              icon={<Scale className="h-4 w-4" />}
-              change={ratioChange}
-              changeLabel={`Since ${period} start`}
-              variant={ratioChange > 0 ? "success" : "warning"}
-            />
-            <MetricCard
-              title="Hard Assets Index"
-              value={`${ratioData.length > 0 ? ratioData[ratioData.length - 1].hardIndex.toFixed(1) : 100}`}
-              subtitle="Avg. of GLD, SLV, BTC"
-              variant="default"
-            />
-            <MetricCard
-              title="Paper Assets Index"
-              value={`${ratioData.length > 0 ? ratioData[ratioData.length - 1].softIndex.toFixed(1) : 100}`}
-              subtitle="Avg. of SPY, TLT"
-              variant="default"
-            />
+            {/* Hard/Soft Ratio Card - Expandable */}
+            <ExpandableMetricCard
+              id="ratio-card"
+              title="Hard/Soft Asset Ratio Analysis"
+              description="Detailed view of hard vs paper asset performance ratio over time"
+              isLoading={isLoading}
+              expandedContent={
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart
+                    data={ratioData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="currentColor"
+                      className="text-border/30"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatDate}
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="text-muted-foreground"
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="text-muted-foreground"
+                      width={60}
+                      domain={["dataMin - 5", "dataMax + 5"]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--popover))",
+                        borderColor: "hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                      labelStyle={{ color: "hsl(var(--foreground))" }}
+                      labelFormatter={formatDateFull}
+                      formatter={(value) => [
+                        typeof value === "number" ? value.toFixed(2) : "",
+                        "Ratio",
+                      ]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="ratio"
+                      name="Hard/Soft Ratio"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                      connectNulls={true}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              }
+              sidebarContent={
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-sm text-muted-foreground">INTERPRETATION</h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Current Ratio</span>
+                      <span className="font-mono font-medium">{latestRatio.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Period Change</span>
+                      <span className={cn(
+                        "font-mono font-medium",
+                        ratioChange > 0 ? "text-emerald-500" : "text-red-500"
+                      )}>
+                        {ratioChange > 0 ? "+" : ""}{ratioChange.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <hr className="border-border/50" />
+                  <div className="text-xs text-muted-foreground">
+                    <p className="mb-2">
+                      <strong>Rising ratio:</strong> Hard assets outperforming paper assets - suggests inflation hedging demand.
+                    </p>
+                    <p>
+                      <strong>Falling ratio:</strong> Paper assets outperforming - suggests risk-on sentiment.
+                    </p>
+                  </div>
+                </div>
+              }
+            >
+              <MetricCard
+                title="Hard/Soft Ratio"
+                value={`${latestRatio.toFixed(1)}`}
+                subtitle="Rising = Hard assets outperforming"
+                icon={<Scale className="h-4 w-4" />}
+                change={ratioChange}
+                changeLabel={`Since ${period} start`}
+                variant={ratioChange > 0 ? "success" : "warning"}
+              />
+            </ExpandableMetricCard>
+
+            {/* Hard Assets Index - Expandable */}
+            <ExpandableMetricCard
+              id="hard-index-card"
+              title="Hard Assets Index Performance"
+              description="Average performance of Gold, Silver, and Bitcoin"
+              isLoading={isLoading}
+              expandedContent={
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart
+                    data={ratioData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="currentColor"
+                      className="text-border/30"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatDate}
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="text-muted-foreground"
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="text-muted-foreground"
+                      width={60}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--popover))",
+                        borderColor: "hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                      labelStyle={{ color: "hsl(var(--foreground))" }}
+                      labelFormatter={formatDateFull}
+                      formatter={(value) => [
+                        typeof value === "number" ? value.toFixed(2) : "",
+                        "Index",
+                      ]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="hardIndex"
+                      name="Hard Assets Index"
+                      stroke="#FFD700"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              }
+              sidebarContent={
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-sm text-muted-foreground">COMPONENTS</h4>
+                  <div className="space-y-2">
+                    {hardAssets.map((asset) => (
+                      <div key={asset.ticker} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: asset.color }} />
+                          <span>{asset.ticker}</span>
+                        </div>
+                        <span className={cn(
+                          "font-mono",
+                          asset.pctGain >= 0 ? "text-emerald-500" : "text-red-500"
+                        )}>
+                          {asset.pctGain >= 0 ? "+" : ""}{asset.pctGain.toFixed(1)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              }
+            >
+              <MetricCard
+                title="Hard Assets Index"
+                value={`${latestHardIndex.toFixed(1)}`}
+                subtitle="Avg. of GLD, SLV, BTC"
+                variant="default"
+              />
+            </ExpandableMetricCard>
+
+            {/* Paper Assets Index - Expandable */}
+            <ExpandableMetricCard
+              id="soft-index-card"
+              title="Paper Assets Index Performance"
+              description="Average performance of S&P 500 and Long-Term Treasuries"
+              isLoading={isLoading}
+              expandedContent={
+                <ResponsiveContainer width="100%" height={400}>
+                  <LineChart
+                    data={ratioData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="currentColor"
+                      className="text-border/30"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={formatDate}
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="text-muted-foreground"
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      className="text-muted-foreground"
+                      width={60}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--popover))",
+                        borderColor: "hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                      labelStyle={{ color: "hsl(var(--foreground))" }}
+                      labelFormatter={formatDateFull}
+                      formatter={(value) => [
+                        typeof value === "number" ? value.toFixed(2) : "",
+                        "Index",
+                      ]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="softIndex"
+                      name="Paper Assets Index"
+                      stroke="#00D4FF"
+                      strokeWidth={2}
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              }
+              sidebarContent={
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-sm text-muted-foreground">COMPONENTS</h4>
+                  <div className="space-y-2">
+                    {softAssets.map((asset) => (
+                      <div key={asset.ticker} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full" style={{ backgroundColor: asset.color }} />
+                          <span>{asset.ticker}</span>
+                        </div>
+                        <span className={cn(
+                          "font-mono",
+                          asset.pctGain >= 0 ? "text-emerald-500" : "text-red-500"
+                        )}>
+                          {asset.pctGain >= 0 ? "+" : ""}{asset.pctGain.toFixed(1)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              }
+            >
+              <MetricCard
+                title="Paper Assets Index"
+                value={`${latestSoftIndex.toFixed(1)}`}
+                subtitle="Avg. of SPY, TLT"
+                variant="default"
+              />
+            </ExpandableMetricCard>
           </>
         )}
       </div>
 
-      {/* Hard Assets Section */}
+      {/* Bucket Cards - Defensive & Offensive */}
+      <section id="buckets" className="grid gap-6 md:grid-cols-2">
+        <ExpandableBucketCard
+          title="Hard Assets (Defensive)"
+          description="Inflation hedges and stores of value"
+          assets={hardAssets}
+          data={data ?? []}
+          bucketType="defensive"
+          isLoading={isLoading}
+        />
+        <ExpandableBucketCard
+          title="Paper Assets (Offensive)"
+          description="Traditional financial instruments for growth"
+          assets={softAssets}
+          data={data ?? []}
+          bucketType="offensive"
+          isLoading={isLoading}
+        />
+      </section>
+
+      {/* Hard Assets Section - Individual Expandable Cards */}
       <section id="hard-assets">
         <h3 className="text-lg font-semibold mb-4">Hard Assets Performance</h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -322,18 +1149,21 @@ export default function BarbellStrategyPage() {
                 .map((_, i) => (
                   <div
                     key={i}
-                    className="h-32 animate-pulse rounded-lg bg-muted/20"
+                    className="h-48 animate-pulse rounded-lg bg-muted/20"
                   />
                 ))
-            : performance
-                .filter((asset) => asset.assetType === "hard")
-                .map((asset) => (
-                  <PerformanceCard key={asset.ticker} asset={asset} />
-                ))}
+            : hardAssets.map((asset) => (
+                <ExpandablePerformanceCard
+                  key={asset.ticker}
+                  asset={asset}
+                  data={data ?? []}
+                  isLoading={isLoading}
+                />
+              ))}
         </div>
       </section>
 
-      {/* Paper Assets Section */}
+      {/* Paper Assets Section - Individual Expandable Cards */}
       <section id="paper-assets">
         <h3 className="text-lg font-semibold mb-4">Paper Assets Performance</h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -343,14 +1173,17 @@ export default function BarbellStrategyPage() {
                 .map((_, i) => (
                   <div
                     key={i}
-                    className="h-32 animate-pulse rounded-lg bg-muted/20"
+                    className="h-48 animate-pulse rounded-lg bg-muted/20"
                   />
                 ))
-            : performance
-                .filter((asset) => asset.assetType === "soft")
-                .map((asset) => (
-                  <PerformanceCard key={asset.ticker} asset={asset} />
-                ))}
+            : softAssets.map((asset) => (
+                <ExpandablePerformanceCard
+                  key={asset.ticker}
+                  asset={asset}
+                  data={data ?? []}
+                  isLoading={isLoading}
+                />
+              ))}
         </div>
       </section>
 
