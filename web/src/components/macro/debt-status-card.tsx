@@ -3,12 +3,13 @@
 import * as React from "react";
 import { AlertTriangle } from "lucide-react";
 import { useDebtStatus } from "@/hooks/use-data";
-import { SyncedAreaChart } from "@/components/charts/synced-chart";
+import { LightweightChart, SparklineChart } from "@/components/charts/lightweight-chart";
 import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { calculateSMA, getFinancialStats } from "@/lib/financial-math";
-import { TimeframeSelector, IndicatorToggle, type Timeframe } from "@/components/charts/chart-controls";
-import { formatDate, filterByTimeframe } from "@/lib/formatters";
+import { TimeframeSelector, IndicatorToggle, LogScaleToggle, type Timeframe } from "@/components/charts/chart-controls";
+import { filterByTimeframe } from "@/lib/formatters";
 import { MetricSummarySidebar } from "@/components/macro/metric-summary-sidebar";
+import { transformToLineDataWithKey, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/chart-utils";
 
 // Debt Status Card
 export function DebtStatusCard({ days }: { days?: number }) {
@@ -17,6 +18,7 @@ export function DebtStatusCard({ days }: { days?: number }) {
   // Local state for modal
   const [timeframe, setTimeframe] = React.useState<Timeframe>("1Y");
   const [showSMA, setShowSMA] = React.useState(false);
+  const [logScale, setLogScale] = React.useState(false);
   
   const chartData = React.useMemo(() => {
     if (!data) return [];
@@ -25,6 +27,11 @@ export function DebtStatusCard({ days }: { days?: number }) {
       date: item.date,
     }));
   }, [data]);
+
+  // Transform data for LightweightChart sparkline
+  const sparklineData = React.useMemo((): ChartDataPoint[] => {
+    return transformToLineDataWithKey(chartData, "ratio");
+  }, [chartData]);
 
   // Derived detailed data
   const detailedData = React.useMemo(() => {
@@ -37,6 +44,35 @@ export function DebtStatusCard({ days }: { days?: number }) {
       sma: sma[i]
     }));
   }, [chartData, timeframe]);
+
+  // Transform detailed data for LightweightChart
+  const detailedChartData = React.useMemo((): ChartDataPoint[] => {
+    return transformToLineDataWithKey(detailedData, "ratio");
+  }, [detailedData]);
+
+  // Extra series for indicators (SMA)
+  const extraSeries = React.useMemo((): ExtraSeriesConfig[] => {
+    const series: ExtraSeriesConfig[] = [];
+    
+    if (showSMA) {
+      const smaData = detailedData
+        .filter(d => d.sma != null)
+        .map(d => ({
+          time: transformToLineDataWithKey([d], "ratio")[0].time,
+          value: d.sma as number
+        }));
+      if (smaData.length > 0) {
+        series.push({
+          data: smaData,
+          color: "#fbbf24",
+          lineWidth: 1,
+          title: "SMA 20"
+        });
+      }
+    }
+    
+    return series;
+  }, [detailedData, showSMA]);
 
   // Stats
   const stats = React.useMemo(() => {
@@ -65,11 +101,6 @@ export function DebtStatusCard({ days }: { days?: number }) {
     );
   }
 
-  const detailedLines = [
-    { dataKey: "ratio", stroke: "#10b981", name: "Ratio (%)" },
-    ...(showSMA ? [{ dataKey: "sma", stroke: "#fbbf24", name: "SMA (20)" }] : []),
-  ];
-
   return (
     <ExpandableChartCard
       id="debt-status"
@@ -81,30 +112,23 @@ export function DebtStatusCard({ days }: { days?: number }) {
       variant={getVariant()}
       isLoading={isLoading}
       condensedChart={
-        <SyncedAreaChart
-          data={chartData}
-          xDataKey="date"
-          mode="condensed"
-          lines={[
-            {
-              dataKey: "ratio",
-              stroke: "#10b981",
-              name: "Ratio (%)",
-            },
-          ]}
+        <SparklineChart
+          data={sparklineData}
+          color="#10b981"
           height={80}
         />
       }
       detailedChart={
-        <SyncedAreaChart
-          data={detailedData}
-          xDataKey="date"
-          syncId="macro-charts-modal"
-          mode="detailed"
-          lines={detailedLines}
-          formatXAxis={formatDate}
-          formatYAxis={(v) => `${v.toFixed(0)}%`}
+        <LightweightChart
+          data={detailedChartData}
+          seriesType="Line"
+          colors={{
+            lineColor: "#10b981",
+          }}
+          extraSeries={extraSeries}
+          logScale={logScale}
           height={400}
+          fitContent
         />
       }
       modalActions={
@@ -112,6 +136,8 @@ export function DebtStatusCard({ days }: { days?: number }) {
           <TimeframeSelector value={timeframe} onChange={setTimeframe} />
           <div className="h-6 w-px bg-border/50" />
           <IndicatorToggle label="SMA 20" checked={showSMA} onChange={setShowSMA} color="#fbbf24" />
+          <div className="h-6 w-px bg-border/50" />
+          <LogScaleToggle checked={logScale} onChange={setLogScale} />
         </div>
       }
       sidebarContent={

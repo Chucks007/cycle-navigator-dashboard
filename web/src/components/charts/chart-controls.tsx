@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export type Timeframe = "1M" | "6M" | "1Y" | "5Y" | "ALL";
+export type Timeframe = "1D" | "1W" | "1M" | "6M" | "1Y" | "5Y" | "ALL";
 
 interface TimeframeSelectorProps {
   value: Timeframe;
@@ -15,7 +15,7 @@ interface TimeframeSelectorProps {
 }
 
 export function TimeframeSelector({ value, onChange, className }: TimeframeSelectorProps) {
-  const options: Timeframe[] = ["1M", "6M", "1Y", "5Y", "ALL"];
+  const options: Timeframe[] = ["1D", "1W", "1M", "6M", "1Y", "5Y", "ALL"];
   
   return (
     <div className={cn("inline-flex items-center rounded-lg border p-1 bg-muted/50", className)}>
@@ -54,6 +54,25 @@ export function IndicatorToggle({ label, checked, color, onChange }: IndicatorTo
             <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: color }} />
         )}
         {label}
+      </Label>
+    </div>
+  );
+}
+
+interface LogScaleToggleProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  className?: string;
+}
+
+export function LogScaleToggle({ checked, onChange, className }: LogScaleToggleProps) {
+  const id = React.useId();
+  return (
+    <div className={cn("flex items-center space-x-2", className)}>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} />
+      <Label htmlFor={id} className="text-sm cursor-pointer flex items-center gap-1.5">
+        <span className="font-mono text-xs bg-muted/50 px-1.5 py-0.5 rounded">LOG</span>
+        Scale
       </Label>
     </div>
   );

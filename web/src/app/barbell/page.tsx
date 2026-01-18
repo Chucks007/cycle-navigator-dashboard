@@ -1,23 +1,12 @@
 "use client";
 
 import * as React from "react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  Legend,
-} from "recharts";
 import { TrendingUp, TrendingDown, Scale, AlertTriangle, Maximize2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { ChartSkeleton } from "@/components/charts/synced-chart";
 import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { ExpandableMetricCard } from "@/components/charts/expandable-metric-card";
+import { LightweightChart, SparklineChart } from "@/components/charts/lightweight-chart";
 import { MetricCard, MetricCardSkeleton } from "@/components/ui/metric-card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,6 +18,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { toChartTime, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/chart-utils";
 
 // Asset definitions
 const HARD_ASSETS = {
@@ -119,40 +109,6 @@ interface AssetPerformance {
   color: string;
 }
 
-// Sparkline component for mini charts in cards
-function Sparkline({
-  data,
-  dataKey,
-  color,
-  height = 60,
-}: {
-  data: any[];
-  dataKey: string;
-  color: string;
-  height?: number;
-}) {
-  return (
-    <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id={`gradient-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-            <stop offset="95%" stopColor={color} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <Area
-          type="monotone"
-          dataKey={dataKey}
-          stroke={color}
-          strokeWidth={1.5}
-          fill={`url(#gradient-${dataKey})`}
-          dot={false}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-}
-
 // Expandable Performance Card with integrated sparkline
 interface ExpandablePerformanceCardProps {
   asset: AssetPerformance;
@@ -171,10 +127,19 @@ function ExpandablePerformanceCard({
   const isPositive = asset.pctGain >= 0;
   
   // Get sparkline data (last 30 points)
-  const sparklineData = React.useMemo(() => {
+  const sparklineData = React.useMemo((): ChartDataPoint[] => {
     if (!data || data.length === 0) return [];
     return data.slice(-30).map((point) => ({
-      date: point.date,
+      time: toChartTime(point.date),
+      value: point[asset.ticker] ?? 0,
+    }));
+  }, [data, asset.ticker]);
+
+  // Full chart data
+  const chartData = React.useMemo((): ChartDataPoint[] => {
+    if (!data || data.length === 0) return [];
+    return data.map((point) => ({
+      time: toChartTime(point.date),
       value: point[asset.ticker] ?? 0,
     }));
   }, [data, asset.ticker]);
@@ -237,9 +202,8 @@ function ExpandablePerformanceCard({
             {isLoading ? (
               <div className="h-full animate-pulse rounded bg-muted/20" />
             ) : (
-              <Sparkline
+              <SparklineChart
                 data={sparklineData}
-                dataKey="value"
                 color={asset.color}
                 height={50}
               />
@@ -306,65 +270,17 @@ function ExpandablePerformanceCard({
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-6 mt-4">
             {/* Detailed chart */}
             <div className="min-h-[300px] md:min-h-[400px]" key={chartKey}>
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart
-                  data={data}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id={`detail-gradient-${asset.ticker}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={asset.color} stopOpacity={0.4} />
-                      <stop offset="95%" stopColor={asset.color} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="currentColor"
-                    className="text-border/30"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={formatDate}
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    className="text-muted-foreground"
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    className="text-muted-foreground"
-                    width={60}
-                    domain={["dataMin - 5", "dataMax + 5"]}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--popover))",
-                      borderColor: "hsl(var(--border))",
-                      borderRadius: "8px",
-                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                    }}
-                    labelStyle={{ color: "hsl(var(--foreground))" }}
-                    labelFormatter={formatDateFull}
-                    formatter={(value) => [
-                      typeof value === "number" ? value.toFixed(2) : "",
-                      asset.name,
-                    ]}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey={asset.ticker}
-                    name={asset.name}
-                    stroke={asset.color}
-                    strokeWidth={2}
-                    fill={`url(#detail-gradient-${asset.ticker})`}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <LightweightChart
+                data={chartData}
+                seriesType="Area"
+                colors={{
+                  lineColor: asset.color,
+                  topColor: asset.color + "33", // 20% opacity using hex
+                  bottomColor: "transparent",
+                }}
+                height={400}
+                fitContent
+              />
             </div>
 
             {/* Sidebar Stats */}
@@ -442,14 +358,41 @@ function ExpandableBucketCard({
   }, [assets]);
 
   // Get sparkline data for the bucket (average of all assets)
-  const sparklineData = React.useMemo(() => {
+  const sparklineData = React.useMemo((): ChartDataPoint[] => {
     if (!data || data.length === 0) return [];
     const tickers = assets.map((a) => a.ticker);
     return data.slice(-30).map((point) => {
       const values = tickers.map((t) => point[t] ?? 0);
       const avg = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-      return { date: point.date, value: avg };
+      return { time: toChartTime(point.date), value: avg };
     });
+  }, [data, assets]);
+
+  // Detailed chart data with multiple series
+  const { mainSeriesData, extraSeries } = React.useMemo(() => {
+    if (!data || data.length === 0 || assets.length === 0) {
+      return { mainSeriesData: [], extraSeries: [] };
+    }
+
+    // Use first asset as main series
+    const firstAsset = assets[0];
+    const mainData = data.map((point) => ({
+      time: toChartTime(point.date),
+      value: point[firstAsset.ticker] ?? 0,
+    }));
+
+    // Others as extra series
+    const extras: ExtraSeriesConfig[] = assets.slice(1).map((asset) => ({
+      data: data.map((point) => ({
+        time: toChartTime(point.date),
+        value: point[asset.ticker] ?? 0,
+      })),
+      color: asset.color,
+      title: asset.name,
+      lineWidth: 2,
+    }));
+
+    return { mainSeriesData: mainData, extraSeries: extras };
   }, [data, assets]);
 
   const handleOpen = React.useCallback(() => {
@@ -522,9 +465,8 @@ function ExpandableBucketCard({
             {isLoading ? (
               <div className="h-full animate-pulse rounded bg-muted/20" />
             ) : (
-              <Sparkline
+              <SparklineChart
                 data={sparklineData}
-                dataKey="value"
                 color={bucketColor}
                 height={60}
               />
@@ -587,62 +529,16 @@ function ExpandableBucketCard({
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 mt-4">
             {/* Detailed chart showing all assets in bucket */}
             <div className="min-h-[300px] md:min-h-[400px]" key={chartKey}>
-              <ResponsiveContainer width="100%" height={400}>
-                <LineChart
-                  data={data}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="currentColor"
-                    className="text-border/30"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={formatDate}
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    className="text-muted-foreground"
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    className="text-muted-foreground"
-                    width={60}
-                    domain={["dataMin - 5", "dataMax + 5"]}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--popover))",
-                      borderColor: "hsl(var(--border))",
-                      borderRadius: "8px",
-                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                    }}
-                    labelStyle={{ color: "hsl(var(--foreground))" }}
-                    labelFormatter={formatDateFull}
-                    formatter={(value, name) => [
-                      typeof value === "number" ? value.toFixed(2) : "",
-                      name,
-                    ]}
-                  />
-                  <Legend />
-                  {assets.map((asset) => (
-                    <Line
-                      key={asset.ticker}
-                      type="monotone"
-                      dataKey={asset.ticker}
-                      name={asset.name}
-                      stroke={asset.color}
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
+              <LightweightChart
+                data={mainSeriesData}
+                seriesType="Line"
+                colors={{
+                  lineColor: assets[0]?.color ?? "#333",
+                }}
+                extraSeries={extraSeries}
+                height={400}
+                fitContent
+              />
             </div>
 
             {/* Sidebar with individual asset stats */}
@@ -846,58 +742,17 @@ export default function BarbellStrategyPage() {
               description="Detailed view of hard vs paper asset performance ratio over time"
               isLoading={isLoading}
               expandedContent={
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart
-                    data={ratioData}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="currentColor"
-                      className="text-border/30"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={formatDate}
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      className="text-muted-foreground"
-                    />
-                    <YAxis
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      className="text-muted-foreground"
-                      width={60}
-                      domain={["dataMin - 5", "dataMax + 5"]}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--popover))",
-                        borderColor: "hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                      labelStyle={{ color: "hsl(var(--foreground))" }}
-                      labelFormatter={formatDateFull}
-                      formatter={(value) => [
-                        typeof value === "number" ? value.toFixed(2) : "",
-                        "Ratio",
-                      ]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="ratio"
-                      name="Hard/Soft Ratio"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                      connectNulls={true}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div className="h-[400px] w-full">
+                  <LightweightChart
+                    seriesType="Line"
+                    data={ratioData.map(d => ({
+                      time: toChartTime(d.date),
+                      value: d.ratio
+                    })).filter(d => !isNaN(d.value))}
+                    colors={{ lineColor: "#3b82f6" }}
+                    title="Hard/Soft Ratio"
+                  />
+                </div>
               }
               sidebarContent={
                 <div className="space-y-4">
@@ -947,56 +802,17 @@ export default function BarbellStrategyPage() {
               description="Average performance of Gold, Silver, and Bitcoin"
               isLoading={isLoading}
               expandedContent={
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart
-                    data={ratioData}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="currentColor"
-                      className="text-border/30"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={formatDate}
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      className="text-muted-foreground"
-                    />
-                    <YAxis
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      className="text-muted-foreground"
-                      width={60}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--popover))",
-                        borderColor: "hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                      labelStyle={{ color: "hsl(var(--foreground))" }}
-                      labelFormatter={formatDateFull}
-                      formatter={(value) => [
-                        typeof value === "number" ? value.toFixed(2) : "",
-                        "Index",
-                      ]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="hardIndex"
-                      name="Hard Assets Index"
-                      stroke="#FFD700"
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div className="h-[400px] w-full">
+                  <LightweightChart
+                    seriesType="Line"
+                    data={ratioData.map(d => ({
+                      time: toChartTime(d.date),
+                      value: d.hardIndex
+                    })).filter(d => !isNaN(d.value))}
+                    colors={{ lineColor: "#FFD700" }}
+                    title="Hard Assets Index"
+                  />
+                </div>
               }
               sidebarContent={
                 <div className="space-y-4">
@@ -1035,56 +851,17 @@ export default function BarbellStrategyPage() {
               description="Average performance of S&P 500 and Long-Term Treasuries"
               isLoading={isLoading}
               expandedContent={
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart
-                    data={ratioData}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="currentColor"
-                      className="text-border/30"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="date"
-                      tickFormatter={formatDate}
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      className="text-muted-foreground"
-                    />
-                    <YAxis
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      className="text-muted-foreground"
-                      width={60}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--popover))",
-                        borderColor: "hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                      labelStyle={{ color: "hsl(var(--foreground))" }}
-                      labelFormatter={formatDateFull}
-                      formatter={(value) => [
-                        typeof value === "number" ? value.toFixed(2) : "",
-                        "Index",
-                      ]}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="softIndex"
-                      name="Paper Assets Index"
-                      stroke="#00D4FF"
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div className="h-[400px] w-full">
+                  <LightweightChart
+                    seriesType="Line"
+                    data={ratioData.map(d => ({
+                      time: toChartTime(d.date),
+                      value: d.softIndex
+                    })).filter(d => !isNaN(d.value))}
+                    colors={{ lineColor: "#00D4FF" }}
+                    title="Paper Assets Index"
+                  />
+                </div>
               }
               sidebarContent={
                 <div className="space-y-4">
@@ -1195,96 +972,90 @@ export default function BarbellStrategyPage() {
           subtitle="All assets start at 100 for easy comparison"
           isLoading={isLoading}
           condensedChart={
-            <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={data?.slice(-60)} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                <Legend wrapperStyle={{ fontSize: '10px', marginTop: '0px' }} />
-                {selectedHard.map((ticker) => (
-                  <Line
-                    key={ticker}
-                    type="monotone"
-                    dataKey={ticker}
-                    stroke={HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color}
-                    strokeWidth={1.5}
-                    dot={false}
+            <div className="h-[160px] w-full">
+              {(() => {
+                const hardSeries = selectedHard.map(ticker => ({
+                  data: (data ?? []).slice(-60).map(d => ({
+                    time: toChartTime(d.date),
+                    value: (d as any)[ticker]
+                  })).filter(pt => pt.value !== undefined && !isNaN(pt.value)),
+                  color: HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color,
+                  name: ticker
+                }));
+                const softSeries = selectedSoft.map(ticker => ({
+                  data: (data ?? []).slice(-60).map(d => ({
+                    time: toChartTime(d.date),
+                    value: (d as any)[ticker]
+                  })).filter(pt => pt.value !== undefined && !isNaN(pt.value)),
+                  color: SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color,
+                  name: ticker
+                }));
+                const allSeries = [...hardSeries, ...softSeries];
+                if (allSeries.length === 0) return null;
+                const [first, ...rest] = allSeries;
+
+                return (
+                  <LightweightChart
+                    seriesType="Line"
+                    data={first.data}
+                    colors={{ lineColor: first.color }}
+                    title={first.name}
+                    height={160}
+                    timeScaleVisible={false}
+                    priceScaleVisible={false}
+                    priceLineVisible={false}
+                    lastValueVisible={false}
+                    extraSeries={rest.map(s => ({
+                      data: s.data,
+                      color: s.color,
+                      title: s.name,
+                      priceLineVisible: false,
+                      lastValueVisible: false,
+                    }))}
                   />
-                ))}
-                {selectedSoft.map((ticker) => (
-                  <Line
-                    key={ticker}
-                    type="monotone"
-                    dataKey={ticker}
-                    stroke={SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color}
-                    strokeWidth={1.5}
-                    dot={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+                );
+              })()}
+            </div>
           }
           detailedChart={
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart
-                data={data}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="currentColor"
-                  className="text-border/30"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDate}
-                  tick={{ fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  className="text-muted-foreground"
-                />
-                <YAxis
-                  tick={{ fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  className="text-muted-foreground"
-                  width={60}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    borderColor: "hsl(var(--border))",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                  }}
-                  labelStyle={{ color: "hsl(var(--foreground))" }}
-                  formatter={(value) => [typeof value === 'number' ? value.toFixed(2) : '', '']}
-                />
-                <Legend />
-                {selectedHard.map((ticker) => (
-                  <Line
-                    key={ticker}
-                    type="monotone"
-                    dataKey={ticker}
-                    name={HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.name}
-                    stroke={HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
+            <div className="h-[400px] w-full">
+              {(() => {
+                const hardSeries = selectedHard.map(ticker => ({
+                  data: (data ?? []).map(d => ({
+                    time: toChartTime(d.date),
+                    value: (d as any)[ticker]
+                  })).filter(pt => pt.value !== undefined && !isNaN(pt.value)),
+                  color: HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color,
+                  name: HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.name
+                }));
+                const softSeries = selectedSoft.map(ticker => ({
+                  data: (data ?? []).map(d => ({
+                    time: toChartTime(d.date),
+                    value: (d as any)[ticker]
+                  })).filter(pt => pt.value !== undefined && !isNaN(pt.value)),
+                  color: SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color,
+                  name: SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.name
+                }));
+                const allSeries = [...hardSeries, ...softSeries];
+                if (allSeries.length === 0) return null;
+                const [first, ...rest] = allSeries;
+
+                return (
+                  <LightweightChart
+                    seriesType="Line"
+                    data={first.data}
+                    colors={{ lineColor: first.color }}
+                    title={first.name}
+                    height={400}
+                    extraSeries={rest.map(s => ({
+                      data: s.data,
+                      color: s.color,
+                      title: s.name,
+                    }))}
                   />
-                ))}
-                {selectedSoft.map((ticker) => (
-                  <Line
-                    key={ticker}
-                    type="monotone"
-                    dataKey={ticker}
-                    name={SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.name}
-                    stroke={SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color}
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+                );
+              })()}
+            </div>
           }
         />
 
@@ -1299,70 +1070,35 @@ export default function BarbellStrategyPage() {
           variant={ratioChange > 0 ? "success" : "warning"}
           isLoading={isLoading}
           condensedChart={
-            <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={ratioData.slice(-60)} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                <Line
-                  type="monotone"
-                  dataKey="ratio"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  dot={false}
-                  name="Hard/Soft Ratio"
-                  connectNulls={true}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', marginTop: '0px' }} />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="h-[160px] w-full">
+               <LightweightChart
+                  seriesType="Line"
+                  data={ratioData.slice(-60).map(d => ({
+                      time: toChartTime(d.date),
+                      value: d.ratio
+                  })).filter(d => !isNaN(d.value))}
+                  colors={{ lineColor: "#3b82f6" }}
+                  title="Hard/Soft Ratio"
+                  height={160}
+                  timeScaleVisible={false}
+                  priceScaleVisible={false}
+                  priceLineVisible={false}
+                  lastValueVisible={false}
+               />
+            </div>
           }
           detailedChart={
-            <ResponsiveContainer width="100%" height={400}>
-              <LineChart
-                data={ratioData}
-                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="currentColor"
-                  className="text-border/30"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDate}
-                  tick={{ fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  className="text-muted-foreground"
-                />
-                <YAxis
-                  tick={{ fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={false}
-                  className="text-muted-foreground"
-                  width={60}
-                  domain={["dataMin - 5", "dataMax + 5"]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    borderColor: "hsl(var(--border))",
-                    borderRadius: "8px",
-                  }}
-                  labelStyle={{ color: "hsl(var(--foreground))" }}
-                  formatter={(value) => [typeof value === 'number' ? value.toFixed(2) : '', 'Ratio']}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="ratio"
-                  name="Hard/Soft Ratio"
-                  stroke="#3b82f6"
-                  strokeWidth={3}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                  connectNulls={true}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="h-[400px] w-full">
+               <LightweightChart
+                  seriesType="Line"
+                  data={ratioData.map(d => ({
+                      time: toChartTime(d.date),
+                      value: d.ratio
+                  })).filter(d => !isNaN(d.value))}
+                  colors={{ lineColor: "#3b82f6" }}
+                  title="Hard/Soft Ratio"
+               />
+            </div>
           }
         />
       </section>

@@ -4,18 +4,6 @@ import * as React from "react";
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
   Search,
   TrendingUp,
   TrendingDown,
@@ -25,11 +13,13 @@ import {
 } from "lucide-react";
 import { ChartSkeleton } from "@/components/charts/synced-chart";
 import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
+import { LightweightChart, SparklineChart } from "@/components/charts/lightweight-chart";
 import { MetricCard, MetricCardSkeleton } from "@/components/ui/metric-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LogScaleToggle, TimeframeSelector, type Timeframe } from "@/components/charts/chart-controls";
 import {
   useStockMetrics,
   useStockHistory,
@@ -37,10 +27,54 @@ import {
   useSentiment,
 } from "@/hooks/use-data";
 import { cn } from "@/lib/utils";
+import {
+  transformToLineDataWithKey,
+  transformToOHLCData,
+  transformToHistogramData,
+  toChartTime,
+  type ChartDataPoint,
+  type OHLCDataPoint,
+  type HistogramDataPoint,
+} from "@/lib/chart-utils";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+// Chart Type Toggle Component
+interface ChartTypeToggleProps {
+  value: "line" | "candlestick";
+  onChange: (value: "line" | "candlestick") => void;
+}
+
+function ChartTypeToggle({ value, onChange }: ChartTypeToggleProps) {
+  return (
+    <div className="inline-flex items-center rounded-lg border p-1 bg-muted/50">
+      <button
+        onClick={() => onChange("line")}
+        className={cn(
+          "px-3 py-1 text-xs font-medium rounded-md transition-all",
+          value === "line"
+            ? "bg-background shadow-sm text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        Line
+      </button>
+      <button
+        onClick={() => onChange("candlestick")}
+        className={cn(
+          "px-3 py-1 text-xs font-medium rounded-md transition-all",
+          value === "candlestick"
+            ? "bg-background shadow-sm text-foreground"
+            : "text-muted-foreground hover:text-foreground"
+        )}
+      >
+        Candles
+      </button>
+    </div>
+  );
 }
 
 // Sentiment Gauge Component
@@ -149,6 +183,19 @@ function TickerAnalysisContent() {
   const initialTicker = searchParams.get("symbol") || "AAPL";
   const [ticker, setTicker] = React.useState(initialTicker);
   const [inputValue, setInputValue] = React.useState(initialTicker);
+  const [timeframe, setTimeframe] = React.useState<Timeframe>("6M"); // Default to 6M to match previous subtitle intent
+
+  const timeframeConfig = {
+    "1D": { period: "1d", interval: "1m" },
+    "1W": { period: "5d", interval: "15m" },
+    "1M": { period: "1mo", interval: "60m" },
+    "6M": { period: "6mo", interval: "1d" },
+    "1Y": { period: "1y", interval: "1d" },
+    "5Y": { period: "5y", interval: "1wk" },
+    "ALL": { period: "max", interval: "1mo" },
+  };
+
+  const { period, interval } = timeframeConfig[timeframe];
 
   // Sync state when URL changes
   React.useEffect(() => {
@@ -161,8 +208,8 @@ function TickerAnalysisContent() {
 
   // Fetch data
   const { data: metrics, isLoading: metricsLoading, error: metricsError } = useStockMetrics(ticker);
-  const { data: history, isLoading: historyLoading } = useStockHistory(ticker);
-  const { data: indicators, isLoading: indicatorsLoading } = useStockIndicators(ticker);
+  const { data: history, isLoading: historyLoading } = useStockHistory(ticker, period, interval);
+  const { data: indicators, isLoading: indicatorsLoading } = useStockIndicators(ticker, period, interval);
   const { data: sentiment, isLoading: sentimentLoading } = useSentiment(ticker);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -178,22 +225,57 @@ function TickerAnalysisContent() {
   const priceChangePct = metrics?.pct_change || 0;
   const isPositive = priceChange >= 0;
 
-  // Prepare volume chart data with normalized field names
-  const chartData = React.useMemo(() => {
+  // Chart view state
+  const [chartType, setChartType] = React.useState<"line" | "candlestick">("line");
+  const [logScale, setLogScale] = React.useState(false);
+
+  // Transform history data for LightweightChart
+  const lineChartData = React.useMemo((): ChartDataPoint[] => {
     if (!history) return [];
-    return history.map((point) => ({
-      date: point.Datetime,
-      open: point.Open,
-      high: point.High,
-      low: point.Low,
-      close: point.Close,
-      volume: point.Volume,
-    }));
+    return history
+      .slice()
+      .sort((a, b) => new Date(a.Datetime).getTime() - new Date(b.Datetime).getTime())
+      .map((point) => ({
+        time: toChartTime(point.Datetime),
+        value: point.Close,
+      }));
   }, [history]);
 
-  const volumeData = React.useMemo(() => {
-    return chartData.slice(-30);
-  }, [chartData]);
+  // OHLC data for candlestick chart
+  const ohlcChartData = React.useMemo((): OHLCDataPoint[] => {
+    if (!history) return [];
+    return transformToOHLCData(history);
+  }, [history]);
+
+  // Volume data for histogram
+  const volumeChartData = React.useMemo((): HistogramDataPoint[] => {
+    if (!history) return [];
+    return transformToHistogramData(
+      history,
+      "Volume",
+      (item) => {
+        // Color based on price movement
+        const isUp = item.Close >= item.Open;
+        return isUp ? "rgba(34, 197, 94, 0.6)" : "rgba(239, 68, 68, 0.6)";
+      }
+    );
+  }, [history]);
+
+  // Sparkline data (last 30 points)
+  const sparklineData = React.useMemo((): ChartDataPoint[] => {
+    return lineChartData.slice(-30);
+  }, [lineChartData]);
+
+  const volumeSparklineData = React.useMemo((): ChartDataPoint[] => {
+    if (!history) return [];
+    return history
+      .slice(-30)
+      .sort((a, b) => new Date(a.Datetime).getTime() - new Date(b.Datetime).getTime())
+      .map((point) => ({
+        time: toChartTime(point.Datetime),
+        value: point.Volume,
+      }));
+  }, [history]);
 
   if (metricsError) {
     return (
@@ -351,105 +433,57 @@ function TickerAnalysisContent() {
           <ExpandableChartCard
             id="price-history"
             title={`${ticker} Price History`}
-            subtitle="Last 6 months of trading data"
+            subtitle={
+              timeframe === "ALL" 
+                ? "All available trading data" 
+                : `Trading data for the last ${timeframe}`
+            }
             metricValue={metrics?.last_close ? `$${metrics.last_close.toFixed(2)}` : undefined}
             metricChange={priceChangePct}
             changeLabel="Day"
             variant={isPositive ? "success" : "danger"}
             isLoading={historyLoading}
             condensedChart={
-              <ResponsiveContainer width="100%" height={160}>
-                <AreaChart data={chartData.slice(-30)} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="priceGradientCondensed" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="5%"
-                        stopColor={isPositive ? "#10b981" : "#ef4444"}
-                        stopOpacity={0.3}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor={isPositive ? "#10b981" : "#ef4444"}
-                        stopOpacity={0}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <Area
-                    type="monotone"
-                    dataKey="close"
-                    stroke={isPositive ? "#10b981" : "#ef4444"}
-                    strokeWidth={1.5}
-                    fill="url(#priceGradientCondensed)"
-                    dot={false}
-                    name="Price"
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', marginTop: '0px' }} />
-                </AreaChart>
-              </ResponsiveContainer>
+              <SparklineChart
+                data={sparklineData}
+                color={isPositive ? "#10b981" : "#ef4444"}
+                height={160}
+              />
             }
             detailedChart={
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart
-                  data={chartData}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="5%"
-                        stopColor={isPositive ? "#10b981" : "#ef4444"}
-                        stopOpacity={0.3}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor={isPositive ? "#10b981" : "#ef4444"}
-                        stopOpacity={0}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="currentColor"
-                    className="text-border/30"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={formatDate}
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    className="text-muted-foreground"
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    className="text-muted-foreground"
-                    width={60}
-                    domain={["dataMin - 5", "dataMax + 5"]}
-                    tickFormatter={(v) => `$${v}`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--popover))",
-                      borderColor: "hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                    labelStyle={{ color: "hsl(var(--foreground))" }}
-                    formatter={(value) => [typeof value === 'number' ? `$${value.toFixed(2)}` : '', 'Price']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="close"
-                    stroke={isPositive ? "#10b981" : "#ef4444"}
-                    strokeWidth={2}
-                    fill="url(#priceGradient)"
-                    dot={false}
-                    activeDot={{ r: 4 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              chartType === "candlestick" && ohlcChartData.length > 0 ? (
+                <LightweightChart
+                  ohlcData={ohlcChartData}
+                  seriesType="Candlestick"
+                  logScale={logScale}
+                  height={400}
+                  fitContent
+                />
+              ) : (
+                <LightweightChart
+                  data={lineChartData}
+                  seriesType="Area"
+                  colors={{
+                    lineColor: isPositive ? "#10b981" : "#ef4444",
+                    topColor: isPositive ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)",
+                    bottomColor: "transparent",
+                  }}
+                  logScale={logScale}
+                  height={400}
+                  fitContent
+                />
+              )
+            }
+            modalActions={
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                 <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+                 <div className="hidden sm:block h-6 w-px bg-border/50" />
+                 <div className="flex items-center gap-4">
+                  <ChartTypeToggle value={chartType} onChange={setChartType} />
+                  <div className="h-6 w-px bg-border/50" />
+                  <LogScaleToggle checked={logScale} onChange={setLogScale} />
+                </div>
+              </div>
             }
           />
         </TabsContent>
@@ -458,70 +492,31 @@ function TickerAnalysisContent() {
           <ExpandableChartCard
             id="volume-chart"
             title={`${ticker} Trading Volume`}
-            subtitle="Last 30 days"
+            subtitle={
+              timeframe === "ALL" 
+                ? "All available volume data" 
+                : `Volume data for the last ${timeframe}`
+            }
             isLoading={historyLoading}
             condensedChart={
-              <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={volumeData.slice(-15)} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-                  <Bar
-                    dataKey="volume"
-                    fill="hsl(var(--chart-2))"
-                    radius={[2, 2, 0, 0]}
-                    opacity={0.8}
-                    name="Volume"
-                  />
-                  <Legend wrapperStyle={{ fontSize: '11px', marginTop: '0px' }} />
-                </BarChart>
-              </ResponsiveContainer>
+              <SparklineChart
+                data={volumeSparklineData}
+                color="hsl(var(--chart-2))"
+                height={160}
+              />
             }
             detailedChart={
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart
-                  data={volumeData}
-                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    stroke="currentColor"
-                    className="text-border/30"
-                    vertical={false}
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={formatDate}
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    className="text-muted-foreground"
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    className="text-muted-foreground"
-                    width={60}
-                    tickFormatter={(v) => `${(v / 1e6).toFixed(0)}M`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(var(--popover))",
-                      borderColor: "hsl(var(--border))",
-                      borderRadius: "8px",
-                    }}
-                    labelStyle={{ color: "hsl(var(--foreground))" }}
-                    formatter={(value) => [
-                      typeof value === 'number' ? `${(value / 1e6).toFixed(2)}M` : '',
-                      'Volume',
-                    ]}
-                  />
-                  <Bar
-                    dataKey="volume"
-                    fill="hsl(var(--chart-2))"
-                    radius={[4, 4, 0, 0]}
-                    opacity={0.8}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <LightweightChart
+                data={volumeChartData}
+                seriesType="Histogram"
+                height={400}
+                fitContent
+              />
+            }
+            modalActions={
+              <div className="flex items-center gap-4">
+                 <TimeframeSelector value={timeframe} onChange={setTimeframe} />
+              </div>
             }
           />
         </TabsContent>

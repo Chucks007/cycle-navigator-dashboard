@@ -75,6 +75,8 @@ If you use Podman:
 
 ```bash
 podman-compose up --build
+
+Recreate all: podman-compose down && podman-compose up -d --build
 ```
 
 ---
