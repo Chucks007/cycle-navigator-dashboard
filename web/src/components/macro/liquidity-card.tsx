@@ -3,14 +3,15 @@
 import * as React from "react";
 import { AlertTriangle } from "lucide-react";
 import { useLiquidity } from "@/hooks/use-data";
-import { SyncedAreaChart } from "@/components/charts/synced-chart";
+import { LightweightChart, SparklineChart } from "@/components/charts/lightweight-chart";
 import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { calculateSMA, calculateEMA, getFinancialStats } from "@/lib/financial-math";
-import { TimeframeSelector, IndicatorToggle, type Timeframe } from "@/components/charts/chart-controls";
-import { formatLargeNumber, formatDate, filterByTimeframe } from "@/lib/formatters";
+import { TimeframeSelector, IndicatorToggle, LogScaleToggle, type Timeframe } from "@/components/charts/chart-controls";
+import { formatLargeNumber, filterByTimeframe } from "@/lib/formatters";
 import { MetricSummarySidebar } from "@/components/macro/metric-summary-sidebar";
+import { transformToLineDataWithKey, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/chart-utils";
 
 // Liquidity (M2) Chart Component
 export function LiquidityCard({ days }: { days?: number }) {
@@ -21,6 +22,7 @@ export function LiquidityCard({ days }: { days?: number }) {
   const [timeframe, setTimeframe] = React.useState<Timeframe>("1Y");
   const [showSMA, setShowSMA] = React.useState(false);
   const [showEMA, setShowEMA] = React.useState(false);
+  const [logScale, setLogScale] = React.useState(false);
 
   // Use full data from backend (filtered by days)
   const chartData = React.useMemo(() => {
@@ -33,6 +35,11 @@ export function LiquidityCard({ days }: { days?: number }) {
     }));
     return mapped;
   }, [data]);
+
+  // Transform data for LightweightChart sparkline
+  const sparklineData = React.useMemo((): ChartDataPoint[] => {
+    return transformToLineDataWithKey(chartData, "value");
+  }, [chartData]);
 
   // Derived data for detailed view (Filtered by local timeframe + Indicators)
   const detailedData = React.useMemo(() => {
@@ -49,6 +56,52 @@ export function LiquidityCard({ days }: { days?: number }) {
       ema: ema[i]
     }));
   }, [chartData, timeframe]);
+
+  // Transform detailed data for LightweightChart
+  const detailedChartData = React.useMemo((): ChartDataPoint[] => {
+    return transformToLineDataWithKey(detailedData, "value");
+  }, [detailedData]);
+
+  // Extra series for indicators (SMA, EMA)
+  const extraSeries = React.useMemo((): ExtraSeriesConfig[] => {
+    const series: ExtraSeriesConfig[] = [];
+    
+    if (showSMA) {
+      const smaData = detailedData
+        .filter(d => d.sma != null)
+        .map(d => ({
+          time: transformToLineDataWithKey([d], "value")[0].time,
+          value: d.sma as number
+        }));
+      if (smaData.length > 0) {
+        series.push({
+          data: smaData,
+          color: "#fbbf24",
+          lineWidth: 1,
+          title: "SMA 20"
+        });
+      }
+    }
+    
+    if (showEMA) {
+      const emaData = detailedData
+        .filter(d => d.ema != null)
+        .map(d => ({
+          time: transformToLineDataWithKey([d], "value")[0].time,
+          value: d.ema as number
+        }));
+      if (emaData.length > 0) {
+        series.push({
+          data: emaData,
+          color: "#8b5cf6",
+          lineWidth: 1,
+          title: "EMA 20"
+        });
+      }
+    }
+    
+    return series;
+  }, [detailedData, showSMA, showEMA]);
 
   // Stats for the sidebar
   const stats = React.useMemo(() => {
@@ -70,13 +123,6 @@ export function LiquidityCard({ days }: { days?: number }) {
     );
   }
 
-  // Define chart lines for detailed view
-  const detailedLines = [
-    { dataKey: "value", stroke: "#3b82f6", name: "M2 (Billions)" },
-    ...(showSMA ? [{ dataKey: "sma", stroke: "#fbbf24", name: "SMA (20)" }] : []),
-    ...(showEMA ? [{ dataKey: "ema", stroke: "#8b5cf6", name: "EMA (20)" }] : [])
-  ];
-
   return (
     <ExpandableChartCard
       id="m2-liquidity"
@@ -88,30 +134,25 @@ export function LiquidityCard({ days }: { days?: number }) {
       variant={latestGrowth > 0 ? "success" : "danger"}
       isLoading={isLoading}
       condensedChart={
-        <SyncedAreaChart
-          data={chartData}
-          xDataKey="date"
-          mode="condensed"
-          lines={[
-            {
-              dataKey: "value",
-              stroke: "#3b82f6",
-              name: "M2 (Billions)",
-            },
-          ]}
+        <SparklineChart
+          data={sparklineData}
+          color="#3b82f6"
           height={80}
         />
       }
       detailedChart={
-        <SyncedAreaChart
-          data={detailedData}
-          xDataKey="date"
-          syncId="macro-charts-modal"
-          mode="detailed"
-          lines={detailedLines}
-          formatXAxis={formatDate}
-          formatYAxis={(v) => `$${(v / 1000).toFixed(0)}T`}
+        <LightweightChart
+          data={detailedChartData}
+          seriesType="Area"
+          colors={{
+            lineColor: "#3b82f6",
+            topColor: "rgba(59, 130, 246, 0.4)",
+            bottomColor: "rgba(59, 130, 246, 0.0)",
+          }}
+          extraSeries={extraSeries}
+          logScale={logScale}
           height={400}
+          fitContent
         />
       }
       modalActions={
@@ -121,6 +162,8 @@ export function LiquidityCard({ days }: { days?: number }) {
             <div className="h-6 w-px bg-border/50" />
             <IndicatorToggle label="SMA 20" checked={showSMA} onChange={setShowSMA} color="#fbbf24" />
             <IndicatorToggle label="EMA 20" checked={showEMA} onChange={setShowEMA} color="#8b5cf6" />
+            <div className="h-6 w-px bg-border/50" />
+            <LogScaleToggle checked={logScale} onChange={setLogScale} />
            </div>
            
            {/* Original switch kept separate if needed, or merged */}

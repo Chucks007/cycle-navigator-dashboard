@@ -58,3 +58,22 @@ export function IndicatorToggle({ label, checked, color, onChange }: IndicatorTo
     </div>
   );
 }
+
+interface LogScaleToggleProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  className?: string;
+}
+
+export function LogScaleToggle({ checked, onChange, className }: LogScaleToggleProps) {
+  const id = React.useId();
+  return (
+    <div className={cn("flex items-center space-x-2", className)}>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} />
+      <Label htmlFor={id} className="text-sm cursor-pointer flex items-center gap-1.5">
+        <span className="font-mono text-xs bg-muted/50 px-1.5 py-0.5 rounded">LOG</span>
+        Scale
+      </Label>
+    </div>
+  );
+}
