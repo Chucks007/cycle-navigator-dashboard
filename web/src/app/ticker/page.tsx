@@ -188,10 +188,13 @@ function TickerPageSkeleton() {
 function TickerAnalysisContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTicker = searchParams.get("symbol") || "AAPL";
+  const initialTicker = searchParams.get("symbol") || "BTC-USD";
   const [ticker, setTicker] = React.useState(initialTicker);
   const [inputValue, setInputValue] = React.useState(initialTicker);
-  const [timeframe, setTimeframe] = React.useState<Timeframe>("6M"); // Default to 6M to match previous subtitle intent
+  const [timeframe, setTimeframe] = React.useState<Timeframe>("ALL"); 
+
+  const [useLogScale, setUseLogScale] = React.useState(true);
+  const [chartType, setChartType] = React.useState<"line" | "candlestick">("line");
 
   const timeframeConfig = {
     "1D": { period: "1d", interval: "1m" },
@@ -207,7 +210,8 @@ function TickerAnalysisContent() {
 
   // Sync state when URL changes
   React.useEffect(() => {
-    const currentSymbol = searchParams.get("symbol") || "AAPL";
+    // Default to BTC-USD if no symbol provided
+    const currentSymbol = searchParams.get("symbol") || "BTC-USD";
     if (currentSymbol !== ticker) {
       setTicker(currentSymbol);
       setInputValue(currentSymbol);
@@ -239,8 +243,8 @@ function TickerAnalysisContent() {
   const isPositive = priceChange >= 0;
 
   // Chart view state
-  const [chartType, setChartType] = React.useState<"line" | "candlestick">("line");
-  const [logScale, setLogScale] = React.useState(false);
+  // const [chartType, setChartType] = React.useState<"line" | "candlestick">("line"); // Removed: Duplicate
+  // const [logScale, setLogScale] = React.useState(false); // Removed: Duplicate / renamed to useLogScale
 
   // Transform history data for LightweightChart
   const lineChartData = React.useMemo((): ChartDataPoint[] => {
@@ -480,7 +484,7 @@ function TickerAnalysisContent() {
                 <LightweightChart
                   ohlcData={ohlcChartData}
                   seriesType="Candlestick"
-                  logScale={logScale}
+                  logScale={useLogScale}
                   height={400}
                   extraSeries={riskBandSeries}
                   fitContent
@@ -494,7 +498,7 @@ function TickerAnalysisContent() {
                     topColor: isPositive ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)",
                     bottomColor: "transparent",
                   }}
-                  logScale={logScale}
+                  logScale={useLogScale}
                   height={400}
                   extraSeries={riskBandSeries}
                   fitContent
@@ -508,7 +512,7 @@ function TickerAnalysisContent() {
                  <div className="flex items-center gap-4">
                   <ChartTypeToggle value={chartType} onChange={setChartType} />
                   <div className="h-6 w-px bg-border/50" />
-                  <LogScaleToggle checked={logScale} onChange={setLogScale} />
+                  <LogScaleToggle checked={useLogScale} onChange={setUseLogScale} />
                   {isCrypto && (
                     <>
                       <div className="h-6 w-px bg-border/50" />

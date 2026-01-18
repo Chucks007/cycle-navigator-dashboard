@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { LightweightChart } from "@/components/charts/lightweight-chart";
+import { LightweightChart, SparklineChart } from "@/components/charts/lightweight-chart";
+import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { LogScaleToggle, RegressionBandsToggle } from "@/components/charts/chart-controls";
 import { useRiskData, useStockHistory } from "@/hooks/use-data";
 import { transformRiskBandsToSeries, transformToOHLCData } from "@/lib/chart-utils";
@@ -16,12 +17,8 @@ interface RiskChartProps {
 }
 
 /**
- * Example component demonstrating the Risk/Regression Bands feature.
- * 
- * This component:
- * 1. Fetches historical price data and risk/regression band data
- * 2. Displays a price chart with optional regression band overlays
- * 3. Shows the current risk score and band classification
+ * Component demonstrating the Risk/Regression Bands feature.
+ * Now wrapped in ExpandableChartCard for fullscreen capability.
  */
 export function RiskChart({ ticker, title }: RiskChartProps) {
   const [showBands, setShowBands] = React.useState(true);
@@ -53,117 +50,107 @@ export function RiskChart({ ticker, title }: RiskChartProps) {
     return transformToOHLCData(priceData);
   }, [priceData]);
 
+  // Shared Chart Content (Grid + Bar)
+  const renderChartContent = (height: number | string) => (
+    <div className="flex flex-col h-full w-full">
+      <div className="flex-1 min-h-0">
+        <LightweightChart
+          ohlcData={chartData}
+          seriesType="Candlestick"
+          logScale={logScale}
+          height={typeof height === 'number' ? height : undefined}
+          extraSeries={bandSeries}
+          fitContent
+          className={typeof height === 'string' ? "h-full" : undefined}
+        />
+      </div>
+
+      {/* Risk Score Bar */}
+      {riskData && (
+        <div className="mt-4 px-2 pb-2">
+           {/* Risk Statistics Row */}
+           <div className="hidden sm:flex justify-between text-xs text-muted-foreground mb-3">
+             <div className="flex gap-4">
+                <span>Price: <span className="font-mono text-foreground">${riskData.current_price.toLocaleString()}</span></span>
+                <span>Fair Value: <span className="font-mono text-foreground">${riskData.fair_value.toLocaleString()}</span></span>
+             </div>
+             <div>
+                <span>Risk: <span className="font-mono font-bold text-foreground">{(riskData.current_risk * 100).toFixed(1)}%</span></span>
+             </div>
+           </div>
+
+           {/* Gradient Bar */}
+          <div className="flex justify-between text-[10px] text-muted-foreground mb-1 uppercase tracking-wider">
+            <span>Undervalued</span>
+            <span>Fair</span>
+            <span>Bubble</span>
+          </div>
+          <div className="h-2 bg-gradient-to-r from-violet-500 via-green-500 to-red-500 rounded-full relative">
+            <div 
+              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-foreground rounded-full shadow transition-all duration-1000 ease-out"
+              style={{ left: `${Math.min(Math.max(riskData.current_risk, 0), 1) * 100}%`, transform: 'translate(-50%, -50%)' }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Loading State
   if (riskLoading || priceLoading) {
     return (
-      <Card>
+       <Card className="h-[450px]">
         <CardHeader>
           <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-4 w-48" />
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[400px] w-full" />
+          <Skeleton className="h-full w-full" />
         </CardContent>
-      </Card>
+       </Card>
     );
   }
 
+  // Error State
   if (riskError) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{title || ticker} Risk Analysis</CardTitle>
-          <CardDescription className="text-destructive">
-            Failed to load risk data: {riskError.message}
-          </CardDescription>
+          <CardTitle className="text-destructive">Error Loading Data</CardTitle>
+          <CardDescription>{riskError.message}</CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              {title || ticker} Risk Analysis
-              {riskData && (
-                <Badge 
-                  style={{ backgroundColor: riskData.current_band.color }}
-                  className="text-white"
-                >
-                  {riskData.current_band.name}
-                </Badge>
-              )}
-            </CardTitle>
-            <CardDescription>
-              Logarithmic regression fair value corridor
-            </CardDescription>
+    <ExpandableChartCard
+      id={`risk-${ticker}`}
+      title={title || `${ticker} Risk Analysis`}
+      subtitle={
+        riskData ? (
+          <div className="flex items-center gap-2">
+            <Badge style={{ backgroundColor: riskData.current_band.color }} className="text-white hover:opacity-90">
+              {riskData.current_band.name}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+               Model: Logarithmic Regression
+            </span>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <LogScaleToggle checked={logScale} onChange={setLogScale} />
-            <RegressionBandsToggle 
-              checked={showBands} 
-              onChange={setShowBands}
-              disabled={!riskData}
-            />
-          </div>
+        ) : undefined
+      }
+      modalActions={
+        <div className="flex items-center gap-4">
+          <LogScaleToggle checked={logScale} onChange={setLogScale} />
+          <RegressionBandsToggle 
+            checked={showBands} 
+            onChange={setShowBands}
+            disabled={!riskData}
+          />
         </div>
-
-        {/* Risk Score Summary */}
-        {riskData && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">Current Price</span>
-              <p className="font-semibold">${riskData.current_price.toLocaleString()}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Fair Value</span>
-              <p className="font-semibold">${riskData.fair_value.toLocaleString()}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Risk Score</span>
-              <p className="font-semibold">
-                {(riskData.current_risk * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Data Points</span>
-              <p className="font-semibold">{riskData.data_points.toLocaleString()}</p>
-            </div>
-          </div>
-        )}
-      </CardHeader>
-
-      <CardContent>
-        <LightweightChart
-          ohlcData={chartData}
-          seriesType="Candlestick"
-          logScale={logScale}
-          height={400}
-          extraSeries={bandSeries}
-          fitContent
-        />
-
-        {/* Risk Score Bar */}
-        {riskData && (
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>Undervalued (0%)</span>
-              <span>Fair Value (50%)</span>
-              <span>Overvalued (100%)</span>
-            </div>
-            <div className="h-2 bg-gradient-to-r from-violet-500 via-green-500 to-red-500 rounded-full relative">
-              <div 
-                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-foreground rounded-full shadow"
-                style={{ left: `${riskData.current_risk * 100}%`, transform: 'translate(-50%, -50%)' }}
-              />
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      }
+      condensedChart={renderChartContent(350)}
+      detailedChart={renderChartContent("100%")}
+    />
   );
 }
 
