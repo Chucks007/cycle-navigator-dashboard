@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   createChart,
+  CrosshairMode,
   type IChartApi,
   type ISeriesApi,
   type SeriesType,
@@ -108,18 +109,20 @@ function getChartOptions(theme: string | undefined): DeepPartial<ChartOptions> {
       horzLines: { color: isDark ? "#27272a" : "#f4f4f5" },
     },
     crosshair: {
-      mode: 0, // CrosshairMode.Magnet
+      mode: CrosshairMode.Magnet, // Snap to price points for precise cycle analysis
       vertLine: {
         color: isDark ? "#71717a" : "#a1a1aa",
         width: 1,
         style: 2, // LineStyle.Dashed
         labelBackgroundColor: isDark ? "#27272a" : "#f4f4f5",
+        labelVisible: true,
       },
       horzLine: {
         color: isDark ? "#71717a" : "#a1a1aa",
         width: 1,
         style: 2,
         labelBackgroundColor: isDark ? "#27272a" : "#f4f4f5",
+        labelVisible: true,
       },
     },
     rightPriceScale: {
@@ -421,18 +424,34 @@ export function LightweightChart({
       }
     });
 
-    // Add new extra series
+    // Add new extra series (supports Line and Area types)
     extraSeriesRefs.current = extraSeries.map((config) => {
-      const extraLine = chartRef.current!.addSeries(LineSeries, {
-        color: config.color,
-        lineWidth: config.lineWidth ?? 1,
-        lineStyle: config.lineStyle ?? 0, // 0=Solid, 2=Dashed
-        priceLineVisible: config.priceLineVisible ?? false,
-        lastValueVisible: config.lastValueVisible ?? false,
-        title: config.title,
-      } as DeepPartial<LineStyleOptions & SeriesOptionsCommon>);
-      extraLine.setData(config.data);
-      return extraLine;
+      let extraSeriesInstance: ISeriesApi<"Line" | "Area">;
+      
+      if (config.seriesType === "Area") {
+        extraSeriesInstance = chartRef.current!.addSeries(AreaSeries, {
+          lineColor: config.color,
+          topColor: config.topColor ?? `${config.color}40`,
+          bottomColor: config.bottomColor ?? `${config.color}00`,
+          lineWidth: config.lineWidth ?? 1,
+          lineStyle: config.lineStyle ?? 0,
+          priceLineVisible: config.priceLineVisible ?? false,
+          lastValueVisible: config.lastValueVisible ?? false,
+          title: config.title,
+        } as DeepPartial<AreaStyleOptions & SeriesOptionsCommon>);
+      } else {
+        extraSeriesInstance = chartRef.current!.addSeries(LineSeries, {
+          color: config.color,
+          lineWidth: config.lineWidth ?? 1,
+          lineStyle: config.lineStyle ?? 0, // 0=Solid, 2=Dashed
+          priceLineVisible: config.priceLineVisible ?? false,
+          lastValueVisible: config.lastValueVisible ?? false,
+          title: config.title,
+        } as DeepPartial<LineStyleOptions & SeriesOptionsCommon>);
+      }
+      
+      extraSeriesInstance.setData(config.data);
+      return extraSeriesInstance;
     });
   }, [extraSeries]);
 
@@ -563,14 +582,22 @@ export function LightweightChart({
 
   return (
     <div className="relative w-full">
+      {/* Floating Legend Overlay - Professional terminal style */}
       {legendData && (
-        <div className="absolute top-2 left-2 z-10 bg-background/80 backdrop-blur-sm border rounded-md p-2 shadow-sm text-xs pointer-events-none transition-opacity duration-150">
-          <div className="flex flex-col gap-0.5">
-            <div className="text-muted-foreground font-mono">{legendData.date}</div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold font-mono">{legendData.value}</span>
+        <div className="absolute top-3 left-3 z-10 bg-black/75 dark:bg-black/85 backdrop-blur-md rounded-lg px-3 py-2 shadow-lg pointer-events-none transition-all duration-100 ease-out border border-white/10">
+          <div className="flex flex-col gap-1">
+            <div className="text-zinc-400 text-[10px] font-medium tracking-wider uppercase">
+              {legendData.date}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-white font-bold font-mono text-sm">
+                {legendData.value}
+              </span>
               {legendData.percentChange && (
-                <span style={{ color: legendData.color }} className="font-mono">
+                <span 
+                  style={{ color: legendData.color }} 
+                  className="font-mono text-sm font-semibold"
+                >
                   {legendData.percentChange}
                 </span>
               )}
