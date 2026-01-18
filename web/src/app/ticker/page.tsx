@@ -43,7 +43,7 @@ import {
   type OHLCDataPoint,
   type HistogramDataPoint,
 } from "@/lib/chart-utils";
-import { RiskScoreCard } from "@/components/charts/risk-chart";
+import { RiskScoreCard, RiskChart } from "@/components/charts/risk-chart";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -456,6 +456,7 @@ function TickerAnalysisContent() {
           <TabsList className="mb-4">
             <TabsTrigger value="price">Price History</TabsTrigger>
             <TabsTrigger value="volume">Volume</TabsTrigger>
+            {isCrypto && <TabsTrigger value="risk">Risk Model</TabsTrigger>}
           </TabsList>
 
         <TabsContent value="price">
@@ -561,6 +562,12 @@ function TickerAnalysisContent() {
             }
           />
         </TabsContent>
+        
+        {isCrypto && (
+          <TabsContent value="risk">
+            <RiskChart ticker={ticker} />
+          </TabsContent>
+        )}
       </Tabs>
       </section>
 
