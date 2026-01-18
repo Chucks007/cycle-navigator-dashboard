@@ -300,7 +300,7 @@ function TickerAnalysisContent() {
     return transformRiskBandsToSeries(riskData.bands, {
       lineWidth: 1,
       showLabels: false,
-      opacity: 0.5,
+      opacity: 0.15, // Low opacity so bands don't obscure price action
     });
   }, [riskData, showRiskBands]);
 

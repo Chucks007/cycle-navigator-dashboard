@@ -40,7 +40,7 @@ export function RiskChart({ ticker, title }: RiskChartProps) {
     return transformRiskBandsToSeries(riskData.bands, {
       lineWidth: 1,
       showLabels: false, // Too many labels can clutter the chart
-      opacity: 0.5,
+      opacity: 0.15, // Low opacity so bands don't obscure price action
     });
   }, [riskData, showBands]);
 
@@ -125,7 +125,7 @@ export function RiskChart({ ticker, title }: RiskChartProps) {
   return (
     <ExpandableChartCard
       id={`risk-${ticker}`}
-      title={title || `${ticker} Risk Analysis`}
+      title={title || "Logarithmic Regression Corridors"}
       subtitle={
         riskData ? (
           <div className="flex items-center gap-2">

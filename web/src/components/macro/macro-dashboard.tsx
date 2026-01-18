@@ -58,9 +58,9 @@ export function MacroDashboard() {
             <RealRatesCard days={days} />
           </section>
 
-          {/* Global Risk Section */}
+          {/* Global Risk Section - Bitcoin Fair Value */}
           <section id="risk">
-            <RiskChart ticker="SPY" title="S&P 500 Market Risk" />
+            <RiskChart ticker="BTC-USD" title="Logarithmic Regression Corridors" />
           </section>
         </div>
       </div>
