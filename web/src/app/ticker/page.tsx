@@ -304,13 +304,25 @@ function TickerAnalysisContent() {
     });
   }, [riskData, showRiskBands]);
 
-  // Price formatting
+  // Price formatting - memoized to prevent chart re-renders
   const priceFormat = React.useMemo(() => {
     if (isCrypto) {
       return { type: 'price' as const, precision: 1, minMove: 0.1 };
     }
     return { type: 'price' as const, precision: 2, minMove: 0.01 };
   }, [isCrypto]);
+
+  // Chart colors - memoized to prevent unnecessary re-draws on UI changes
+  const chartColors = React.useMemo(() => ({
+    lineColor: isPositive ? "#10b981" : "#ef4444",
+    topColor: isPositive ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)",
+    bottomColor: "transparent",
+  }), [isPositive]);
+
+  // Sparkline color - memoized for performance
+  const sparklineColor = React.useMemo(() => 
+    isPositive ? "#10b981" : "#ef4444"
+  , [isPositive]);
 
   if (metricsError) {
     return (
@@ -492,7 +504,7 @@ function TickerAnalysisContent() {
             condensedChart={
               <SparklineChart
                 data={sparklineData}
-                color={isPositive ? "#10b981" : "#ef4444"}
+                color={sparklineColor}
                 height={160}
               />
             }
@@ -511,11 +523,7 @@ function TickerAnalysisContent() {
                 <LightweightChart
                   data={lineChartData}
                   seriesType="Area"
-                  colors={{
-                    lineColor: isPositive ? "#10b981" : "#ef4444",
-                    topColor: isPositive ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)",
-                    bottomColor: "transparent",
-                  }}
+                  colors={chartColors}
                   logScale={useLogScale}
                   height={400}
                   extraSeries={riskBandSeries}
