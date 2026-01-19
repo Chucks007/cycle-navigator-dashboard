@@ -6,6 +6,7 @@ import {
   LiquidityPoint,
   DebtPoint,
   RealRatePoint,
+  CPIPoint,
   RiskResponse,
   RiskScoreResponse,
 } from '@/types/api';
@@ -101,6 +102,11 @@ class ApiClient {
 
   public async getRealRates(): Promise<RealRatePoint[]> {
     return this.request<RealRatePoint[]>('/api/macro/real-rates');
+  }
+
+  public async getCpi(days?: number): Promise<CPIPoint[]> {
+    const query = days ? `?days=${days}` : '';
+    return this.request<CPIPoint[]>(`/api/macro/cpi${query}`);
   }
 
   // Risk / Regression Bands

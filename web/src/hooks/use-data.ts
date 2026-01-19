@@ -6,6 +6,7 @@ import {
   type LiquidityPoint,
   type DebtPoint,
   type RealRatePoint,
+  type CPIPoint,
   type StockMetrics,
   type StockHistoryPoint,
   type StockIndicatorsPoint,
@@ -39,6 +40,15 @@ export function useRealRates() {
     queryKey: ["macro", "real-rates"],
     queryFn: () => apiClient.getRealRates(),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCpi(days?: number) {
+  return useQuery<CPIPoint[], Error>({
+    queryKey: ["macro", "cpi", days],
+    queryFn: () => apiClient.getCpi(days),
+    staleTime: 5 * 60 * 1000,
+    enabled: days !== undefined, // Only fetch when explicitly requested
   });
 }
 

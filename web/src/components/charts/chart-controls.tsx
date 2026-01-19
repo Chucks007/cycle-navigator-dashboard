@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, DollarSign } from "lucide-react";
 
 export type Timeframe = "1D" | "1W" | "1M" | "6M" | "1Y" | "5Y" | "ALL";
 
@@ -17,7 +17,7 @@ interface TimeframeSelectorProps {
 
 export function TimeframeSelector({ value, onChange, className }: TimeframeSelectorProps) {
   const options: Timeframe[] = ["1D", "1W", "1M", "6M", "1Y", "5Y", "ALL"];
-  
+
   return (
     <div className={cn("inline-flex items-center rounded-lg border p-1 bg-muted/50", className)}>
       {options.map((opt) => (
@@ -52,7 +52,7 @@ export function IndicatorToggle({ label, checked, color, onChange }: IndicatorTo
       <Switch id={id} checked={checked} onCheckedChange={onChange} />
       <Label htmlFor={id} className="text-sm cursor-pointer flex items-center gap-1.5">
         {color && (
-            <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: color }} />
+          <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: color }} />
         )}
         {label}
       </Label>
@@ -98,6 +98,46 @@ export function RegressionBandsToggle({ checked, onChange, className, disabled }
       <Label htmlFor={id} className={cn("text-sm cursor-pointer flex items-center gap-1.5", disabled && "cursor-not-allowed")}>
         <TrendingUp className="w-3.5 h-3.5 text-violet-500" />
         <span>Regression Bands</span>
+      </Label>
+    </div>
+  );
+}
+
+interface PurchasingPowerToggleProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  className?: string;
+  disabled?: boolean;
+  type?: "M2" | "CPI";
+}
+
+/**
+ * Toggle for adjusting values by M2 or CPI to show purchasing power / real values.
+ * When enabled, displays indexed values (base = 100) to avoid tiny ratios.
+ */
+export function PurchasingPowerToggle({
+  checked,
+  onChange,
+  className,
+  disabled,
+  type = "CPI"
+}: PurchasingPowerToggleProps) {
+  const id = React.useId();
+  const label = type === "M2" ? "M2 Adj" : "CPI Adj";
+  const tooltip = type === "M2"
+    ? "Adjust for M2 money supply (purchasing power)"
+    : "Adjust for inflation (CPI)";
+
+  return (
+    <div className={cn("flex items-center space-x-2", className, disabled && "opacity-50")}>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} disabled={disabled} />
+      <Label
+        htmlFor={id}
+        className={cn("text-sm cursor-pointer flex items-center gap-1.5", disabled && "cursor-not-allowed")}
+        title={tooltip}
+      >
+        <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+        <span>{label}</span>
       </Label>
     </div>
   );
