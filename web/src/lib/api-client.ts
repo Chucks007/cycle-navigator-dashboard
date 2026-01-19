@@ -29,7 +29,7 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     try {
       const response = await fetch(url, {
         ...options,
@@ -57,8 +57,8 @@ class ApiClient {
         console.error('Backend Offline:', error);
         // Dispatch a custom event that UI components can listen to
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('api-error', { 
-            detail: { message: 'Backend seems to be offline. Please try again later.' } 
+          window.dispatchEvent(new CustomEvent('api-error', {
+            detail: { message: 'Backend seems to be offline. Please try again later.' }
           }));
         }
         throw new Error('Backend Offline');
