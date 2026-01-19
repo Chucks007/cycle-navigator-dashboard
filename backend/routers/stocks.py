@@ -5,6 +5,7 @@ from requests.exceptions import ConnectionError, Timeout, RequestException
 
 from .. import schemas
 from ..services.stock_service import stock_service
+from ..services.common import format_for_api
 from .utils import ERROR_RESPONSES
 
 logger = logging.getLogger(__name__)
@@ -45,10 +46,13 @@ def get_stock_history(
     try:
         data = stock_service.fetch_stock_data(ticker, period, interval)
         data = stock_service.process_data(data)
-        # Convert to records for JSON
-        # We need Datetime as string
-        data['Datetime'] = data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
-        result = data[['Datetime', 'Open', 'High', 'Low', 'Close', 'Volume']].to_dict(orient='records')
+        # Rename for format_for_api which expects 'date' column
+        data_formatted = data.rename(columns={'Datetime': 'date'})
+        result_df = data_formatted[['date', 'Open', 'High', 'Low', 'Close', 'Volume']]
+        result = format_for_api(result_df, date_format='%Y-%m-%d %H:%M:%S')
+        # Rename back to Datetime to match schema
+        for record in result:
+            record['Datetime'] = record.pop('date')
         return result
     except ValueError as e:
         logger.warning(f"Bad request history {ticker}: {e}")
@@ -70,11 +74,14 @@ def get_stock_indicators(
         data = stock_service.fetch_stock_data(ticker, period, interval)
         data = stock_service.process_data(data)
         data = stock_service.add_technical_indicators(data)
-
-        data['Datetime'] = data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        # Rename for format_for_api which expects 'date' column
+        data_formatted = data.rename(columns={'Datetime': 'date'})
         # Filter columns that exist (some indicators might fail or be NaN)
-        cols = ['Datetime', 'SMA_20', 'EMA_20', 'RSI_14']
-        result = data[cols].to_dict(orient='records')
+        result_df = data_formatted[['date', 'SMA_20', 'EMA_20', 'RSI_14']]
+        result = format_for_api(result_df, date_format='%Y-%m-%d %H:%M:%S')
+        # Rename back to Datetime to match schema
+        for record in result:
+            record['Datetime'] = record.pop('date')
         return result
     except ValueError as e:
         logger.warning(f"Bad request indicators {ticker}: {e}")

@@ -244,3 +244,40 @@ def get_asset_info() -> Dict[str, Dict]:
         "soft_assets": SOFT_ASSETS,
         "periods": COMPARISON_PERIODS
     }
+
+
+def get_barbell_comparison(period: str = "1y") -> List[Dict]:
+    """
+    Orchestrator function for the Barbell Strategy comparison.
+    
+    Fetches data, calculates ratios, and formats the response in one go.
+    
+    Args:
+        period: Time period string (ytd, 1y, 3y, 5y, 10y)
+    
+    Returns:
+        List of dictionaries with date, Hard_Index, Soft_Index, Ratio, Ratio_Normalized
+    """
+    from .services.common import format_for_api
+    
+    # 1. Fetch asset lists
+    hard_tickers = list(HARD_ASSETS.keys())
+    soft_tickers = list(SOFT_ASSETS.keys())
+    all_tickers = hard_tickers + soft_tickers
+
+    # 2. Call service to get normalized data
+    _, normalized_df = fetch_normalized_comparison(all_tickers, period=period)
+
+    # 3. Calculate indices and ratio
+    ratio_df = calculate_hard_vs_soft_ratio(normalized_df, hard_tickers, soft_tickers)
+
+    # 4. Format for response using the standardized helper
+    ratio_df = ratio_df.reset_index()
+    # Rename Date -> date for consistency
+    ratio_df.rename(columns={'Date': 'date'}, inplace=True)
+    
+    # Select required fields
+    result_df = ratio_df[['date', 'Hard_Index', 'Soft_Index', 'Ratio', 'Ratio_Normalized']]
+    
+    # Use standardized formatting
+    return format_for_api(result_df, date_format='%Y-%m-%d')
