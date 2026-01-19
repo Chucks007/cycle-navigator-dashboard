@@ -119,15 +119,3 @@ class ApiClient {
 }
 
 export const apiClient = ApiClient.getInstance();
-
-// Export individual functions for easier usage if preferred, or use the client instance directly.
-export const getStockMetrics = (ticker: string, period?: string, interval?: string) => apiClient.getStockMetrics(ticker, period, interval);
-export const getStockHistory = (ticker: string, period?: string, interval?: string) => apiClient.getStockHistory(ticker, period, interval);
-export const getStockIndicators = (ticker: string, period?: string, interval?: string) => apiClient.getStockIndicators(ticker, period, interval);
-export const getSentiment = (ticker: string) => apiClient.getSentiment(ticker);
-export const getLiquidity = (days?: number) => apiClient.getLiquidity(days);
-export const getDebtStatus = (days?: number) => apiClient.getDebtStatus(days);
-export const getRealRates = () => apiClient.getRealRates();
-export const getRiskData = (ticker: string) => apiClient.getRiskData(ticker);
-export const getRiskScore = (ticker: string) => apiClient.getRiskScore(ticker);
-export const checkHealth = () => apiClient.checkHealth();

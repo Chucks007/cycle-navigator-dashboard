@@ -1,17 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  getLiquidity,
-  getDebtStatus,
-  getRealRates,
-  getStockMetrics,
-  getStockHistory,
-  getStockIndicators,
-  getSentiment,
-  getRiskData,
-  getRiskScore,
-} from "@/lib/api-client";
+import { apiClient } from "@/lib/api-client";
 import {
   type LiquidityPoint,
   type DebtPoint,
@@ -31,7 +21,7 @@ import {
 export function useLiquidity(days?: number) {
   return useQuery<LiquidityPoint[], Error>({
     queryKey: ["macro", "liquidity", days],
-    queryFn: () => getLiquidity(days),
+    queryFn: () => apiClient.getLiquidity(days),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
@@ -39,7 +29,7 @@ export function useLiquidity(days?: number) {
 export function useDebtStatus(days?: number) {
   return useQuery<DebtPoint[], Error>({
     queryKey: ["macro", "debt-status", days],
-    queryFn: () => getDebtStatus(days),
+    queryFn: () => apiClient.getDebtStatus(days),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -47,7 +37,7 @@ export function useDebtStatus(days?: number) {
 export function useRealRates() {
   return useQuery<RealRatePoint[], Error>({
     queryKey: ["macro", "real-rates"],
-    queryFn: getRealRates,
+    queryFn: () => apiClient.getRealRates(),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -63,7 +53,7 @@ export function useStockMetrics(
 ) {
   return useQuery<StockMetrics, Error>({
     queryKey: ["stock", "metrics", ticker, period, interval],
-    queryFn: () => getStockMetrics(ticker, period, interval),
+    queryFn: () => apiClient.getStockMetrics(ticker, period, interval),
     enabled: !!ticker,
   });
 }
@@ -75,7 +65,7 @@ export function useStockHistory(
 ) {
   return useQuery<StockHistoryPoint[], Error>({
     queryKey: ["stock", "history", ticker, period, interval],
-    queryFn: () => getStockHistory(ticker, period, interval),
+    queryFn: () => apiClient.getStockHistory(ticker, period, interval),
     enabled: !!ticker,
   });
 }
@@ -87,7 +77,7 @@ export function useStockIndicators(
 ) {
   return useQuery<StockIndicatorsPoint[], Error>({
     queryKey: ["stock", "indicators", ticker, period, interval],
-    queryFn: () => getStockIndicators(ticker, period, interval),
+    queryFn: () => apiClient.getStockIndicators(ticker, period, interval),
     enabled: !!ticker,
   });
 }
@@ -95,7 +85,7 @@ export function useStockIndicators(
 export function useSentiment(ticker: string) {
   return useQuery<SentimentResponse, Error>({
     queryKey: ["sentiment", ticker],
-    queryFn: () => getSentiment(ticker),
+    queryFn: () => apiClient.getSentiment(ticker),
     enabled: !!ticker,
   });
 }
@@ -112,7 +102,7 @@ export function useSentiment(ticker: string) {
 export function useRiskData(ticker: string, enabled: boolean = true) {
   return useQuery<RiskResponse, Error>({
     queryKey: ["risk", "full", ticker],
-    queryFn: () => getRiskData(ticker),
+    queryFn: () => apiClient.getRiskData(ticker),
     enabled: !!ticker && enabled,
     staleTime: 30 * 60 * 1000, // 30 minutes - bands don't change often
     gcTime: 60 * 60 * 1000, // 1 hour cache
@@ -127,7 +117,7 @@ export function useRiskData(ticker: string, enabled: boolean = true) {
 export function useRiskScore(ticker: string, enabled: boolean = true) {
   return useQuery<RiskScoreResponse, Error>({
     queryKey: ["risk", "score", ticker],
-    queryFn: () => getRiskScore(ticker),
+    queryFn: () => apiClient.getRiskScore(ticker),
     enabled: !!ticker && enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
