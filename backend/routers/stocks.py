@@ -4,7 +4,7 @@ import logging
 from requests.exceptions import ConnectionError, Timeout, RequestException
 
 from .. import schemas
-from ..services.stock import add_technical_indicators, calculate_metrics, fetch_stock_data, process_data, fetch_risk_free_rate
+from ..services.stock_service import stock_service
 from .utils import ERROR_RESPONSES
 
 logger = logging.getLogger(__name__)
@@ -21,10 +21,10 @@ def get_stock_metrics(
     interval: str = Query("1m", description="Data interval (e.g., 1m, 5m, 1h)")
 ):
     try:
-        data = fetch_stock_data(ticker, period, interval)
-        data = process_data(data)
-        rfr = fetch_risk_free_rate()
-        metrics = calculate_metrics(data, rfr)
+        data = stock_service.fetch_stock_data(ticker, period, interval)
+        data = stock_service.process_data(data)
+        rfr = stock_service.fetch_risk_free_rate()
+        metrics = stock_service.calculate_metrics(data, rfr)
         return metrics
     except ValueError as e:
         logger.warning(f"Bad request for ticker {ticker}: {e}")
@@ -43,8 +43,8 @@ def get_stock_history(
     interval: str = Query("1m")
 ):
     try:
-        data = fetch_stock_data(ticker, period, interval)
-        data = process_data(data)
+        data = stock_service.fetch_stock_data(ticker, period, interval)
+        data = stock_service.process_data(data)
         # Convert to records for JSON
         # We need Datetime as string
         data['Datetime'] = data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
@@ -67,9 +67,9 @@ def get_stock_indicators(
     interval: str = Query("1m")
 ):
     try:
-        data = fetch_stock_data(ticker, period, interval)
-        data = process_data(data)
-        data = add_technical_indicators(data)
+        data = stock_service.fetch_stock_data(ticker, period, interval)
+        data = stock_service.process_data(data)
+        data = stock_service.add_technical_indicators(data)
 
         data['Datetime'] = data['Datetime'].dt.strftime('%Y-%m-%d %H:%M:%S')
         # Filter columns that exist (some indicators might fail or be NaN)

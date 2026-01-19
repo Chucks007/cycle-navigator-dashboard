@@ -67,6 +67,9 @@ You should see: `cycle-navigator-backend` and `cycle-navigator-web`.
 
 ```bash
 docker-compose down
+
+Recreate containers so Docker picks up changes:
+docker compose down && docker compose up -d --build
 ```
 
 ### Using Podman Compose
