@@ -152,14 +152,15 @@ services:
       context: ./web
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:8000}
+        # Empty NEXT_PUBLIC_API_URL means client-side uses relative paths (proxied by Next.js)
+        NEXT_PUBLIC_API_URL: ""
         BACKEND_URL: ${BACKEND_URL:-http://backend:8000}
     container_name: cycle-navigator-web
     ports:
       - "3000:3000"
     environment:
       - BACKEND_URL=${BACKEND_URL:-http://backend:8000}
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://backend:8000}
+      - NEXT_PUBLIC_API_URL=
     depends_on:
       backend:
         condition: service_healthy

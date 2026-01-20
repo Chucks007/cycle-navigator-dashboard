@@ -13,7 +13,9 @@ import {
   MacroSummaryResponse,
 } from '@/types/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use relative path for browser requests (proxied by Next.js rewrites)
+// Only use absolute URL for server-side or when explicitly set for external access
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 class ApiClient {
   private static instance: ApiClient;
