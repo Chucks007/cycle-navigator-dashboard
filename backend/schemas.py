@@ -103,6 +103,20 @@ class MacroMetrics(BaseModel):
     debt_to_tax_ratio: float
     real_rate: float
 
+
+class MacroSummaryResponse(BaseModel):
+    """
+    Aggregated macro data response for efficient frontend fetching.
+    Returns all macro indicators in a single request to prevent
+    redundant API calls from multiple dashboard components.
+    """
+    liquidity: LiquidityResponse
+    debt_status: DebtStatusResponse
+    real_rates: RealRatesResponse
+    cpi: CPIResponse
+    summary: MacroMetrics
+
+
 # --- Comparison / Barbell ---
 
 class ComparisonPoint(BaseModel):

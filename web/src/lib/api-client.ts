@@ -10,6 +10,7 @@ import {
   CryptoDominanceResponse,
   RiskResponse,
   RiskScoreResponse,
+  MacroSummaryResponse,
 } from '@/types/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -108,6 +109,15 @@ class ApiClient {
   public async getCpi(days?: number): Promise<CPIPoint[]> {
     const query = days ? `?days=${days}` : '';
     return this.request<CPIPoint[]>(`/api/macro/cpi${query}`);
+  }
+
+  /**
+   * Fetch all macro data in a single request (optimized for dashboards).
+   * Returns liquidity, debt status, real rates, CPI, and summary metrics.
+   */
+  public async getMacroSummary(days?: number): Promise<MacroSummaryResponse> {
+    const query = days ? `?days=${days}` : '';
+    return this.request<MacroSummaryResponse>(`/api/macro/summary${query}`);
   }
 
   // Crypto

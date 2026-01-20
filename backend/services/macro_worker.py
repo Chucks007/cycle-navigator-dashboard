@@ -1,581 +1,69 @@
 """
-Celery worker for background FRED data fetching.
+Celery worker compatibility shim.
 
-This module implements the background worker that:
-1. Fetches data from FRED API on a schedule
-2. Stores historical data in PostgreSQL (source of truth)
-3. Updates Redis cache for fast frontend access
-4. Implements retry logic with exponential backoff
-5. Prevents rate-limit violations with global locks
+DEPRECATED: This module is maintained for backward compatibility.
+New code should import from backend.celery_app and backend.tasks.
+
+Migration guide:
+- celery_app -> from backend.celery_app import celery_app
+- fetch_fred_series -> from backend.tasks.fred_tasks import fetch_fred_series
+- update_all_fred_series -> from backend.tasks.fred_tasks import update_all_fred_series
+- update_crypto_metrics -> from backend.tasks.crypto_tasks import update_crypto_metrics
 """
 
-import logging
-import json
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-import redis
-from celery import Celery, Task
-from celery.schedules import crontab
-from fredapi import Fred
-import pandas as pd
-from sqlalchemy import create_engine, desc
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.exc import SQLAlchemyError
+import warnings
 
-from backend.config import (
-    CELERY_BROKER_URL,
-    CELERY_RESULT_BACKEND,
-    DATABASE_URL,
-    REDIS_URL,
-    FRED_API_KEY,
-    COINGECKO_API_KEY,
-    FRED_SERIES_M2,
-    FRED_SERIES_INTEREST,
-    FRED_SERIES_TAX,
-    FRED_SERIES_10Y_YIELD,
-    FRED_SERIES_CPI,
-    FRED_RETRY_MAX_ATTEMPTS,
-    FRED_RETRY_BACKOFF_BASE,
-    COINGECKO_RETRY_MAX_ATTEMPTS,
-    COINGECKO_RETRY_BACKOFF_BASE,
-    REDIS_CACHE_TTL,
-    REDIS_CACHE_PREFIX,
-    REDIS_CRYPTO_CACHE_PREFIX,
-    REDIS_LOCK_TIMEOUT,
-    DATA_UPDATE_HOUR,
+# Re-export from new locations for backward compatibility
+from backend.celery_app import celery_app
+from backend.tasks.fred_tasks import (
+    fetch_fred_series,
+    update_all_fred_series,
+    store_series_in_db,
+    update_series_metadata,
+    cache_series_in_redis,
+    FRED_SERIES_LIST,
 )
-from backend.models import Base, FREDSeriesData, FREDSeriesMetadata, CryptoData, CryptoMetadata
-from backend.services.crypto import CoinGeckoClient
-
-# Logger setup
-logger = logging.getLogger(__name__)
-
-# Celery app configuration
-celery_app = Celery(
-    'macro_worker',
-    broker=CELERY_BROKER_URL,
-    backend=CELERY_RESULT_BACKEND,
+from backend.tasks.crypto_tasks import (
+    update_crypto_metrics,
+    store_crypto_data_in_db,
+    update_crypto_metadata,
+    cache_crypto_dominance_in_redis,
+)
+from backend.tasks.common import (
+    get_db,
+    get_redis_client,
+    get_fred_client,
+    get_coingecko_client,
+    acquire_global_rate_limit_lock,
+    release_global_rate_limit_lock,
+    RateLimitError,
 )
 
-celery_app.conf.update(
-    task_serializer='json',
-    accept_content=['json'],
-    result_serializer='json',
-    timezone='UTC',
-    enable_utc=True,
-    worker_prefetch_multiplier=1,
-    task_acks_late=True,
+# Emit deprecation warning on import
+warnings.warn(
+    "backend.services.macro_worker is deprecated. "
+    "Import from backend.celery_app and backend.tasks instead.",
+    DeprecationWarning,
+    stacklevel=2
 )
 
-# Database setup
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Redis setup
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
-
-# FRED API client
-fred_client = Fred(api_key=FRED_API_KEY) if FRED_API_KEY else None
-
-# CoinGecko API client
-coingecko_client = CoinGeckoClient(api_key=COINGECKO_API_KEY) if COINGECKO_API_KEY else None
-
-# FRED series to fetch
-FRED_SERIES_LIST = [
-    FRED_SERIES_M2,
-    FRED_SERIES_INTEREST,
-    FRED_SERIES_TAX,
-    FRED_SERIES_10Y_YIELD,
-    FRED_SERIES_CPI,
-]
+# Legacy aliases for backward compatibility
+redis_client = None  # Use get_redis_client() instead
+fred_client = None   # Use get_fred_client() instead
+coingecko_client = None  # Use get_coingecko_client() instead
 
 
-class RateLimitError(Exception):
-    """Raised when FRED API rate limit is hit."""
-    pass
-
-
-def get_db() -> Session:
-    """Get a database session."""
-    return SessionLocal()
-
-
-def acquire_global_rate_limit_lock() -> bool:
-    """
-    Acquire a global rate-limit lock to prevent concurrent FRED API calls.
-    
-    Returns:
-        bool: True if lock acquired, False otherwise
-    """
-    lock_key = f"{REDIS_CACHE_PREFIX}rate_limit_lock"
-    return redis_client.set(lock_key, "1", nx=True, ex=REDIS_LOCK_TIMEOUT)
-
-
-def release_global_rate_limit_lock():
-    """Release the global rate-limit lock."""
-    lock_key = f"{REDIS_CACHE_PREFIX}rate_limit_lock"
-    redis_client.delete(lock_key)
-
-
-def store_series_in_db(db: Session, series_id: str, data: pd.Series) -> int:
-    """
-    Store FRED series data in PostgreSQL.
-    
-    Args:
-        db: Database session
-        series_id: FRED series ID
-        data: Pandas Series with datetime index and values
-        
-    Returns:
-        int: Number of observations stored
-    """
-    if data.empty:
-        logger.warning(f"No data to store for series {series_id}")
-        return 0
-    
-    # Delete existing data for this series to avoid duplicates
-    db.query(FREDSeriesData).filter(FREDSeriesData.series_id == series_id).delete()
-    
-    # Insert new data
-    observations = []
-    for date, value in data.items():
-        if pd.notna(value):  # Skip NaN values
-            observations.append(FREDSeriesData(
-                series_id=series_id,
-                date=date,
-                value=float(value),
-            ))
-    
-    db.bulk_save_objects(observations)
-    db.commit()
-    
-    logger.info(f"Stored {len(observations)} observations for {series_id}")
-    return len(observations)
-
-
-def update_series_metadata(
-    db: Session,
-    series_id: str,
-    observation_count: int,
-    last_observation_date: Optional[datetime] = None,
-    status: str = 'success',
-    error_message: Optional[str] = None,
-):
-    """Update metadata for a FRED series."""
-    metadata = db.query(FREDSeriesMetadata).filter(
-        FREDSeriesMetadata.series_id == series_id
-    ).first()
-    
-    if metadata:
-        metadata.last_fetched = datetime.utcnow()
-        metadata.observation_count = observation_count
-        metadata.last_observation_date = last_observation_date
-        metadata.fetch_status = status
-        metadata.error_message = error_message
-    else:
-        metadata = FREDSeriesMetadata(
-            series_id=series_id,
-            last_fetched=datetime.utcnow(),
-            observation_count=observation_count,
-            last_observation_date=last_observation_date,
-            fetch_status=status,
-            error_message=error_message,
-        )
-        db.add(metadata)
-    
-    db.commit()
-
-
-def cache_series_in_redis(series_id: str, data: pd.Series):
-    """
-    Cache FRED series data in Redis for fast access.
-    
-    Args:
-        series_id: FRED series ID
-        data: Pandas Series with datetime index and values
-    """
-    if data.empty:
-        return
-    
-    # Convert to JSON-serializable format
-    cache_data = {
-        'series_id': series_id,
-        'last_updated': datetime.utcnow().isoformat(),
-        'data': [
-            {'date': date.isoformat(), 'value': float(value)}
-            for date, value in data.items()
-            if pd.notna(value)
-        ]
-    }
-    
-    cache_key = f"{REDIS_CACHE_PREFIX}{series_id}"
-    redis_client.setex(
-        cache_key,
-        REDIS_CACHE_TTL,
-        json.dumps(cache_data)
-    )
-    logger.info(f"Cached {series_id} in Redis with {len(cache_data['data'])} points")
-
-
-@celery_app.task(
-    bind=True,
-    autoretry_for=(Exception,),
-    retry_kwargs={'max_retries': FRED_RETRY_MAX_ATTEMPTS},
-    retry_backoff=FRED_RETRY_BACKOFF_BASE,
-    retry_backoff_max=600,  # Max 10 minutes
-    retry_jitter=True,
-)
-def fetch_fred_series(self: Task, series_id: str) -> Dict[str, Any]:
-    """
-    Fetch a single FRED series and store in DB + cache.
-    
-    Args:
-        series_id: FRED series ID to fetch
-        
-    Returns:
-        Dict with status and metadata
-    """
-    if not fred_client:
-        error_msg = "FRED API key not configured"
-        logger.error(error_msg)
-        return {'status': 'failed', 'error': error_msg}
-    
-    db = get_db()
-    try:
-        # Fetch from FRED API
-        logger.info(f"Fetching series {series_id} from FRED API")
-        data = fred_client.get_series(series_id)
-        
-        if data.empty:
-            error_msg = f"No data returned for series {series_id}"
-            logger.warning(error_msg)
-            update_series_metadata(db, series_id, 0, status='failed', error_message=error_msg)
-            return {'status': 'failed', 'error': error_msg}
-        
-        # Store in PostgreSQL
-        observation_count = store_series_in_db(db, series_id, data)
-        last_observation_date = data.index[-1] if not data.empty else None
-        
-        # Update metadata
-        update_series_metadata(
-            db,
-            series_id,
-            observation_count,
-            last_observation_date,
-            status='success'
-        )
-        
-        # Cache in Redis
-        cache_series_in_redis(series_id, data)
-        
-        return {
-            'status': 'success',
-            'series_id': series_id,
-            'observation_count': observation_count,
-            'last_observation_date': last_observation_date.isoformat() if last_observation_date else None,
-        }
-        
-    except Exception as e:
-        error_msg = f"Error fetching {series_id}: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        update_series_metadata(db, series_id, 0, status='failed', error_message=error_msg)
-        raise
-    finally:
-        db.close()
-
-
-@celery_app.task(bind=True)
-def update_all_fred_series(self: Task) -> Dict[str, Any]:
-    """
-    Update all FRED series (scheduled task).
-    
-    Fetches all required macro indicators from FRED, stores in DB,
-    and updates Redis cache. Uses global lock to prevent concurrent runs.
-    
-    Returns:
-        Dict with summary of updates
-    """
-    if not acquire_global_rate_limit_lock():
-        logger.warning("Another update is already in progress, skipping")
-        return {'status': 'skipped', 'reason': 'concurrent_update'}
-    
-    try:
-        logger.info("Starting scheduled FRED data update")
-        results = []
-        
-        for series_id in FRED_SERIES_LIST:
-            try:
-                result = fetch_fred_series.apply(args=[series_id]).get(timeout=60)
-                results.append(result)
-                logger.info(f"Updated {series_id}: {result}")
-            except Exception as e:
-                logger.error(f"Failed to update {series_id}: {e}", exc_info=True)
-                results.append({
-                    'status': 'failed',
-                    'series_id': series_id,
-                    'error': str(e)
-                })
-        
-        success_count = sum(1 for r in results if r.get('status') == 'success')
-        
-        return {
-            'status': 'completed',
-            'total': len(FRED_SERIES_LIST),
-            'successful': success_count,
-            'failed': len(FRED_SERIES_LIST) - success_count,
-            'results': results,
-            'timestamp': datetime.utcnow().isoformat(),
-        }
-        
-    finally:
-        release_global_rate_limit_lock()
-
-
-# ===== CRYPTO WORKER TASKS =====
-
-def store_crypto_data_in_db(db: Session, snapshot: Dict[str, Any]) -> int:
-    """
-    Store crypto market snapshot in PostgreSQL.
-    
-    Args:
-        db: Database session
-        snapshot: Dict with timestamp, total_mcap, btc_dominance, eth_dominance, altcoin_mcap
-        
-    Returns:
-        int: Number of records stored (1)
-    """
-    try:
-        # Check if data for this timestamp already exists
-        existing = db.query(CryptoData).filter(
-            CryptoData.timestamp == snapshot['timestamp']
-        ).first()
-        
-        if existing:
-            # Update existing record
-            existing.total_mcap = snapshot['total_mcap']
-            existing.btc_dominance = snapshot['btc_dominance']
-            existing.eth_dominance = snapshot['eth_dominance']
-            existing.altcoin_mcap = snapshot['altcoin_mcap']
-            existing.updated_at = datetime.utcnow()
-            logger.info(f"Updated existing crypto data for {snapshot['timestamp']}")
-        else:
-            # Insert new record
-            crypto_data = CryptoData(
-                timestamp=snapshot['timestamp'],
-                total_mcap=snapshot['total_mcap'],
-                btc_dominance=snapshot['btc_dominance'],
-                eth_dominance=snapshot['eth_dominance'],
-                altcoin_mcap=snapshot['altcoin_mcap']
-            )
-            db.add(crypto_data)
-            logger.info(f"Inserted new crypto data for {snapshot['timestamp']}")
-        
-        db.commit()
-        return 1
-        
-    except SQLAlchemyError as e:
-        db.rollback()
-        logger.error(f"Error storing crypto data in DB: {e}")
-        raise
-
-
-def update_crypto_metadata(
-    db: Session,
-    metric_type: str,
-    observation_count: int,
-    last_observation_date: Optional[datetime] = None,
-    status: str = 'success',
-    error_message: Optional[str] = None
-):
-    """Update crypto metadata after fetch."""
-    try:
-        metadata = db.query(CryptoMetadata).filter(
-            CryptoMetadata.metric_type == metric_type
-        ).first()
-        
-        if metadata:
-            metadata.last_fetched = datetime.utcnow()
-            metadata.observation_count = observation_count
-            metadata.last_observation_date = last_observation_date
-            metadata.fetch_status = status
-            metadata.error_message = error_message
-        else:
-            metadata = CryptoMetadata(
-                metric_type=metric_type,
-                last_fetched=datetime.utcnow(),
-                observation_count=observation_count,
-                last_observation_date=last_observation_date,
-                fetch_status=status,
-                error_message=error_message
-            )
-            db.add(metadata)
-        
-        db.commit()
-        
-    except SQLAlchemyError as e:
-        db.rollback()
-        logger.error(f"Error updating crypto metadata: {e}")
-
-
-def cache_crypto_dominance_in_redis(db: Session):
-    """
-    Cache recent crypto dominance data in Redis for fast frontend access.
-    
-    Fetches last 365 days from PostgreSQL and caches as JSON.
-    """
-    try:
-        # Get last 365 days of data
-        cutoff_date = datetime.utcnow() - timedelta(days=365)
-        data_records = db.query(CryptoData).filter(
-            CryptoData.timestamp >= cutoff_date
-        ).order_by(CryptoData.timestamp).all()
-        
-        if not data_records:
-            logger.warning("No crypto data to cache in Redis")
-            return
-        
-        # Format for cache
-        cache_data = {
-            'last_updated': datetime.utcnow().isoformat(),
-            'data': [
-                {
-                    'timestamp': record.timestamp.isoformat(),
-                    'total_mcap': record.total_mcap,
-                    'btc_dominance': record.btc_dominance,
-                    'eth_dominance': record.eth_dominance,
-                    'altcoin_mcap': record.altcoin_mcap
-                }
-                for record in data_records
-            ]
-        }
-        
-        cache_key = f"{REDIS_CRYPTO_CACHE_PREFIX}dominance"
-        redis_client.setex(
-            cache_key,
-            REDIS_CACHE_TTL,
-            json.dumps(cache_data)
-        )
-        logger.info(f"Cached {len(cache_data['data'])} crypto data points in Redis")
-        
-    except Exception as e:
-        logger.error(f"Error caching crypto data in Redis: {e}")
-
-
-@celery_app.task(
-    bind=True,
-    autoretry_for=(Exception,),
-    retry_kwargs={'max_retries': COINGECKO_RETRY_MAX_ATTEMPTS},
-    retry_backoff=COINGECKO_RETRY_BACKOFF_BASE,
-    retry_backoff_max=600,  # Max 10 minutes
-    retry_jitter=True,
-)
-def update_crypto_metrics(self: Task) -> Dict[str, Any]:
-    """
-    Fetch global crypto market data from CoinGecko and store in DB + cache.
-    
-    This task is designed to run daily to avoid burning CoinGecko API credits.
-    It fetches current global market data (total mcap, BTC/ETH dominance),
-    calculates altcoin market cap, and stores everything in PostgreSQL + Redis.
-    
-    Returns:
-        Dict with status and metadata
-    """
-    if not coingecko_client:
-        error_msg = "CoinGecko API key not configured"
-        logger.error(error_msg)
-        return {'status': 'failed', 'error': error_msg}
-    
-    db = get_db()
-    try:
-        # Fetch global data from CoinGecko
-        logger.info("Fetching global crypto data from CoinGecko API")
-        global_data = coingecko_client.get_global_data()
-        
-        if not global_data or 'data' not in global_data:
-            error_msg = "No data returned from CoinGecko API"
-            logger.warning(error_msg)
-            update_crypto_metadata(db, 'global', 0, status='failed', error_message=error_msg)
-            return {'status': 'failed', 'error': error_msg}
-        
-        data = global_data['data']
-        
-        # Extract dominance percentages
-        btc_dominance = data.get('market_cap_percentage', {}).get('btc', 0.0)
-        eth_dominance = data.get('market_cap_percentage', {}).get('eth', 0.0)
-        
-        # Get total market cap in USD
-        total_mcap = data.get('total_market_cap', {}).get('usd', 0.0)
-        
-        # Calculate altcoin market cap (Total - BTC - ETH)
-        btc_mcap = total_mcap * (btc_dominance / 100.0)
-        eth_mcap = total_mcap * (eth_dominance / 100.0)
-        altcoin_mcap = total_mcap - btc_mcap - eth_mcap
-        
-        # Create snapshot
-        snapshot = {
-            'timestamp': datetime.utcnow(),
-            'total_mcap': total_mcap,
-            'btc_dominance': btc_dominance,
-            'eth_dominance': eth_dominance,
-            'altcoin_mcap': altcoin_mcap
-        }
-        
-        # Store in PostgreSQL
-        store_crypto_data_in_db(db, snapshot)
-        
-        # Update metadata
-        update_crypto_metadata(
-            db,
-            'global',
-            observation_count=1,
-            last_observation_date=snapshot['timestamp'],
-            status='success'
-        )
-        
-        # Cache in Redis
-        cache_crypto_dominance_in_redis(db)
-        
-        return {
-            'status': 'success',
-            'metric_type': 'global',
-            'total_mcap': total_mcap,
-            'btc_dominance': btc_dominance,
-            'eth_dominance': eth_dominance,
-            'altcoin_mcap': altcoin_mcap,
-            'timestamp': snapshot['timestamp'].isoformat(),
-        }
-        
-    except Exception as e:
-        error_msg = f"Error updating crypto metrics: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        update_crypto_metadata(db, 'global', 0, status='failed', error_message=error_msg)
-        raise
-    finally:
-        db.close()
-
-
-# Celery Beat schedule for periodic tasks
-celery_app.conf.beat_schedule = {
-    'update-fred-data-daily': {
-        'task': 'backend.services.macro_worker.update_all_fred_series',
-        'schedule': crontab(hour=DATA_UPDATE_HOUR, minute=0),  # Daily at 2 AM UTC
-    },
-    'update-crypto-metrics-daily': {
-        'task': 'backend.services.macro_worker.update_crypto_metrics',
-        'schedule': crontab(hour=DATA_UPDATE_HOUR, minute=15),  # Daily at 2:15 AM UTC
-    },
-}
-
-
-# Initialize database tables
 def init_db():
-    """Create database tables if they don't exist."""
-    try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables initialized")
-    except SQLAlchemyError as e:
-        logger.error(f"Error initializing database: {e}")
-
-
-# Call init_db on module load
-init_db()
+    """
+    Initialize database tables.
+    
+    DEPRECATED: Use scripts/init_db.py instead.
+    This function is kept for backward compatibility but does nothing.
+    Database initialization should be done explicitly via init_db.py.
+    """
+    warnings.warn(
+        "init_db() in macro_worker is deprecated. "
+        "Use scripts/init_db.py for database initialization.",
+        DeprecationWarning,
+        stacklevel=2
+    )

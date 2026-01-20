@@ -93,6 +93,39 @@ export interface MacroMetrics {
   real_rate: number;
 }
 
+export interface MacroDataMetadata {
+  last_updated: string | null;
+  is_stale: boolean;
+}
+
+export interface LiquidityResponse {
+  data: LiquidityPoint[];
+  metadata: MacroDataMetadata;
+}
+
+export interface DebtStatusResponse {
+  data: DebtPoint[];
+  metadata: MacroDataMetadata;
+}
+
+export interface RealRatesResponse {
+  data: RealRatePoint[];
+  metadata: MacroDataMetadata;
+}
+
+export interface CPIResponse {
+  data: CPIPoint[];
+  metadata: MacroDataMetadata;
+}
+
+export interface MacroSummaryResponse {
+  liquidity: LiquidityResponse;
+  debt_status: DebtStatusResponse;
+  real_rates: RealRatesResponse;
+  cpi: CPIResponse;
+  summary: MacroMetrics;
+}
+
 export interface ComparisonPoint {
   date: string;
   Hard_Index: number;

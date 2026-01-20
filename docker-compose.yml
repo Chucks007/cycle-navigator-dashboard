@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: timescale/timescaledb-ha:pg16
     container_name: cycle-navigator-postgres
     environment:
       - POSTGRES_DB=cycle_navigator
@@ -15,7 +15,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   redis:
     image: redis:7-alpine
@@ -27,7 +36,16 @@ services:
       interval: 10s
       timeout: 3s
       retries: 5
+      start_period: 10s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
 
   backend:
     build:
@@ -52,17 +70,26 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   celery-worker:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
     container_name: cycle-navigator-celery-worker
-    command: celery -A backend.services.macro_worker worker --loglevel=info
+    command: celery -A backend.celery_app worker --loglevel=info --concurrency=2
     environment:
       - FRED_API_KEY=${FRED_API_KEY:-}
+      - COINGECKO_API_KEY=${COINGECKO_API_KEY:-}
       - DATABASE_URL=postgresql://cycle_user:${POSTGRES_PASSWORD:-cycle_password}@postgres:5432/cycle_navigator
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
@@ -72,16 +99,33 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A backend.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   celery-beat:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
     container_name: cycle-navigator-celery-beat
-    command: celery -A backend.services.macro_worker beat --loglevel=info
+    command: celery -A backend.celery_app beat --loglevel=info
     environment:
       - FRED_API_KEY=${FRED_API_KEY:-}
+      - COINGECKO_API_KEY=${COINGECKO_API_KEY:-}
       - DATABASE_URL=postgresql://cycle_user:${POSTGRES_PASSWORD:-cycle_password}@postgres:5432/cycle_navigator
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
@@ -91,7 +135,17 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      celery-worker:
+        condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
 
   web:
     build:
@@ -106,7 +160,21 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
 
 volumes:
   postgres_data:
