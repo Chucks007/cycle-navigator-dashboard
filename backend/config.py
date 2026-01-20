@@ -21,6 +21,29 @@ FRED_API_KEY = os.getenv("FRED_API_KEY")
 if not FRED_API_KEY:
     logger.warning("FRED_API_KEY not found in configuration. Macro data features will be unavailable.")
 
+# Database Configuration
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://cycle_user:cycle_password@localhost:5432/cycle_navigator")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+# Celery Configuration
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/1")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/2")
+
+# Cache Configuration
+REDIS_CACHE_TTL = 86400  # 24 hours in seconds
+REDIS_CACHE_PREFIX = "macro:"
+REDIS_LOCK_TIMEOUT = 300  # 5 minutes for rate-limit lock
+
+# Worker Configuration
+FRED_RATE_LIMIT_DAILY = 1000  # FRED API limit per day
+FRED_SAFE_REQUEST_LIMIT = 800  # Stay well below limit
+FRED_RETRY_MAX_ATTEMPTS = 3
+FRED_RETRY_BACKOFF_BASE = 2  # Exponential backoff base (2^retry seconds)
+
+# Data Freshness Configuration
+DATA_STALE_THRESHOLD_HOURS = 25  # Consider data stale if older than 25 hours
+DATA_UPDATE_HOUR = 2  # Update at 2 AM UTC daily
+
 # FRED Series IDs
 FRED_SERIES_M2 = 'M2SL'
 FRED_SERIES_INTEREST = 'A091RC1Q027SBEA'

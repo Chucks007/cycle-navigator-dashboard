@@ -67,6 +67,33 @@ class CPIPoint(BaseModel):
     date: str
     value: float
 
+class MacroDataMetadata(BaseModel):
+    """
+    Metadata about macro data freshness.
+    """
+    last_updated: Optional[str] = None  # ISO timestamp
+    is_stale: bool = False
+
+class LiquidityResponse(BaseModel):
+    """Response with data and metadata for liquidity endpoint."""
+    data: List[LiquidityPoint]
+    metadata: MacroDataMetadata
+
+class DebtStatusResponse(BaseModel):
+    """Response with data and metadata for debt status endpoint."""
+    data: List[DebtPoint]
+    metadata: MacroDataMetadata
+
+class RealRatesResponse(BaseModel):
+    """Response with data and metadata for real rates endpoint."""
+    data: List[RealRatePoint]
+    metadata: MacroDataMetadata
+
+class CPIResponse(BaseModel):
+    """Response with data and metadata for CPI endpoint."""
+    data: List[CPIPoint]
+    metadata: MacroDataMetadata
+
 class MacroMetrics(BaseModel):
     """
     Summary snapshot of macro metrics.
