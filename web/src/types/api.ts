@@ -69,6 +69,23 @@ export interface CPIPoint {
   value: number;
 }
 
+export interface CryptoPoint {
+  timestamp: string;
+  total_mcap: number;
+  btc_dominance: number;
+  eth_dominance: number;
+  altcoin_mcap: number;
+}
+
+export interface CryptoDominanceResponse {
+  data: CryptoPoint[];
+  metadata: {
+    last_updated: string | null;
+    is_stale: boolean;
+    error?: string;
+  };
+}
+
 export interface MacroMetrics {
   m2_supply: number;
   m2_growth: number;

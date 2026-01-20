@@ -21,6 +21,12 @@ FRED_API_KEY = os.getenv("FRED_API_KEY")
 if not FRED_API_KEY:
     logger.warning("FRED_API_KEY not found in configuration. Macro data features will be unavailable.")
 
+# CoinGecko API Configuration
+COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY", "CG-d9CPh2wqHw8MMNEiBCaakoE3")
+
+if not COINGECKO_API_KEY:
+    logger.warning("COINGECKO_API_KEY not found in configuration. Crypto data features will be unavailable.")
+
 # Database Configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://cycle_user:cycle_password@localhost:5432/cycle_navigator")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -32,6 +38,7 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:63
 # Cache Configuration
 REDIS_CACHE_TTL = 86400  # 24 hours in seconds
 REDIS_CACHE_PREFIX = "macro:"
+REDIS_CRYPTO_CACHE_PREFIX = "crypto:"
 REDIS_LOCK_TIMEOUT = 300  # 5 minutes for rate-limit lock
 
 # Worker Configuration
@@ -39,6 +46,12 @@ FRED_RATE_LIMIT_DAILY = 1000  # FRED API limit per day
 FRED_SAFE_REQUEST_LIMIT = 800  # Stay well below limit
 FRED_RETRY_MAX_ATTEMPTS = 3
 FRED_RETRY_BACKOFF_BASE = 2  # Exponential backoff base (2^retry seconds)
+
+# CoinGecko Worker Configuration
+COINGECKO_RATE_LIMIT_PER_MINUTE = 30  # Demo API: 30 calls/minute
+COINGECKO_RETRY_MAX_ATTEMPTS = 3
+COINGECKO_RETRY_BACKOFF_BASE = 2  # Exponential backoff
+COINGECKO_HISTORICAL_DAYS_LIMIT = 365  # Demo key provides 365 days of history
 
 # Data Freshness Configuration
 DATA_STALE_THRESHOLD_HOURS = 25  # Consider data stale if older than 25 hours

@@ -6,6 +6,7 @@ import { ChartGridProvider } from "@/components/charts/expandable-chart-card";
 import { LiquidityCard } from "@/components/macro/liquidity-card";
 import { DebtStatusCard } from "@/components/macro/debt-status-card";
 import { RealRatesCard } from "@/components/macro/real-rates-card";
+import { DominanceCard } from "@/components/macro/dominance-card";
 import { RiskChart } from "@/components/charts/risk-chart";
 
 export function MacroDashboard() {
@@ -56,6 +57,11 @@ export function MacroDashboard() {
           {/* Interest Rates Section */}
           <section id="rates">
             <RealRatesCard days={days} />
+          </section>
+
+          {/* Crypto Dominance Section */}
+          <section id="crypto">
+            <DominanceCard />
           </section>
 
           {/* Global Risk Section - Bitcoin Fair Value */}

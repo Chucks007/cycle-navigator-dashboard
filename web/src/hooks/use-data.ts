@@ -7,6 +7,7 @@ import {
   type DebtPoint,
   type RealRatePoint,
   type CPIPoint,
+  type CryptoDominanceResponse,
   type StockMetrics,
   type StockHistoryPoint,
   type StockIndicatorsPoint,
@@ -49,6 +50,18 @@ export function useCpi(days?: number) {
     queryFn: () => apiClient.getCpi(days),
     staleTime: 5 * 60 * 1000,
     enabled: days !== undefined, // Only fetch when explicitly requested
+  });
+}
+
+// ============================================
+// Crypto Hooks
+// ============================================
+
+export function useCryptoDominance(days: number = 365) {
+  return useQuery<CryptoDominanceResponse, Error>({
+    queryKey: ["crypto", "dominance", days],
+    queryFn: () => apiClient.getCryptoDominance(days),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

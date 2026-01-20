@@ -7,6 +7,7 @@ import {
   DebtPoint,
   RealRatePoint,
   CPIPoint,
+  CryptoDominanceResponse,
   RiskResponse,
   RiskScoreResponse,
 } from '@/types/api';
@@ -107,6 +108,12 @@ class ApiClient {
   public async getCpi(days?: number): Promise<CPIPoint[]> {
     const query = days ? `?days=${days}` : '';
     return this.request<CPIPoint[]>(`/api/macro/cpi${query}`);
+  }
+
+  // Crypto
+  public async getCryptoDominance(days: number = 365): Promise<CryptoDominanceResponse> {
+    const query = `?days=${days}`;
+    return this.request<CryptoDominanceResponse>(`/api/crypto/dominance${query}`);
   }
 
   // Risk / Regression Bands
