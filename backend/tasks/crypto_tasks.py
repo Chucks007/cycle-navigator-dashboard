@@ -6,40 +6,37 @@ storing in PostgreSQL, and caching in Redis.
 """
 
 import json
-import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
+from typing import Any
 
 from celery import Task
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from backend.celery_app import celery_app
 from backend.config import (
-    COINGECKO_RETRY_MAX_ATTEMPTS,
     COINGECKO_RETRY_BACKOFF_BASE,
+    COINGECKO_RETRY_MAX_ATTEMPTS,
     REDIS_CACHE_TTL,
     REDIS_CRYPTO_CACHE_PREFIX,
 )
 from backend.models import CryptoData, CryptoMetadata
 from backend.tasks.common import (
+    get_coingecko_client,
     get_db,
     get_redis_client,
-    get_coingecko_client,
-    acquire_global_rate_limit_lock,
-    release_global_rate_limit_lock,
     logger,
 )
 
 
-def store_crypto_data_in_db(db: Session, snapshot: Dict[str, Any]) -> int:
+def store_crypto_data_in_db(db: Session, snapshot: dict[str, Any]) -> int:
     """
     Store crypto market snapshot in PostgreSQL.
-    
+
     Args:
         db: Database session
         snapshot: Dict with timestamp, total_mcap, btc_dominance, eth_dominance, altcoin_mcap
-        
+
     Returns:
         int: Number of records stored (1)
     """
@@ -48,7 +45,7 @@ def store_crypto_data_in_db(db: Session, snapshot: Dict[str, Any]) -> int:
         existing = db.query(CryptoData).filter(
             CryptoData.timestamp == snapshot['timestamp']
         ).first()
-        
+
         if existing:
             # Update existing record
             existing.total_mcap = snapshot['total_mcap']
@@ -68,10 +65,10 @@ def store_crypto_data_in_db(db: Session, snapshot: Dict[str, Any]) -> int:
             )
             db.add(crypto_data)
             logger.info(f"Inserted new crypto data for {snapshot['timestamp']}")
-        
+
         db.commit()
         return 1
-        
+
     except SQLAlchemyError as e:
         db.rollback()
         logger.error(f"Error storing crypto data in DB: {e}")
@@ -82,16 +79,16 @@ def update_crypto_metadata(
     db: Session,
     metric_type: str,
     observation_count: int,
-    last_observation_date: Optional[datetime] = None,
+    last_observation_date: datetime | None = None,
     status: str = 'success',
-    error_message: Optional[str] = None
+    error_message: str | None = None
 ):
     """Update crypto metadata after fetch."""
     try:
         metadata = db.query(CryptoMetadata).filter(
             CryptoMetadata.metric_type == metric_type
         ).first()
-        
+
         if metadata:
             metadata.last_fetched = datetime.utcnow()
             metadata.observation_count = observation_count
@@ -108,9 +105,9 @@ def update_crypto_metadata(
                 error_message=error_message
             )
             db.add(metadata)
-        
+
         db.commit()
-        
+
     except SQLAlchemyError as e:
         db.rollback()
         logger.error(f"Error updating crypto metadata: {e}")
@@ -119,22 +116,22 @@ def update_crypto_metadata(
 def cache_crypto_dominance_in_redis(db: Session):
     """
     Cache recent crypto dominance data in Redis for fast frontend access.
-    
+
     Fetches last 365 days from PostgreSQL and caches as JSON.
     """
     try:
         redis_client = get_redis_client()
-        
+
         # Get last 365 days of data
         cutoff_date = datetime.utcnow() - timedelta(days=365)
         data_records = db.query(CryptoData).filter(
             CryptoData.timestamp >= cutoff_date
         ).order_by(CryptoData.timestamp).all()
-        
+
         if not data_records:
             logger.warning("No crypto data to cache in Redis")
             return
-        
+
         # Format for cache
         cache_data = {
             'last_updated': datetime.utcnow().isoformat(),
@@ -149,7 +146,7 @@ def cache_crypto_dominance_in_redis(db: Session):
                 for record in data_records
             ]
         }
-        
+
         cache_key = f"{REDIS_CRYPTO_CACHE_PREFIX}dominance"
         redis_client.setex(
             cache_key,
@@ -157,7 +154,7 @@ def cache_crypto_dominance_in_redis(db: Session):
             json.dumps(cache_data)
         )
         logger.info(f"Cached {len(cache_data['data'])} crypto data points in Redis")
-        
+
     except Exception as e:
         logger.error(f"Error caching crypto data in Redis: {e}")
 
@@ -170,14 +167,14 @@ def cache_crypto_dominance_in_redis(db: Session):
     retry_backoff_max=600,  # Max 10 minutes
     retry_jitter=True,
 )
-def update_crypto_metrics(self: Task) -> Dict[str, Any]:
+def update_crypto_metrics(self: Task) -> dict[str, Any]:
     """
     Fetch global crypto market data from CoinGecko and store in DB + cache.
-    
+
     This task is designed to run daily to avoid burning CoinGecko API credits.
     It fetches current global market data (total mcap, BTC/ETH dominance),
     calculates altcoin market cap, and stores everything in PostgreSQL + Redis.
-    
+
     Returns:
         Dict with status and metadata
     """
@@ -186,33 +183,33 @@ def update_crypto_metrics(self: Task) -> Dict[str, Any]:
         error_msg = "CoinGecko API key not configured"
         logger.error(error_msg)
         return {'status': 'failed', 'error': error_msg}
-    
+
     db = get_db()
     try:
         # Fetch global data from CoinGecko
         logger.info("Fetching global crypto data from CoinGecko API")
         global_data = coingecko_client.get_global_data()
-        
+
         if not global_data or 'data' not in global_data:
             error_msg = "No data returned from CoinGecko API"
             logger.warning(error_msg)
             update_crypto_metadata(db, 'global', 0, status='failed', error_message=error_msg)
             return {'status': 'failed', 'error': error_msg}
-        
+
         data = global_data['data']
-        
+
         # Extract dominance percentages
         btc_dominance = data.get('market_cap_percentage', {}).get('btc', 0.0)
         eth_dominance = data.get('market_cap_percentage', {}).get('eth', 0.0)
-        
+
         # Get total market cap in USD
         total_mcap = data.get('total_market_cap', {}).get('usd', 0.0)
-        
+
         # Calculate altcoin market cap (Total - BTC - ETH)
         btc_mcap = total_mcap * (btc_dominance / 100.0)
         eth_mcap = total_mcap * (eth_dominance / 100.0)
         altcoin_mcap = total_mcap - btc_mcap - eth_mcap
-        
+
         # Create snapshot
         snapshot = {
             'timestamp': datetime.utcnow(),
@@ -221,10 +218,10 @@ def update_crypto_metrics(self: Task) -> Dict[str, Any]:
             'eth_dominance': eth_dominance,
             'altcoin_mcap': altcoin_mcap
         }
-        
+
         # Store in PostgreSQL
         store_crypto_data_in_db(db, snapshot)
-        
+
         # Update metadata
         update_crypto_metadata(
             db,
@@ -233,10 +230,10 @@ def update_crypto_metrics(self: Task) -> Dict[str, Any]:
             last_observation_date=snapshot['timestamp'],
             status='success'
         )
-        
+
         # Cache in Redis
         cache_crypto_dominance_in_redis(db)
-        
+
         return {
             'status': 'success',
             'metric_type': 'global',
@@ -246,7 +243,7 @@ def update_crypto_metrics(self: Task) -> Dict[str, Any]:
             'altcoin_mcap': altcoin_mcap,
             'timestamp': snapshot['timestamp'].isoformat(),
         }
-        
+
     except Exception as e:
         error_msg = f"Error updating crypto metrics: {str(e)}"
         logger.error(error_msg, exc_info=True)

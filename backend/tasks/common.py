@@ -5,18 +5,19 @@ Provides database sessions, Redis client, rate limiting, and logging setup.
 """
 
 import logging
+
 import redis
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
 from fredapi import Fred
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from backend.config import (
-    DATABASE_URL,
-    REDIS_URL,
-    FRED_API_KEY,
     COINGECKO_API_KEY,
+    DATABASE_URL,
+    FRED_API_KEY,
     REDIS_CACHE_PREFIX,
     REDIS_LOCK_TIMEOUT,
+    REDIS_URL,
 )
 from backend.services.crypto import CoinGeckoClient
 
@@ -46,8 +47,8 @@ def get_session_factory():
 
 def get_db() -> Session:
     """Get a database session."""
-    SessionLocal = get_session_factory()
-    return SessionLocal()
+    session_local = get_session_factory()
+    return session_local()
 
 
 # Redis setup - lazy initialization
@@ -94,10 +95,10 @@ class RateLimitError(Exception):
 def acquire_global_rate_limit_lock(lock_name: str = "rate_limit_lock") -> bool:
     """
     Acquire a global rate-limit lock to prevent concurrent API calls.
-    
+
     Args:
         lock_name: Name of the lock (allows different locks for different APIs)
-        
+
     Returns:
         bool: True if lock acquired, False otherwise
     """
