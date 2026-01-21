@@ -1,153 +1,105 @@
-# Real Time Stock Price Dashboard
+# Cycle Navigator Dashboard
 
-This was originally made for my grandmother who loves investing :)
+A real-time financial analytics dashboard for monitoring macro liquidity, crypto dominance, and implementing barbell portfolio strategies.
 
-This project is a real-time full-stack stock price dashboard built using Python, Streamlit, Plotly, and various financial data analysis tools. The dashboard allows users to visualize stock prices, apply technical indicators such as SMA 20, EMA20, and RSI14, and monitor real-time prices of selected stocks.
-
-*Enjoy a stock price dashboard that you can run right in your terminal*!
-
-https://github.com/user-attachments/assets/73e8ccaa-fba7-4288-9af2-376f0964c727
-
-## Directory Structure
-
-```
-Real_Time_Stock_Price_Dashboard/
-├── stock_dashboard.py
-├── requirements.txt
-```markdown
-# Cycle Navigator — Real-Time Stock Dashboard
-
-Next-generation headless dashboard for monitoring asset cycles, implementing Barbell Strategies, and tracking Macro Liquidity. Built with **Next.js 15 (React)**, **Tailwind CSS**, and **FastAPI**.
+Built with **Next.js 15**, **FastAPI**, **TimescaleDB**, and **Redis**.
 
 ---
 
-## Running with Docker Compose (Recommended)
+## 🚀 Quick Start
 
-The easiest and most reliable way to run this application is with Docker Compose. This method runs the backend (FastAPI) and frontend (Next.js) as separate containers.
+Get the dashboard running in under 5 minutes with Docker/Podman Compose.
 
-**1. Configure Environment:**
-
-Create a `.env` file in the root directory (see `.env.example`):
+### 1. Configure Environment
 
 ```bash
+# Clone repository
+git clone https://github.com/your-org/cycle-navigator-dashboard.git
+cd cycle-navigator-dashboard
+
+# Copy environment template
 cp .env.example .env
-# Edit .env and add your FRED_API_KEY
+
+# Edit .env and add your API keys:
+# - FRED_API_KEY (get from: https://fred.stlouisfed.org/docs/api/api_key.html)
+# - COINGECKO_API_KEY (get from: https://www.coingecko.com/en/api)
 ```
 
-**2. Start Both Services:**
+### 2. Start Services
 
-From the root of the repository, run:
+**Using Podman Compose (Recommended):**
 
 ```bash
-docker-compose up --build
+podman-compose up --build -d
 ```
 
-Or run in detached mode:
+**Using Docker Compose:**
 
 ```bash
 docker-compose up --build -d
 ```
 
-**3. Access the Application:**
-
-- **Web Frontend:** Open [http://localhost:3000](http://localhost:3000).
-- **FastAPI Backend:** The API is available at [http://localhost:8000](http://localhost:8000).
-  - Health Check: [http://localhost:8000/health](http://localhost:8000/health)
-  - Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
-
-**4. View Running Containers:**
+### 3. Initialize Database
 
 ```bash
-docker ps
+# Podman
+podman-compose exec backend python scripts/init_db.py
+
+# Docker
+docker-compose exec backend python scripts/init_db.py
 ```
 
-You should see: `cycle-navigator-backend` and `cycle-navigator-web`.
+### 4. Access Dashboard
 
-**5. Stopping the Services:**
-
-```bash
-docker-compose down
-
-Recreate containers so Docker picks up changes:
-docker compose down ; docker compose up -d --build
-```
-
-### Using Podman Compose
-
-If you use Podman:
-
-```bash
-podman-compose up --build
-
-Recreate all: podman-compose down && podman-compose up -d --build
-```
+- **Frontend**: [http://localhost:3000](http://localhost:3000)
+- **API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
 
 ---
 
-## Architecture & Project Structure
+## 🏗️ Architecture
 
-This project follows a Headless Architecture:
-
-- **`web/`**: Next.js 15 App Router application with Tailwind CSS and Shadcn UI.
-  - *Dockerized as `cycle-navigator-web`.*
-- **`backend/`**: FastAPI python service handling financial data processing and API requests.
-  - *Dockerized as `cycle-navigator-backend`.*
-- **`scripts/`**: Utility scripts (`test_fred_api.py`, etc.).
-- **`docker-compose.yml`**: Orchestrates the multi-container setup with internal networking.
-
-**Key Features:**
-- 🏰 **Macro Watchtower**: Track Global Liquidity (M2) and Real Rates.
-- ⚖️ **Barbell Strategy**: Compare Hard Assets (Gold, BTC) vs Paper Assets (Stocks, Bonds).
-- 🔍 **Ticker Analysis**: Real-time price charts and technical indicators.
-
-<details>
-<summary>Local Development (No Docker)</summary>
-
-### Prerequisites
-- Python 3.11+
-- Node.js 20+
-
-### 1. Start Backend
-```bash
-# Setup Python Environment
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Run Server
-uvicorn backend.main:app --reload --port 8000
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Frontend (Next.js 15)                    │
+│          React Server Components + TanStack Query           │
+│                  ShadcN UI + Recharts                        │
+└────────────────────────┬────────────────────────────────────┘
+                         │ HTTP/REST
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   API Layer (FastAPI)                        │
+│        /macro  /stocks  /crypto  /risk  /comparison         │
+└──────┬─────────────────────┬────────────────────────────────┘
+       │                     │
+       │ Cache              │ Persistent
+       ▼                    ▼
+┌──────────────┐     ┌─────────────────────┐
+│    Redis     │     │  PostgreSQL 16 +    │
+│  (< 100ms)   │◄────┤   TimescaleDB       │
+└──────────────┘     └──────┬──────────────┘
+                            ▲
+                            │ Background Workers
+                            │
+              ┌─────────────┴─────────────┐
+              │   Celery + Redis Broker   │
+              │  FRED (2AM) | Crypto (2:15AM) │
+              └───────────────────────────┘
 ```
 
-### 2. Start Frontend
-```bash
-cd web
-npm install
-npm run dev
-# Access at http://localhost:3000
-```
-</details>
+### Core Tech Stack
 
-Install system-level packages and create a virtual environment:
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Frontend** | Next.js 15, TypeScript, React 19 | Server-side rendering, client interactivity |
+| **UI** | ShadcN UI, Tailwind CSS, Recharts | Accessible components, financial charts |
+| **Backend** | FastAPI, Pydantic, Uvicorn | High-performance async Python API |
+| **Database** | PostgreSQL 16 + TimescaleDB | Time-series data with hypertables |
+| **Cache** | Redis 7 | Sub-100ms response times |
+| **Workers** | Celery, Celery Beat | Scheduled data fetching (FRED, CoinGecko) |
+| **Containers** | Podman/Docker Compose | Multi-container orchestration |
 
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install --upgrade pip
-```
-
-### Installation
-
-**For Production Use:**
-```bash
-pip install -r requirements.txt
-```
-
-**For Development (includes testing, linting, and all production dependencies):**
-```bash
-pip install -r requirements-dev.txt
-```
-
-### Running the Applications
+---
 
 Once your environment is set up, you can run the Streamlit frontend and FastAPI backend.
 
@@ -196,43 +148,140 @@ This project includes small scripts that require a FRED API key (optional):
 
 Example:
 
-```fish
-# Create .env in repo root with: FRED_API_KEY=xxxx
-python scripts/verify_env.py
-python scripts/test_fred_api.py
+## ✨ Key Features
+
+### 🏦 Macro Dashboard
+- **M2 Money Supply** with CPI-adjusted purchasing power toggle
+- **Federal Debt** tracking and debt-to-liquidity ratios
+- **Real Interest Rates** (nominal - inflation)
+- **Crypto Market Dominance** (BTC, ETH, OTHERS stacked visualization)
+
+### 📊 Technical Analysis
+- Real-time stock price charts
+- Technical indicators (SMA, EMA, RSI, Bollinger Bands)
+- Log-regression risk bands (planned)
+- Custom timeframe selection
+
+### ⚖️ Barbell Strategy
+- Safe vs. Risk asset allocation tracking (planned)
+- Portfolio volatility analysis
+- Tail-risk coverage metrics
+
+---
+
+## 📚 Documentation
+
+Comprehensive guides for developers and operators:
+
+- **[Technical Architecture](documents/TECHNICAL_ARCHITECTURE.md)** - System design, database schema, worker architecture, performance benchmarks
+- **[Feature Guide](documents/FEATURE_GUIDE.md)** - M2 purchasing power, crypto dominance, mathematical implementations
+- **[Developer Setup](documents/DEVELOPER_SETUP.md)** - Local environment configuration, troubleshooting
+- **[Deployment Guide](documents/DEPLOYMENT.md)** - CI/CD pipelines, container publishing, automated updates
+- **[Verification Guide](documents/VERIFICATION.md)** - Testing procedures, health checks, E2E tests
+
+---
+
+## 🔧 Development
+
+### Local Setup (No Containers)
+
+See [Developer Setup](documents/DEVELOPER_SETUP.md) for detailed instructions.
+
+**Quick start:**
+
+```bash
+# Backend
+python -m venv .venv
+source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+uvicorn backend.main:app --reload
+
+# Frontend
+cd web
+npm install
+npm run dev
+```
+
+### Running Tests
+
+```bash
+# Backend unit tests
+pytest
+
+# Frontend unit tests
+cd web && npm test
+
+# E2E tests (Playwright)
+python -m playwright install chromium
+python scripts/playwright/test_dashboard.py
 ```
 
 ---
 
-## Troubleshooting
+## 🚢 Deployment
 
-- Docker Compose issues: Ensure Docker (or Podman with podman-compose) is installed and running. Check service logs with `docker-compose logs backend` or `docker-compose logs frontend`.
+### CI/CD Pipeline
 
-- yfinance returns empty data: verify the ticker symbol and try a different `period`/`interval`. Network issues or rate-limiting can also cause empty responses.
+GitHub Actions workflows automatically:
+- Lint code (Ruff, ESLint)
+- Run tests (pytest, Playwright)
+- Build container images
+- Publish to GitHub Container Registry (GHCR)
 
----
+### Automated Updates (Watchtower)
 
-## Development notes
+Set up Watchtower to auto-deploy new images:
 
-- Core data logic is implemented in `backend/services.py` and reused by both the Streamlit app and the FastAPI routes to avoid duplication.
-- Technical indicators use the `ta` library; results may include NaNs for very short series (the code currently fills NaNs with zeros before returning JSON from the backend).
-
----
-
-## Contributing
-
-Contributions welcome — open an issue or a PR. Please include a short description and tests where appropriate.
-
----
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
-
----
-
-## Contact
-
-For questions, open an issue or contact the maintainer in the repository.
-
+```bash
+docker run -d --name watchtower \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e WATCHTOWER_POLL_INTERVAL=300 \
+  containrrr/watchtower \
+  cycle-navigator-backend cycle-navigator-web
 ```
+
+See [Deployment Guide](documents/DEPLOYMENT.md) for production deployment procedures.
+
+---
+
+## 🐛 Troubleshooting
+
+**Charts showing "Error Loading Data"?**
+1. Check backend health: `curl http://localhost:8000/health`
+2. Initialize database: `docker-compose exec backend python scripts/init_db.py`
+3. Check logs: `docker-compose logs -f backend`
+
+**API returning empty arrays?**
+1. Verify API keys in `.env`: `FRED_API_KEY`, `COINGECKO_API_KEY`
+2. Check worker status: `docker-compose logs celery-worker`
+3. Manually trigger data fetch: `docker-compose exec backend celery -A backend.celery_app call backend.tasks.fred_tasks.update_all_fred_series`
+
+**Frontend showing "Backend Offline"?**
+1. Verify `NEXT_PUBLIC_API_URL` is set at build time
+2. Rebuild frontend: `docker-compose build --no-cache web`
+3. Check [Verification Guide](documents/VERIFICATION.md) for detailed troubleshooting
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! Please:
+1. Open an issue to discuss proposed changes
+2. Fork the repository and create a feature branch
+3. Include tests for new functionality
+4. Follow existing code style (Ruff for Python, ESLint for TypeScript)
+5. Submit a pull request
+
+---
+
+## 📧 Contact
+
+For questions or support, open an issue on GitHub.
+
+**Project Maintainer**: [@your-username](https://github.com/your-username)
