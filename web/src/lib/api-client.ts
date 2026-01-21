@@ -13,7 +13,9 @@ import {
   MacroSummaryResponse,
 } from '@/types/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use relative path for browser requests (proxied by Next.js rewrites)
+// Only use absolute URL for server-side or when explicitly set for external access
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 class ApiClient {
   private static instance: ApiClient;
@@ -91,24 +93,28 @@ class ApiClient {
     return this.request<SentimentResponse>(`/api/sentiment/${ticker}`);
   }
 
-  // Macro
+  // Macro - Backend returns {data: [...], metadata: {...}}, we extract the data array
   public async getLiquidity(days?: number): Promise<LiquidityPoint[]> {
     const query = days ? `?days=${days}` : '';
-    return this.request<LiquidityPoint[]>(`/api/macro/liquidity${query}`);
+    const response = await this.request<{ data: LiquidityPoint[] }>(`/api/macro/liquidity${query}`);
+    return response.data || [];
   }
 
   public async getDebtStatus(days?: number): Promise<DebtPoint[]> {
     const query = days ? `?days=${days}` : '';
-    return this.request<DebtPoint[]>(`/api/macro/debt-status${query}`);
+    const response = await this.request<{ data: DebtPoint[] }>(`/api/macro/debt-status${query}`);
+    return response.data || [];
   }
 
   public async getRealRates(): Promise<RealRatePoint[]> {
-    return this.request<RealRatePoint[]>('/api/macro/real-rates');
+    const response = await this.request<{ data: RealRatePoint[] }>('/api/macro/real-rates');
+    return response.data || [];
   }
 
   public async getCpi(days?: number): Promise<CPIPoint[]> {
     const query = days ? `?days=${days}` : '';
-    return this.request<CPIPoint[]>(`/api/macro/cpi${query}`);
+    const response = await this.request<{ data: CPIPoint[] }>(`/api/macro/cpi${query}`);
+    return response.data || [];
   }
 
   /**

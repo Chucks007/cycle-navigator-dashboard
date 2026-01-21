@@ -32,6 +32,12 @@ COPY . .
 # We will disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# Accept build-time args so NEXT_PUBLIC_API_URL and BACKEND_URL are inlined into the built bundle
+ARG NEXT_PUBLIC_API_URL=http://backend:8000
+ARG BACKEND_URL=http://backend:8000
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV BACKEND_URL=${BACKEND_URL}
+
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
   elif [ -f package-lock.json ]; then npm run build; \
@@ -45,6 +51,12 @@ WORKDIR /app
 
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
+
+# Accept runtime args for environment variables
+ARG NEXT_PUBLIC_API_URL=http://backend:8000
+ARG BACKEND_URL=http://backend:8000
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV BACKEND_URL=${BACKEND_URL}
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
