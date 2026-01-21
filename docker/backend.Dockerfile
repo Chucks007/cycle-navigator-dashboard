@@ -73,6 +73,9 @@ COPY --from=builder /root/nltk_data /home/appuser/nltk_data
 # Copy generated data files
 COPY --from=data-prep /data/top_companies.json ./top_companies.json
 
+# Copy entrypoint script (before copying backend code)
+COPY docker/entrypoint-backend.sh /app/entrypoint.sh
+
 # Copy application code
 COPY backend/ ./backend/
 
@@ -81,6 +84,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV NLTK_DATA=/home/appuser/nltk_data
+
+# Make entrypoint executable (before changing ownership)
+RUN chmod +x /app/entrypoint.sh
 
 # Change ownership to non-root user
 RUN chown -R appuser:appgroup /app /home/appuser
@@ -95,5 +101,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the FastAPI backend
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]

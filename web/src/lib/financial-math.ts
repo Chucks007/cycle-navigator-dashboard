@@ -50,7 +50,8 @@ export function getFinancialStats(data: number[]) {
   
   const min = Math.min(...data);
   const max = Math.max(...data);
-  const current = data[data.length - 1];
+  // Data from API is sorted descending (newest first), so current is at index 0
+  const current = data[0];
   const avg = data.reduce((a, b) => a + b, 0) / data.length;
   
   return { min, max, current, avg };

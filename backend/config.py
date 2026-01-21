@@ -16,13 +16,14 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Financial Constants
-FRED_API_KEY = os.getenv("FRED_API_KEY")
+FRED_API_KEY = os.getenv("FRED_API_KEY") or None
 
 if not FRED_API_KEY:
     logger.warning("FRED_API_KEY not found in configuration. Macro data features will be unavailable.")
 
 # CoinGecko API Configuration
-COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY", "CG-d9CPh2wqHw8MMNEiBCaakoE3")
+# Use 'or' to handle empty string case from docker-compose env vars
+COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY") or "CG-d9CPh2wqHw8MMNEiBCaakoE3"
 
 if not COINGECKO_API_KEY:
     logger.warning("COINGECKO_API_KEY not found in configuration. Crypto data features will be unavailable.")

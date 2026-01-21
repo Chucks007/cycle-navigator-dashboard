@@ -39,12 +39,12 @@ celery_app.conf.update(
 
 # Celery Beat schedule for periodic tasks
 celery_app.conf.beat_schedule = {
-    'update-fred-data-daily': {
+    'update-fred-data-hourly': {
         'task': 'backend.tasks.fred_tasks.update_all_fred_series',
-        'schedule': crontab(hour=DATA_UPDATE_HOUR, minute=0),  # Daily at 2 AM UTC
+        'schedule': crontab(minute=0),  # Every hour at :00 (FRED data updates daily, but we check hourly)
     },
-    'update-crypto-metrics-daily': {
+    'update-crypto-metrics-hourly': {
         'task': 'backend.tasks.crypto_tasks.update_crypto_metrics',
-        'schedule': crontab(hour=DATA_UPDATE_HOUR, minute=15),  # Daily at 2:15 AM UTC
+        'schedule': crontab(minute=15),  # Every hour at :15 (offset to avoid API rate limit conflicts)
     },
 }

@@ -290,8 +290,8 @@ export function DominanceCard() {
           ? `BTC: ${latestMetrics.btcDominance.toFixed(1)}% | ETH: ${latestMetrics.ethDominance.toFixed(1)}% | Others: ${latestMetrics.othersDominance.toFixed(1)}%`
           : "Market leadership tracking"
       }
-      metricValue={latestMetrics?.btcDominance.toFixed(2) + "%"}
-      metricChange={btcDomStats.percentChange}
+      metricValue={latestMetrics ? `${latestMetrics.btcDominance.toFixed(2)}%` : "N/A"}
+      metricChange={latestMetrics ? btcDomStats.percentChange : 0}
       changeLabel="Change"
       variant={latestMetrics && latestMetrics.btcDominance < 45 ? "success" : "default"}
       condensedChart={condensedChart}
