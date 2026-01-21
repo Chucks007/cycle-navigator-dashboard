@@ -147,6 +147,28 @@ services:
           cpus: '0.1'
           memory: 128M
 
+  adminer:
+    image: adminer:latest
+    container_name: cycle-navigator-adminer
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+      - ADMINER_DEFAULT_USER=cycle_user
+      - ADMINER_DEFAULT_DB=cycle_navigator
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
   web:
     build:
       context: ./web
