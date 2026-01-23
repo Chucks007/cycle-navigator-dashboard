@@ -6,12 +6,12 @@ market data from CoinGecko API. It follows the same caching and persistence patt
 as MacroService: Redis for fast cache, PostgreSQL as source of truth.
 """
 
-import logging
 import json
+import logging
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Tuple
-import requests
+
 import redis
+import requests
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -33,7 +33,7 @@ class CoinGeckoClient:
     Client for CoinGecko API with rate limiting and error handling.
     """
     BASE_URL = "https://api.coingecko.com/api/v3"
-    
+
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.session = requests.Session()
@@ -41,8 +41,8 @@ class CoinGeckoClient:
             "x-cg-demo-api-key": api_key,
             "Accept": "application/json"
         })
-    
-    def get_global_data(self) -> Optional[Dict]:
+
+    def get_global_data(self) -> dict | None:
         """
         Fetch global cryptocurrency market data.
         
@@ -56,8 +56,8 @@ class CoinGeckoClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to fetch global crypto data: {e}")
             return None
-    
-    def get_top_coins(self, limit: int = 100) -> Optional[List[Dict]]:
+
+    def get_top_coins(self, limit: int = 100) -> list[dict] | None:
         """
         Fetch top coins by market cap.
         
@@ -82,8 +82,8 @@ class CoinGeckoClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to fetch top {limit} coins: {e}")
             return None
-    
-    def get_coin_history(self, coin_id: str, days: int = 365) -> Optional[Dict]:
+
+    def get_coin_history(self, coin_id: str, days: int = 365) -> dict | None:
         """
         Fetch historical price data for a specific coin.
         
@@ -95,7 +95,7 @@ class CoinGeckoClient:
         try:
             # Ensure we don't exceed demo key limits
             days = min(days, config.COINGECKO_HISTORICAL_DAYS_LIMIT)
-            
+
             params = {
                 "vs_currency": "usd",
                 "days": days,
@@ -122,7 +122,7 @@ class CryptoService:
     - PostgreSQL for historical data and source of truth
     - Background worker updates data daily to respect rate limits
     """
-    
+
     def __init__(self):
         self.api_key = config.COINGECKO_API_KEY
         self.client = None
@@ -133,8 +133,8 @@ class CryptoService:
                 logger.error(f"Failed to initialize CoinGecko client: {e}")
         else:
             logger.warning("COINGECKO_API_KEY not found in configuration.")
-    
-    def _get_dominance_from_redis(self) -> Tuple[Optional[List[Dict]], Optional[datetime]]:
+
+    def _get_dominance_from_redis(self) -> tuple[list[dict] | None, datetime | None]:
         """
         Get dominance data from Redis cache.
         
@@ -152,10 +152,10 @@ class CryptoService:
                 return data_points, last_updated
         except Exception as e:
             logger.error(f"Error reading dominance from Redis: {e}")
-        
+
         return None, None
-    
-    def _get_dominance_from_db(self, days: int = 365) -> Tuple[Optional[List[Dict]], Optional[datetime]]:
+
+    def _get_dominance_from_db(self, days: int = 365) -> tuple[list[dict] | None, datetime | None]:
         """
         Get dominance data from PostgreSQL database as fallback.
         
@@ -168,19 +168,19 @@ class CryptoService:
             metadata = db.query(CryptoMetadata).filter(
                 CryptoMetadata.metric_type == 'global'
             ).first()
-            
+
             if not metadata:
                 return None, None
-            
+
             # Get recent crypto data (limit by days)
             cutoff_date = datetime.utcnow() - timedelta(days=days)
             data_records = db.query(CryptoData).filter(
                 CryptoData.timestamp >= cutoff_date
             ).order_by(CryptoData.timestamp).all()
-            
+
             if not data_records:
                 return None, None
-            
+
             # Format as API response
             data_points = [
                 {
@@ -192,24 +192,24 @@ class CryptoService:
                 }
                 for record in data_records
             ]
-            
+
             logger.info(f"Retrieved {len(data_points)} crypto data points from database")
             return data_points, metadata.last_fetched
-            
+
         except Exception as e:
             logger.error(f"Error reading dominance from database: {e}")
             return None, None
         finally:
             db.close()
-    
+
     def _is_data_stale(self, last_updated: datetime) -> bool:
         """Check if data is stale based on configured threshold."""
         if not last_updated:
             return True
         age_hours = (datetime.utcnow() - last_updated).total_seconds() / 3600
         return age_hours > config.DATA_STALE_THRESHOLD_HOURS
-    
-    def get_dominance(self, days: int = 365) -> Dict:
+
+    def get_dominance(self, days: int = 365) -> dict:
         """
         Get cryptocurrency dominance data (BTC, ETH, Altcoins).
         
@@ -227,15 +227,15 @@ class CryptoService:
         """
         # Limit days to demo key constraint
         days = min(days, config.COINGECKO_HISTORICAL_DAYS_LIMIT)
-        
+
         # Try Redis first (fast cache)
         data_points, last_updated = self._get_dominance_from_redis()
-        
+
         # Fallback to PostgreSQL if not in Redis
         if data_points is None:
             logger.warning("Dominance data not in Redis, falling back to database")
             data_points, last_updated = self._get_dominance_from_db(days=days)
-        
+
         # If still no data, return empty
         if data_points is None:
             logger.error("No dominance data found in cache or database")
@@ -247,7 +247,7 @@ class CryptoService:
                     'error': 'No data available. Background worker may not have run yet.'
                 }
             }
-        
+
         # Filter by days if data came from Redis (DB already filtered)
         if last_updated:
             cutoff_date = datetime.utcnow() - timedelta(days=days)
@@ -255,23 +255,23 @@ class CryptoService:
                 point for point in data_points
                 if datetime.fromisoformat(point['timestamp']) >= cutoff_date
             ]
-        
+
         # Check if data is stale
         is_stale = self._is_data_stale(last_updated)
         if is_stale:
             logger.warning(f"Dominance data is stale (last_updated: {last_updated})")
-        
+
         metadata = {
             'last_updated': last_updated.isoformat() if last_updated else None,
             'is_stale': is_stale
         }
-        
+
         return {
             'data': data_points,
             'metadata': metadata
         }
-    
-    def get_current_snapshot(self) -> Optional[Dict]:
+
+    def get_current_snapshot(self) -> dict | None:
         """
         Get current global crypto market snapshot.
         
@@ -281,25 +281,25 @@ class CryptoService:
         if not self.client:
             logger.error("CoinGecko client not initialized")
             return None
-        
+
         global_data = self.client.get_global_data()
         if not global_data or 'data' not in global_data:
             return None
-        
+
         data = global_data['data']
-        
+
         # Extract dominance percentages
         btc_dominance = data.get('market_cap_percentage', {}).get('btc', 0.0)
         eth_dominance = data.get('market_cap_percentage', {}).get('eth', 0.0)
-        
+
         # Get total market cap in USD
         total_mcap = data.get('total_market_cap', {}).get('usd', 0.0)
-        
+
         # Calculate altcoin market cap (Total - BTC - ETH)
         btc_mcap = total_mcap * (btc_dominance / 100.0)
         eth_mcap = total_mcap * (eth_dominance / 100.0)
         altcoin_mcap = total_mcap - btc_mcap - eth_mcap
-        
+
         return {
             'timestamp': datetime.utcnow(),
             'total_mcap': total_mcap,

@@ -1,10 +1,11 @@
-import pandas as pd
+
 import numpy as np
-from typing import List, Dict, Optional
+import pandas as pd
+
 
 def align_dataframes(
-    df1: pd.DataFrame, 
-    df2: pd.DataFrame, 
+    df1: pd.DataFrame,
+    df2: pd.DataFrame,
     method: str = 'ffill'
 ) -> pd.DataFrame:
     """
@@ -23,13 +24,13 @@ def align_dataframes(
     # We work on copies to avoid side effects if the input is mutable and reused
     d1 = df1.copy()
     d2 = df2.copy()
-    
+
     if not isinstance(d1.index, pd.DatetimeIndex):
          try:
              d1.index = pd.to_datetime(d1.index)
          except Exception:
-             pass 
-    
+             pass
+
     if not isinstance(d2.index, pd.DatetimeIndex):
          try:
              d2.index = pd.to_datetime(d2.index)
@@ -38,13 +39,13 @@ def align_dataframes(
 
     # Merge
     # Outer join to keep all dates from both.
-    # Note: If column names collide, join uses lsuffix/rsuffix. 
+    # Note: If column names collide, join uses lsuffix/rsuffix.
     # But we want to be explicit.
     aligned = d1.join(d2, how='outer', rsuffix='_secondary')
-    
+
     if method:
         aligned = aligned.ffill() # pandas 2.0+ uses ffill() vs fillna(method='ffill')
-        
+
     return aligned
 
 def standardize_dataframe(df: pd.DataFrame, timezone: str = 'US/Eastern', reset_index: bool = True) -> pd.DataFrame:
@@ -66,9 +67,9 @@ def standardize_dataframe(df: pd.DataFrame, timezone: str = 'US/Eastern', reset_
     if isinstance(df.index, pd.DatetimeIndex):
         if df.index.tz is None:
             df.index = df.index.tz_localize('UTC')
-        
+
         # Convert to target timezone
-        # Use simple string for timezone to avoid pytz dependency if not installed, 
+        # Use simple string for timezone to avoid pytz dependency if not installed,
         # though pandas handles it well usually.
         if timezone:
             try:
@@ -76,7 +77,7 @@ def standardize_dataframe(df: pd.DataFrame, timezone: str = 'US/Eastern', reset_
             except Exception:
                 # Fallback if timezone not found or error
                 pass
-    
+
     if reset_index:
         df = df.reset_index()
         # Rename standard index name to 'date' if it comes out as 'Date' or 'index' or 'Datetime'
@@ -87,10 +88,10 @@ def standardize_dataframe(df: pd.DataFrame, timezone: str = 'US/Eastern', reset_
             'index': 'date'
         }
         df = df.rename(columns=cols)
-        
+
     return df
 
-def format_for_api(df: pd.DataFrame, date_format: str = '%Y-%m-%d') -> List[Dict]:
+def format_for_api(df: pd.DataFrame, date_format: str = '%Y-%m-%d') -> list[dict]:
     """
     Format DataFrame for API response.
     - Sort descending by date
@@ -99,17 +100,17 @@ def format_for_api(df: pd.DataFrame, date_format: str = '%Y-%m-%d') -> List[Dict
     """
     # Create copy to avoid mutating input
     d = df.copy()
-    
+
     # Ensure 'date' column exists for sorting/formatting
     if 'date' in d.columns:
         # Sort
         d = d.sort_values('date', ascending=False)
-        
+
         # Format date
         # Check if it's actually datetime
         if pd.api.types.is_datetime64_any_dtype(d['date']):
             d['date'] = d['date'].dt.strftime(date_format)
-            
+
     # Replace NaN with None
     # We use replace({np.nan: None}) which handles NaNs in float columns
     records = d.replace({np.nan: None}).to_dict(orient='records')

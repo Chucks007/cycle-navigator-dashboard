@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import List
 import logging
-from requests.exceptions import ConnectionError, Timeout, RequestException
+
+from fastapi import APIRouter, HTTPException, Query
+from requests.exceptions import ConnectionError, RequestException, Timeout
 
 from .. import schemas
 from ..comparison_service import get_barbell_comparison
@@ -14,7 +14,7 @@ router = APIRouter(
     tags=["Comparison"]
 )
 
-@router.get("/barbell", response_model=List[schemas.ComparisonResult], responses=ERROR_RESPONSES)
+@router.get("/barbell", response_model=list[schemas.ComparisonResult], responses=ERROR_RESPONSES)
 def barbell_comparison_endpoint(period: str = Query("1y", description="Time period (e.g. 1y, ytd)")):
     """
     Fetch normalized comparison data for Barbell Strategy (Hard vs Soft Assets).

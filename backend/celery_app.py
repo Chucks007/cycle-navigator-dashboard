@@ -11,7 +11,6 @@ from celery.schedules import crontab
 from backend.config import (
     CELERY_BROKER_URL,
     CELERY_RESULT_BACKEND,
-    DATA_UPDATE_HOUR,
 )
 
 # Create Celery app

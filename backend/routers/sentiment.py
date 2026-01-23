@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
 import logging
-from requests.exceptions import ConnectionError, Timeout, RequestException
+
+from fastapi import APIRouter, HTTPException
+from requests.exceptions import ConnectionError, RequestException, Timeout
 
 from .. import schemas
 from ..services.sentiment import fetch_news_sentiment
@@ -26,6 +27,6 @@ def get_sentiment(ticker: str):
          raise HTTPException(status_code=400, detail=str(e))
     except (ConnectionError, Timeout, RequestException) as e:
          raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error in get_sentiment for {ticker}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

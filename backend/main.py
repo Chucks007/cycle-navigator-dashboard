@@ -1,9 +1,10 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 import logging
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from . import config
-from .routers import stocks, macro, sentiment, comparison, risk, crypto
+from .routers import comparison, crypto, macro, risk, sentiment, stocks
 
 logger = logging.getLogger(__name__)
 

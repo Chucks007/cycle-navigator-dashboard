@@ -5,8 +5,9 @@ Provides endpoints for cryptocurrency market data from CoinGecko.
 All data is cached in Redis and updated daily by the background worker.
 """
 
-from fastapi import APIRouter, HTTPException, Query
 import logging
+
+from fastapi import APIRouter, HTTPException, Query
 
 from ..services.crypto import CryptoService
 from .utils import ERROR_RESPONSES

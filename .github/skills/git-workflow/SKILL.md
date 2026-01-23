@@ -8,17 +8,26 @@ description: Standards for committing and pushing code to the Cycle Navigator Da
 When performing a commit or preparing a push, follow these project-specific rules:
 
 1. **Pre-Commit Verification**:
-   - Ensure the backend passes linting: `ruff check backend/`.
-   - If frontend changes were made, run: `npm run lint` in the `web` directory.
-   - Verify that all containers are healthy if running locally: `podman-compose ps`.
+   - Backend: Run `ruff check backend/` for linting and `pytest backend/` for tests.
+   - If frontend changes were made: Run `npm run lint` and `npm test` in the `web` directory.
+   - This prevents merging broken code to main.
 
 2. **Commit Message Format**:
-   - Use descriptive headers (e.g., `feat:`, `fix:`, `docs:`, `refactor:`).
-   - Mention specific components affected (e.g., `backend/tasks` or `web/components`).
+   - Use descriptive headers with format: `<type>(<scope>): <description>`
+   - Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+   - Scope: affected component (e.g., `backend/tasks`, `web/components`)
+   - Examples:
+     - ✅ `feat(backend/tasks): add retry logic for failed macro jobs`
+     - ❌ `fix stuff` (too vague)
+   - For breaking changes or multi-line details, add a body with issue references (e.g., `Closes #123`)
 
 3. **Breaking Changes**:
-   - If the commit involves changing Celery module paths (e.g., from `services.macro_worker` to `celery_app`), explicitly note it as a "BREAKING CHANGE" in the commit body.
-   - Remind the user to update `docker-compose.yml` if paths changed.
+   - Mark breaking changes in the commit body with: `BREAKING CHANGE: <description>`
+   - Include in breaking changes: Celery paths, database schema, API endpoints, environment variables, or config structure.
+   - Examples:
+     - `BREAKING CHANGE: Celery tasks moved from services.macro_worker to celery_app. Update docker-compose.yml.`
+     - `BREAKING CHANGE: API endpoint /api/v1/tasks renamed to /api/v2/tasks.`
+   - For database changes, ensure migrations are included in `scripts/timescale_migrations.sql`.
 
 4. **Safety Checks**:
    - Never commit `.env` files or sensitive API keys (FRED_API_KEY, COINGECKO_API_KEY).

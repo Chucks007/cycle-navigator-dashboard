@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
 import logging
-from requests.exceptions import ConnectionError, Timeout, RequestException
+
+from fastapi import APIRouter, HTTPException
+from requests.exceptions import ConnectionError, RequestException, Timeout
 
 from .. import schemas
 from ..services import risk as risk_service
@@ -32,7 +33,7 @@ def get_risk_data(ticker: str):
     except (ConnectionError, Timeout, RequestException) as e:
         logger.error(f"Upstream error risk {ticker}: {e}")
         raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error in get_risk_data for {ticker}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
@@ -53,6 +54,6 @@ def get_risk_score(ticker: str):
     except (ConnectionError, Timeout, RequestException) as e:
         logger.error(f"Upstream error risk score {ticker}: {e}")
         raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error in get_risk_score for {ticker}")
         raise HTTPException(status_code=500, detail="Internal Server Error")

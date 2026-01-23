@@ -5,11 +5,11 @@ This module provides functionality to fetch and normalize multiple asset classes
 for comparative analysis, supporting the "Hard Assets vs Paper Assets" thesis.
 """
 
-import pandas as pd
-import numpy as np
-from typing import List, Dict, Optional, Tuple
-from .utils import get_yf, get_yf_import_error
 
+import numpy as np
+import pandas as pd
+
+from .utils import get_yf, get_yf_import_error
 
 # Asset class definitions
 HARD_ASSETS = {
@@ -36,7 +36,7 @@ COMPARISON_PERIODS = {
 }
 
 
-def fetch_comparison_data(tickers: List[str], period: str = "1y") -> pd.DataFrame:
+def fetch_comparison_data(tickers: list[str], period: str = "1y") -> pd.DataFrame:
     """
     Fetch historical close prices for multiple tickers.
     
@@ -57,21 +57,21 @@ def fetch_comparison_data(tickers: List[str], period: str = "1y") -> pd.DataFram
 
     if error is not None:
         raise Exception(f"yfinance not available: {error}")
-    
+
     try:
         # Download all tickers at once for efficiency
         data = yf.download(
-            tickers, 
-            period=period, 
-            interval="1d", 
+            tickers,
+            period=period,
+            interval="1d",
             auto_adjust=True,
             progress=False,
             group_by='ticker'
         )
-        
+
         if data.empty:
             raise ValueError("No data returned for the specified tickers")
-        
+
         # Extract Close prices
         if len(tickers) == 1:
             # Single ticker: data has simple columns
@@ -83,12 +83,12 @@ def fetch_comparison_data(tickers: List[str], period: str = "1y") -> pd.DataFram
             for ticker in tickers:
                 if ticker in data.columns.levels[0]:
                     close_df[ticker] = data[ticker]['Close']
-        
+
         # Drop rows where all values are NaN
         close_df = close_df.dropna(how='all')
-        
+
         return close_df
-        
+
     except Exception as e:
         raise Exception(f"Error fetching comparison data: {e}")
 
@@ -107,23 +107,23 @@ def normalize_to_base_100(df: pd.DataFrame) -> pd.DataFrame:
     """
     if df.empty:
         return df
-    
+
     # Forward fill any missing values to handle different trading days
     df = df.ffill()
-    
+
     # Get the first valid value for each column
     first_valid = df.bfill().iloc[0]
-    
+
     # Normalize to base 100
     normalized = (df / first_valid) * 100
-    
+
     return normalized
 
 
 def fetch_normalized_comparison(
-    tickers: List[str], 
+    tickers: list[str],
     period: str = "1y"
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Fetch and normalize price data for multiple assets.
     
@@ -136,14 +136,14 @@ def fetch_normalized_comparison(
     """
     raw_data = fetch_comparison_data(tickers, period)
     normalized_data = normalize_to_base_100(raw_data)
-    
+
     return raw_data, normalized_data
 
 
 def calculate_hard_vs_soft_ratio(
     normalized_df: pd.DataFrame,
-    hard_assets: List[str] = None,
-    soft_assets: List[str] = None
+    hard_assets: list[str] = None,
+    soft_assets: list[str] = None
 ) -> pd.DataFrame:
     """
     Calculate the Hard Assets vs Soft Assets ratio.
@@ -167,31 +167,31 @@ def calculate_hard_vs_soft_ratio(
         hard_assets = list(HARD_ASSETS.keys())
     if soft_assets is None:
         soft_assets = list(SOFT_ASSETS.keys())
-    
+
     # Filter to available assets
     available_hard = [a for a in hard_assets if a in normalized_df.columns]
     available_soft = [a for a in soft_assets if a in normalized_df.columns]
-    
+
     if not available_hard or not available_soft:
         raise ValueError("Need at least one hard asset and one soft asset for ratio calculation")
-    
+
     result = pd.DataFrame(index=normalized_df.index)
-    
+
     # Calculate equal-weighted indices
     result['Hard_Index'] = normalized_df[available_hard].mean(axis=1)
     result['Soft_Index'] = normalized_df[available_soft].mean(axis=1)
-    
+
     # Calculate ratio (avoid division by zero)
     result['Ratio'] = result['Hard_Index'] / result['Soft_Index'].replace(0, np.nan)
-    
+
     # Also normalize the ratio to start at 100 for easier interpretation
     first_valid_ratio = result['Ratio'].bfill().iloc[0]
     result['Ratio_Normalized'] = (result['Ratio'] / first_valid_ratio) * 100
-    
+
     return result
 
 
-def get_performance_summary(normalized_df: pd.DataFrame) -> Dict[str, Dict]:
+def get_performance_summary(normalized_df: pd.DataFrame) -> dict[str, dict]:
     """
     Calculate performance summary for each asset.
     
@@ -202,15 +202,15 @@ def get_performance_summary(normalized_df: pd.DataFrame) -> Dict[str, Dict]:
         Dictionary with ticker -> {current_value, pct_gain, asset_type}
     """
     summary = {}
-    
+
     for ticker in normalized_df.columns:
         series = normalized_df[ticker].dropna()
         if len(series) < 2:
             continue
-            
+
         current_value = series.iloc[-1]
         pct_gain = current_value - 100  # Since we normalized to 100
-        
+
         # Determine asset type
         if ticker in HARD_ASSETS:
             asset_type = "Hard Asset"
@@ -221,18 +221,18 @@ def get_performance_summary(normalized_df: pd.DataFrame) -> Dict[str, Dict]:
         else:
             asset_type = "Other"
             asset_name = ticker
-        
+
         summary[ticker] = {
             "name": asset_name,
             "current_value": round(current_value, 2),
             "pct_gain": round(pct_gain, 2),
             "asset_type": asset_type
         }
-    
+
     return summary
 
 
-def get_asset_info() -> Dict[str, Dict]:
+def get_asset_info() -> dict[str, dict]:
     """
     Return information about available assets for the UI.
     
@@ -246,7 +246,7 @@ def get_asset_info() -> Dict[str, Dict]:
     }
 
 
-def get_barbell_comparison(period: str = "1y") -> List[Dict]:
+def get_barbell_comparison(period: str = "1y") -> list[dict]:
     """
     Orchestrator function for the Barbell Strategy comparison.
     
@@ -259,7 +259,7 @@ def get_barbell_comparison(period: str = "1y") -> List[Dict]:
         List of dictionaries with date, Hard_Index, Soft_Index, Ratio, Ratio_Normalized
     """
     from .services.common import format_for_api
-    
+
     # 1. Fetch asset lists
     hard_tickers = list(HARD_ASSETS.keys())
     soft_tickers = list(SOFT_ASSETS.keys())
@@ -275,9 +275,9 @@ def get_barbell_comparison(period: str = "1y") -> List[Dict]:
     ratio_df = ratio_df.reset_index()
     # Rename Date -> date for consistency
     ratio_df.rename(columns={'Date': 'date'}, inplace=True)
-    
+
     # Select required fields
     result_df = ratio_df[['date', 'Hard_Index', 'Soft_Index', 'Ratio', 'Ratio_Normalized']]
-    
+
     # Use standardized formatting
     return format_for_api(result_df, date_format='%Y-%m-%d')

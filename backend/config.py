@@ -6,8 +6,9 @@ the application, making them easier to maintain and adjust.
 """
 
 import json
-import os
 import logging
+import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -103,7 +104,7 @@ _project_root = os.path.dirname(_config_dir)
 _companies_file = os.path.join(_project_root, 'top_companies.json')
 
 try:
-    with open(_companies_file, 'r') as f:
+    with open(_companies_file) as f:
         TOP_COMPANIES = json.load(f)
 except FileNotFoundError:
     # Fallback to empty list if file not found

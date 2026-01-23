@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import List
 import logging
-from requests.exceptions import ConnectionError, Timeout, RequestException
+
+from fastapi import APIRouter, HTTPException, Query
+from requests.exceptions import ConnectionError, RequestException, Timeout
 
 from .. import schemas
 from ..services import macro_service
@@ -32,19 +32,19 @@ def get_macro_summary(days: int = Query(None, description="Number of days of his
         debt_status = macro_service.get_debt_status(days=days, include_metadata=True)
         real_rates = macro_service.get_real_rates(include_metadata=True)
         cpi = macro_service.get_cpi_series(include_metadata=True)
-        
+
         # Calculate summary metrics from latest values
         latest_m2 = liquidity['data'][-1] if liquidity['data'] else None
         latest_debt = debt_status['data'][-1] if debt_status['data'] else None
         latest_rates = real_rates['data'][-1] if real_rates['data'] else None
-        
+
         summary = schemas.MacroMetrics(
             m2_supply=latest_m2['value'] if latest_m2 else 0.0,
             m2_growth=latest_m2['growth_rate'] if latest_m2 and latest_m2.get('growth_rate') else 0.0,
             debt_to_tax_ratio=latest_debt['ratio'] if latest_debt else 0.0,
             real_rate=latest_rates['real_rate'] if latest_rates else 0.0,
         )
-        
+
         return schemas.MacroSummaryResponse(
             liquidity=liquidity,
             debt_status=debt_status,
@@ -52,7 +52,7 @@ def get_macro_summary(days: int = Query(None, description="Number of days of his
             cpi=cpi,
             summary=summary,
         )
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except (ConnectionError, Timeout, RequestException) as e:

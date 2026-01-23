@@ -1,5 +1,5 @@
+
 from pydantic import BaseModel
-from typing import List, Optional
 
 # --- Stock Data ---
 
@@ -10,8 +10,8 @@ class StockMetrics(BaseModel):
     high: float
     low: float
     volume: int
-    volatility: Optional[float] = None
-    sharpe_ratio: Optional[float] = None
+    volatility: float | None = None
+    sharpe_ratio: float | None = None
     risk_free_rate: float
 
 class StockHistoryPoint(BaseModel):
@@ -24,10 +24,10 @@ class StockHistoryPoint(BaseModel):
 
 class StockIndicatorsPoint(BaseModel):
     Datetime: str
-    SMA_20: Optional[float] = None
-    EMA_20: Optional[float] = None
-    EMA_21: Optional[float] = None
-    RSI_14: Optional[float] = None
+    SMA_20: float | None = None
+    EMA_20: float | None = None
+    EMA_21: float | None = None
+    RSI_14: float | None = None
 
 # --- Sentiment ---
 
@@ -41,15 +41,15 @@ class SentimentResponse(BaseModel):
     sentiment_score: float
     sentiment_label: str
     news_count: int
-    headlines: List[SentimentArticle]
-    message: Optional[str] = None
+    headlines: list[SentimentArticle]
+    message: str | None = None
 
 # --- Macro ---
 
 class LiquidityPoint(BaseModel):
     date: str
     value: float
-    growth_rate: Optional[float] = None
+    growth_rate: float | None = None
 
 class DebtPoint(BaseModel):
     date: str
@@ -71,27 +71,27 @@ class MacroDataMetadata(BaseModel):
     """
     Metadata about macro data freshness.
     """
-    last_updated: Optional[str] = None  # ISO timestamp
+    last_updated: str | None = None  # ISO timestamp
     is_stale: bool = False
 
 class LiquidityResponse(BaseModel):
     """Response with data and metadata for liquidity endpoint."""
-    data: List[LiquidityPoint]
+    data: list[LiquidityPoint]
     metadata: MacroDataMetadata
 
 class DebtStatusResponse(BaseModel):
     """Response with data and metadata for debt status endpoint."""
-    data: List[DebtPoint]
+    data: list[DebtPoint]
     metadata: MacroDataMetadata
 
 class RealRatesResponse(BaseModel):
     """Response with data and metadata for real rates endpoint."""
-    data: List[RealRatePoint]
+    data: list[RealRatePoint]
     metadata: MacroDataMetadata
 
 class CPIResponse(BaseModel):
     """Response with data and metadata for CPI endpoint."""
-    data: List[CPIPoint]
+    data: list[CPIPoint]
     metadata: MacroDataMetadata
 
 class MacroMetrics(BaseModel):
@@ -141,7 +141,7 @@ class RiskBand(BaseModel):
     name: str
     color: str
     std_multiplier: float
-    values: List[RiskBandValue]
+    values: list[RiskBandValue]
 
 class CurrentBand(BaseModel):
     level: int
@@ -160,7 +160,7 @@ class RiskResponse(BaseModel):
     current_band: CurrentBand
     current_price: float
     fair_value: float
-    bands: List[RiskBand]
+    bands: list[RiskBand]
     regression_params: RegressionParams
     inception_date: str
     data_points: int

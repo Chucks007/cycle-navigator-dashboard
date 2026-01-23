@@ -1,19 +1,16 @@
-import logging
-import functools
 import json
-from datetime import datetime, timedelta
+import logging
+from datetime import datetime
+
 import pandas as pd
-import numpy as np
-from fredapi import Fred
 import redis
+from fredapi import Fred
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from .. import config
-from .. import schemas
+from .. import config, schemas
 from ..models import FREDSeriesData, FREDSeriesMetadata
 from . import common as utils
-
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +46,7 @@ class MacroService:
             if cached:
                 cache_data = json.loads(cached)
                 last_updated = datetime.fromisoformat(cache_data['last_updated'])
-                
+
                 # Convert to pandas Series
                 data_points = cache_data['data']
                 if data_points:
@@ -60,7 +57,7 @@ class MacroService:
                     return series, last_updated
         except Exception as e:
             logger.error(f"Error reading {series_id} from Redis: {e}")
-        
+
         return None, None
 
     def _get_series_from_db(self, series_id: str) -> tuple[pd.Series, datetime]:
@@ -76,25 +73,25 @@ class MacroService:
             metadata = db.query(FREDSeriesMetadata).filter(
                 FREDSeriesMetadata.series_id == series_id
             ).first()
-            
+
             if not metadata:
                 return None, None
-            
+
             # Get series data
             data_records = db.query(FREDSeriesData).filter(
                 FREDSeriesData.series_id == series_id
             ).order_by(FREDSeriesData.date).all()
-            
+
             if not data_records:
                 return None, None
-            
+
             dates = [record.date for record in data_records]
             values = [record.value for record in data_records]
             series = pd.Series(values, index=dates)
-            
+
             logger.info(f"Retrieved {series_id} from database (last_updated: {metadata.last_fetched})")
             return series, metadata.last_fetched
-            
+
         except Exception as e:
             logger.error(f"Error reading {series_id} from database: {e}")
             return None, None
@@ -117,27 +114,27 @@ class MacroService:
         """
         # Try Redis first (fast cache)
         series, last_updated = self._get_series_from_redis(series_id)
-        
+
         # Fallback to PostgreSQL if not in Redis
         if series is None:
             logger.warning(f"{series_id} not in Redis, falling back to database")
             series, last_updated = self._get_series_from_db(series_id)
-        
+
         # If still no data, return empty
         if series is None:
             logger.error(f"No data found for {series_id} in cache or database")
             return pd.Series(dtype=float), {'last_updated': None, 'is_stale': True}
-        
+
         # Check if data is stale
         is_stale = self._is_data_stale(last_updated)
         if is_stale:
             logger.warning(f"{series_id} data is stale (last_updated: {last_updated})")
-        
+
         metadata = {
             'last_updated': last_updated.isoformat() if last_updated else None,
             'is_stale': is_stale
         }
-        
+
         return series, metadata
 
     def _prepare_macro_response(self, df: pd.DataFrame, metadata: dict, days: int = None) -> tuple[list, dict]:
@@ -149,19 +146,19 @@ class MacroService:
         """
         # Standardize: Clean MultiIndex, Fix TZ (Keep UTC for Macro), Reset Index -> 'date' col
         df = utils.standardize_dataframe(df, timezone='UTC', reset_index=True)
-        
+
         # Filter by days if provided
         if days and 'date' in df.columns:
             # df['date'] is now UTC aware because of standardize_dataframe
-            
+
             cutoff_date = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=days)
-            
+
             try:
                 df = df[df['date'] >= cutoff_date]
             except TypeError:
                 # Fallback if mismatch
                  df = df[df['date'] >= cutoff_date.tz_localize(None)]
-        
+
         return utils.format_for_api(df), metadata
 
     def get_liquidity(self, days: int = None, include_metadata: bool = False):
@@ -248,7 +245,7 @@ class MacroService:
         # Align both series to the monthly target using the helper
         # We align interest first, then align tax to that, or align both to target.
         # Aligning each to target guarantees we get the monthly structure
-        
+
         # Note: We align quartely data to monthly, so we MUST ffill
         aligned = utils.align_dataframes(df_target, df_interest, method='ffill')
         aligned = utils.align_dataframes(aligned, df_tax, method='ffill')
@@ -259,13 +256,13 @@ class MacroService:
         # Select columns and drop NaNs
         df = aligned[['interest_payments', 'tax_receipts', 'ratio']].copy()
         df.dropna(inplace=True)
-        
+
         # Combine metadata (both series required, so use the stalest)
         combined_metadata = {
             'last_updated': min(metadata_interest['last_updated'] or '', metadata_tax['last_updated'] or ''),
             'is_stale': metadata_interest['is_stale'] or metadata_tax['is_stale']
         }
-        
+
         records, _ = self._prepare_macro_response(df, combined_metadata, days)
         data_points = [schemas.DebtPoint(**r) for r in records]
         return {'data': data_points, 'metadata': combined_metadata} if include_metadata else data_points
@@ -306,7 +303,7 @@ class MacroService:
         df_gs10 = gs10_decimal.to_frame(name='treasury_yield_10y')
         df_cpi = cpi_yoy.to_frame(name='cpi_inflation')
 
-        # Align utilizing the helper 
+        # Align utilizing the helper
         aligned = utils.align_dataframes(df_gs10, df_cpi, method='ffill')
 
         # Real Rate = 10Y Yield - CPI Inflation
@@ -314,13 +311,13 @@ class MacroService:
 
         df = aligned[['treasury_yield_10y', 'cpi_inflation', 'real_rate']].copy()
         df.dropna(inplace=True)
-        
+
         # Combine metadata
         combined_metadata = {
             'last_updated': min(metadata_gs10['last_updated'] or '', metadata_cpi['last_updated'] or ''),
             'is_stale': metadata_gs10['is_stale'] or metadata_cpi['is_stale']
         }
-        
+
         records, _ = self._prepare_macro_response(df, combined_metadata)
         data_points = [schemas.RealRatePoint(**r) for r in records]
         return {'data': data_points, 'metadata': combined_metadata} if include_metadata else data_points
@@ -345,7 +342,7 @@ class MacroService:
 
         df = pd.DataFrame({'value': cpi})
         df.dropna(inplace=True)
-        
+
         records, metadata = self._prepare_macro_response(df, metadata)
         data_points = [schemas.CPIPoint(**r) for r in records]
         return {'data': data_points, 'metadata': metadata} if include_metadata else data_points

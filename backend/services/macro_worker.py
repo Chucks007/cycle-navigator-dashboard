@@ -14,30 +14,6 @@ Migration guide:
 import warnings
 
 # Re-export from new locations for backward compatibility
-from backend.celery_app import celery_app
-from backend.tasks.fred_tasks import (
-    fetch_fred_series,
-    update_all_fred_series,
-    store_series_in_db,
-    update_series_metadata,
-    cache_series_in_redis,
-    FRED_SERIES_LIST,
-)
-from backend.tasks.crypto_tasks import (
-    update_crypto_metrics,
-    store_crypto_data_in_db,
-    update_crypto_metadata,
-    cache_crypto_dominance_in_redis,
-)
-from backend.tasks.common import (
-    get_db,
-    get_redis_client,
-    get_fred_client,
-    get_coingecko_client,
-    acquire_global_rate_limit_lock,
-    release_global_rate_limit_lock,
-    RateLimitError,
-)
 
 # Emit deprecation warning on import
 warnings.warn(

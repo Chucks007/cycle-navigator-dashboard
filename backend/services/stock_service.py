@@ -10,19 +10,18 @@ StockService class. It provides:
 - Bull Market Support Band indicators
 """
 
-import logging
 import functools
+import logging
 from datetime import datetime
-from typing import List, Dict, Tuple
+
 import numpy as np
 import pandas as pd
 import ta
 
-from .. import config
-from .. import schemas
 import backend.services as services
-from . import common as common_utils
 
+from .. import config, schemas
+from . import common as common_utils
 
 logger = logging.getLogger(__name__)
 
@@ -39,10 +38,10 @@ class StockService:
 
     @functools.lru_cache(maxsize=128)
     def _fetch_data_cached(
-        self, 
-        ticker: str, 
-        period: str, 
-        interval: str, 
+        self,
+        ticker: str,
+        period: str,
+        interval: str,
         cache_key: str
     ) -> pd.DataFrame:
         """
@@ -59,29 +58,29 @@ class StockService:
         """
         yf = services.get_yf()
         error = services.get_yf_import_error()
-        
+
         if error is not None:
             raise Exception(f"yfinance not available: {error}")
 
         try:
             logger.info(f"Fetching {ticker} data from yfinance (period={period}, interval={interval})...")
-            
+
             if period == 'max':
                 df = yf.download(ticker, period='max', interval=interval, auto_adjust=False, progress=False)
             else:
                 df = yf.download(ticker, period=period, interval=interval, auto_adjust=False, progress=False)
-            
+
             if df.empty:
                 logger.warning(f"No data found for ticker: {ticker}")
                 return pd.DataFrame()
-            
+
             return df
-            
+
         except Exception as e:
             logger.error(f"Error fetching {ticker}: {e}")
             raise Exception(f"Error fetching data: {e}")
 
-    def _fetch_raw_batch_data(self, tickers: List[str]) -> pd.DataFrame:
+    def _fetch_raw_batch_data(self, tickers: list[str]) -> pd.DataFrame:
         """
         Downloads batch price data for multiple tickers.
         
@@ -92,22 +91,22 @@ class StockService:
             pd.DataFrame: Batch data grouped by ticker
         """
         yf = services.get_yf()
-        
+
         if services.get_yf_import_error() is not None:
             raise Exception(f"yfinance not available: {services.get_yf_import_error()}")
 
         # Download batch data for 5 days to ensure we have previous close
         data = yf.download(
-            tickers, 
-            period="5d", 
-            interval="1d", 
-            group_by='ticker', 
-            auto_adjust=False, 
+            tickers,
+            period="5d",
+            interval="1d",
+            group_by='ticker',
+            auto_adjust=False,
             progress=False
         )
         return data
 
-    def _calculate_batch_deltas(self, data: pd.DataFrame, tickers: List[str]) -> Dict:
+    def _calculate_batch_deltas(self, data: pd.DataFrame, tickers: list[str]) -> dict:
         """
         Calculates price, delta, and pct_delta for each ticker from batch data.
         
@@ -119,7 +118,7 @@ class StockService:
             dict: Mapping of ticker -> {price, delta, pct_delta}
         """
         results = {}
-        
+
         for ticker in tickers:
             try:
                 # Handle case where only one ticker is requested (structure is different)
@@ -155,19 +154,19 @@ class StockService:
                     "delta": delta,
                     "pct_delta": pct_delta
                 }
-                
+
             except Exception:
                 # Skip failures for individual tickers in batch
                 continue
-                
+
         return results
 
     # ==================== Public Data Fetching Methods ====================
 
     def get_historical_prices(
-        self, 
-        ticker: str, 
-        period: str = "1y", 
+        self,
+        ticker: str,
+        period: str = "1y",
         interval: str = "1d"
     ) -> pd.DataFrame:
         """
@@ -187,7 +186,7 @@ class StockService:
         # Cache key for 15 minutes (900 seconds)
         cache_key = str(int(datetime.now().timestamp() // 900))
         df = self._fetch_data_cached(ticker, period, interval, cache_key)
-        
+
         if df.empty:
             return df
 
@@ -195,9 +194,9 @@ class StockService:
         return common_utils.standardize_dataframe(df, reset_index=False)
 
     def fetch_stock_data(
-        self, 
-        ticker: str, 
-        period: str, 
+        self,
+        ticker: str,
+        period: str,
         interval: str
     ) -> pd.DataFrame:
         """
@@ -207,13 +206,13 @@ class StockService:
             Exception: If data is empty or fetch fails
         """
         df = self.get_historical_prices(ticker, period, interval)
-        
+
         if df.empty:
             raise ValueError(f"No data found for {ticker}.")
-            
+
         return df
 
-    def fetch_batch_prices(self, tickers: List[str]) -> Dict:
+    def fetch_batch_prices(self, tickers: list[str]) -> dict:
         """
         Fetches batch data and calculates price deltas for multiple tickers.
         
@@ -255,8 +254,8 @@ class StockService:
     # ==================== Technical Indicators ====================
 
     def add_technical_indicators(
-        self, 
-        data: pd.DataFrame, 
+        self,
+        data: pd.DataFrame,
         fill_na: bool = True
     ) -> pd.DataFrame:
         """
@@ -277,13 +276,13 @@ class StockService:
 
         if fill_na:
             data.fillna(0, inplace=True)
-            
+
         return data
 
     def get_indicators(
-        self, 
-        ticker: str, 
-        period: str = "2y", 
+        self,
+        ticker: str,
+        period: str = "2y",
         interval: str = "1wk"
     ) -> pd.DataFrame:
         """
@@ -301,7 +300,7 @@ class StockService:
             pd.DataFrame: Price data with SMA_20 and EMA_21 columns
         """
         df = self.get_historical_prices(ticker, period, interval)
-        
+
         if df.empty:
             return df
 
@@ -314,7 +313,7 @@ class StockService:
             df['SMA_20'] = df['Close'].rolling(window=20).mean()
             # 21-period EMA (21-Week if interval is 1wk)
             df['EMA_21'] = df['Close'].ewm(span=21, adjust=False).mean()
-        
+
         return df
 
     # ==================== Risk Metrics ====================
@@ -327,35 +326,35 @@ class StockService:
             float: The latest yield as a decimal (e.g. 0.045)
         """
         error = services.get_yf_import_error()
-        
+
         if error is not None:
             logger.warning(
                 f"Unable to fetch risk-free rate because yfinance import failed: {error}. "
                 f"Using default rate."
             )
             return config.DEFAULT_RISK_FREE_RATE
-        
+
         yf = services.get_yf()
 
         try:
             treasury = yf.Ticker("^TNX")
             hist = treasury.history(period="5d")
-            
+
             if not hist.empty:
                 rate = float(hist['Close'].iloc[-1]) / 100.0
                 return rate
-                
+
             return config.DEFAULT_RISK_FREE_RATE
-            
+
         except Exception as e:
             logger.warning(f"Unable to fetch risk-free rate: {e}. Using default 4%.")
             return config.DEFAULT_RISK_FREE_RATE
 
     def calculate_risk_metrics(
-        self, 
-        data: pd.DataFrame, 
+        self,
+        data: pd.DataFrame,
         risk_free_rate: float = None
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """
         Calculates Annualized Volatility and Sharpe Ratio.
         
@@ -370,12 +369,12 @@ class StockService:
         """
         if risk_free_rate is None:
             risk_free_rate = config.DEFAULT_RISK_FREE_RATE
-        
+
         if data is None or len(data) < 2:
             return np.nan, np.nan
 
         close_col = data['Close']
-        
+
         if isinstance(close_col, pd.DataFrame):
             try:
                 close_series = close_col.squeeze()
@@ -401,8 +400,8 @@ class StockService:
         return volatility, sharpe
 
     def calculate_metrics(
-        self, 
-        data: pd.DataFrame, 
+        self,
+        data: pd.DataFrame,
         risk_free_rate: float
     ) -> schemas.StockMetrics:
         """

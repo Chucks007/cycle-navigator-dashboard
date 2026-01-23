@@ -7,7 +7,8 @@ and updates Redis cache for fast frontend access.
 """
 
 from datetime import datetime
-from sqlalchemy import Column, String, Float, DateTime, Integer, Index
+
+from sqlalchemy import Column, DateTime, Float, Index, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -21,19 +22,19 @@ class FREDSeriesData(Base):
     This allows us to store historical data without re-fetching from FRED API.
     """
     __tablename__ = 'fred_series_data'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     series_id = Column(String(50), nullable=False, index=True)  # e.g., 'M2SL', 'CPIAUCSL'
     date = Column(DateTime, nullable=False, index=True)  # Observation date
     value = Column(Float, nullable=False)  # Series value
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
+
     # Composite index for efficient queries by series and date range
     __table_args__ = (
         Index('ix_fred_series_date', 'series_id', 'date'),
     )
-    
+
     def __repr__(self):
         return f"<FREDSeriesData(series_id='{self.series_id}', date={self.date}, value={self.value})>"
 
@@ -46,7 +47,7 @@ class FREDSeriesMetadata(Base):
     to implement smart refresh logic and prevent unnecessary API calls.
     """
     __tablename__ = 'fred_series_metadata'
-    
+
     series_id = Column(String(50), primary_key=True)  # e.g., 'M2SL', 'CPIAUCSL'
     last_fetched = Column(DateTime, nullable=False)  # Last successful FRED API fetch
     last_observation_date = Column(DateTime)  # Most recent data point date
@@ -54,7 +55,7 @@ class FREDSeriesMetadata(Base):
     fetch_status = Column(String(20), default='success')  # 'success', 'failed', 'rate_limited'
     error_message = Column(String(500))  # Last error if fetch failed
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
+
     def __repr__(self):
         return f"<FREDSeriesMetadata(series_id='{self.series_id}', last_fetched={self.last_fetched})>"
 
@@ -67,7 +68,7 @@ class CryptoData(Base):
     total market cap, Bitcoin/Ethereum dominance, and calculated altcoin market cap.
     """
     __tablename__ = 'crypto_data'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime, nullable=False, unique=True, index=True)  # UTC timestamp
     total_mcap = Column(Float, nullable=False)  # Total global market cap in USD
@@ -76,7 +77,7 @@ class CryptoData(Base):
     altcoin_mcap = Column(Float, nullable=False)  # Altcoin market cap (Total - BTC - ETH)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
+
     def __repr__(self):
         return f"<CryptoData(timestamp={self.timestamp}, total_mcap={self.total_mcap:.0f}, btc_dom={self.btc_dominance:.2f}%)>"
 
@@ -89,7 +90,7 @@ class CryptoMetadata(Base):
     to implement refresh logic and monitor API health.
     """
     __tablename__ = 'crypto_metadata'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     metric_type = Column(String(50), nullable=False, unique=True, index=True)  # e.g., 'global', 'top_100'
     last_fetched = Column(DateTime, nullable=False)  # Last successful CoinGecko API fetch
@@ -98,6 +99,6 @@ class CryptoMetadata(Base):
     fetch_status = Column(String(20), default='success')  # 'success', 'failed', 'rate_limited'
     error_message = Column(String(500))  # Last error if fetch failed
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
+
     def __repr__(self):
         return f"<CryptoMetadata(metric_type='{self.metric_type}', last_fetched={self.last_fetched})>"

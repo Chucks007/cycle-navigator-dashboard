@@ -1,11 +1,11 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import List
 import logging
-from requests.exceptions import ConnectionError, Timeout, RequestException
+
+from fastapi import APIRouter, HTTPException, Query
+from requests.exceptions import ConnectionError, RequestException, Timeout
 
 from .. import schemas
-from ..services.stock_service import stock_service
 from ..services.common import format_for_api
+from ..services.stock_service import stock_service
 from .utils import ERROR_RESPONSES
 
 logger = logging.getLogger(__name__)
@@ -33,11 +33,11 @@ def get_stock_metrics(
     except (ConnectionError, Timeout, RequestException) as e:
         logger.error(f"Upstream error fetching {ticker}: {e}")
         raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error in get_stock_metrics for {ticker}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.get("/{ticker}/history", response_model=List[schemas.StockHistoryPoint], responses=ERROR_RESPONSES)
+@router.get("/{ticker}/history", response_model=list[schemas.StockHistoryPoint], responses=ERROR_RESPONSES)
 def get_stock_history(
     ticker: str,
     period: str = Query("1d"),
@@ -60,11 +60,11 @@ def get_stock_history(
     except (ConnectionError, Timeout, RequestException) as e:
         logger.error(f"Upstream error history {ticker}: {e}")
         raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error in get_stock_history for {ticker}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-@router.get("/{ticker}/indicators", response_model=List[schemas.StockIndicatorsPoint], responses=ERROR_RESPONSES)
+@router.get("/{ticker}/indicators", response_model=list[schemas.StockIndicatorsPoint], responses=ERROR_RESPONSES)
 def get_stock_indicators(
     ticker: str,
     period: str = Query("1d"),
@@ -89,6 +89,6 @@ def get_stock_indicators(
     except (ConnectionError, Timeout, RequestException) as e:
         logger.error(f"Upstream error indicators {ticker}: {e}")
         raise HTTPException(status_code=502, detail=f"Upstream Provider Error: {str(e)}")
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error in get_stock_indicators for {ticker}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
