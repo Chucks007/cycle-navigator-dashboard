@@ -9,6 +9,11 @@ import type {
   RealRatePoint,
   CPIPoint,
 } from "@/types/api";
+import {
+  useMacroPreferences,
+  timeframeToDays,
+} from "@/stores/macro-preferences";
+import type { Timeframe } from "@/components/charts/chart-controls";
 
 // ============================================
 // Types
@@ -33,6 +38,9 @@ export interface MacroContextValue {
   metadata: MacroMetadata;
   days: number | undefined;
   setDays: (days: number | undefined) => void;
+  // Timeframe from Zustand store (shared across charts)
+  timeframe: Timeframe;
+  setTimeframe: (timeframe: Timeframe) => void;
   adjustForInflation: boolean;
   setAdjustForInflation: (value: boolean) => void;
   refetch: () => void;
@@ -54,8 +62,37 @@ interface MacroProviderProps {
 }
 
 export function MacroProvider({ children, initialDays }: MacroProviderProps) {
-  const [days, setDays] = React.useState<number | undefined>(initialDays);
-  const [adjustForInflation, setAdjustForInflation] = React.useState(false);
+  // Get global timeframe from Zustand store (persisted)
+  const {
+    timeframe,
+    setTimeframe,
+    liquidity: liquidityPrefs,
+  } = useMacroPreferences();
+
+  // Derive days from persisted timeframe, or use initialDays as fallback
+  const derivedDays = React.useMemo(() => {
+    if (initialDays !== undefined) return initialDays;
+    return timeframeToDays(timeframe);
+  }, [initialDays, timeframe]);
+
+  const [days, setDays] = React.useState<number | undefined>(derivedDays);
+
+  // Sync days when timeframe changes (Zustand -> local state)
+  React.useEffect(() => {
+    if (initialDays === undefined) {
+      setDays(timeframeToDays(timeframe));
+    }
+  }, [timeframe, initialDays]);
+
+  // Get inflation adjustment from Zustand store (per-chart, but we expose it globally for CPI fetching)
+  const [adjustForInflation, setAdjustForInflation] = React.useState(
+    liquidityPrefs.adjustForInflation
+  );
+
+  // Sync with store changes
+  React.useEffect(() => {
+    setAdjustForInflation(liquidityPrefs.adjustForInflation);
+  }, [liquidityPrefs.adjustForInflation]);
 
   // Fetch all macro data in parallel using useQueries
   const queries = useQueries({
@@ -124,11 +161,13 @@ export function MacroProvider({ children, initialDays }: MacroProviderProps) {
       metadata,
       days,
       setDays,
+      timeframe,
+      setTimeframe,
       adjustForInflation,
       setAdjustForInflation,
       refetch,
     }),
-    [data, metadata, days, adjustForInflation, refetch]
+    [data, metadata, days, timeframe, setTimeframe, adjustForInflation, refetch]
   );
 
   return (

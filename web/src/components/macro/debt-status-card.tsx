@@ -6,19 +6,24 @@ import { useDebtStatus } from "@/hooks/use-data";
 import { LightweightChart, SparklineChart } from "@/components/charts/lightweight-chart";
 import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { calculateSMA, getFinancialStats } from "@/lib/financial-math";
-import { TimeframeSelector, IndicatorToggle, LogScaleToggle, type Timeframe } from "@/components/charts/chart-controls";
+import { TimeframeSelector, IndicatorToggle, LogScaleToggle } from "@/components/charts/chart-controls";
 import { filterByTimeframe } from "@/lib/formatters";
 import { MetricSummarySidebar } from "@/components/macro/metric-summary-sidebar";
 import { transformToLineDataWithKey, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/chart-utils";
+import { useDebtStatusPrefs } from "@/stores/macro-preferences";
 
 // Debt Status Card
 export function DebtStatusCard({ days }: { days?: number }) {
   const { data, isLoading, error } = useDebtStatus(days);
   
-  // Local state for modal
-  const [timeframe, setTimeframe] = React.useState<Timeframe>("1Y");
-  const [showSMA, setShowSMA] = React.useState(false);
-  const [logScale, setLogScale] = React.useState(false);
+  // Get preferences from Zustand store (persisted)
+  const {
+    timeframe,
+    setTimeframe,
+    showSMA,
+    logScale,
+    setPrefs,
+  } = useDebtStatusPrefs();
   
   const chartData = React.useMemo(() => {
     if (!data) return [];
@@ -135,9 +140,9 @@ export function DebtStatusCard({ days }: { days?: number }) {
         <div className="flex items-center gap-4">
           <TimeframeSelector value={timeframe} onChange={setTimeframe} />
           <div className="h-6 w-px bg-border/50" />
-          <IndicatorToggle label="SMA 20" checked={showSMA} onChange={setShowSMA} color="#fbbf24" />
+          <IndicatorToggle label="SMA 20" checked={showSMA} onChange={(v) => setPrefs({ showSMA: v })} color="#fbbf24" />
           <div className="h-6 w-px bg-border/50" />
-          <LogScaleToggle checked={logScale} onChange={setLogScale} />
+          <LogScaleToggle checked={logScale} onChange={(v) => setPrefs({ logScale: v })} />
         </div>
       }
       sidebarContent={

@@ -23,7 +23,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LogScaleToggle,
   TimeframeSelector,
-  type Timeframe,
   RegressionBandsToggle,
 } from "@/components/charts/chart-controls";
 import {
@@ -44,6 +43,7 @@ import {
   type HistogramDataPoint,
 } from "@/lib/chart-utils";
 import { RiskScoreCard, RiskChart } from "@/components/charts/risk-chart";
+import { useTickerPreferences, timeframeToPeriodInterval } from "@/stores/ticker-preferences";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -191,22 +191,21 @@ function TickerAnalysisContent() {
   const initialTicker = searchParams.get("symbol") || "BTC-USD";
   const [ticker, setTicker] = React.useState(initialTicker);
   const [inputValue, setInputValue] = React.useState(initialTicker);
-  const [timeframe, setTimeframe] = React.useState<Timeframe>("ALL"); 
+  
+  // Get preferences from Zustand store (persisted)
+  const {
+    timeframe,
+    setTimeframe,
+    chartType,
+    setChartType,
+    logScale: useLogScale,
+    setLogScale: setUseLogScale,
+    showRiskBands,
+    setShowRiskBands,
+  } = useTickerPreferences();
 
-  const [useLogScale, setUseLogScale] = React.useState(true);
-  const [chartType, setChartType] = React.useState<"line" | "candlestick">("line");
-
-  const timeframeConfig = {
-    "1D": { period: "1d", interval: "1m" },
-    "1W": { period: "5d", interval: "15m" },
-    "1M": { period: "1mo", interval: "60m" },
-    "6M": { period: "6mo", interval: "1d" },
-    "1Y": { period: "1y", interval: "1d" },
-    "5Y": { period: "5y", interval: "1wk" },
-    "ALL": { period: "max", interval: "1mo" },
-  };
-
-  const { period, interval } = timeframeConfig[timeframe];
+  // Use the utility function for period/interval mapping
+  const { period, interval } = timeframeToPeriodInterval(timeframe);
 
   // Sync state when URL changes
   React.useEffect(() => {
@@ -226,7 +225,6 @@ function TickerAnalysisContent() {
 
   // Risk Data (Only relevant for BTC/ETH, but safe to call for others - handles errors gracefully)
   const isCrypto = ticker === "BTC" || ticker === "ETH" || ticker === "BTC-USD" || ticker === "ETH-USD";
-  const [showRiskBands, setShowRiskBands] = React.useState(false);
   const { data: riskData } = useRiskData(ticker, isCrypto); // Always fetch if crypto, control visibility with state
 
   const handleSearch = (e: React.FormEvent) => {

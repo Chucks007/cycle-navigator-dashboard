@@ -4,11 +4,12 @@ import * as React from "react";
 import { useCryptoDominance } from "@/hooks/use-data";
 import { LightweightChart } from "@/components/charts/lightweight-chart";
 import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
-import { TimeframeSelector, type Timeframe } from "@/components/charts/chart-controls";
+import { TimeframeSelector } from "@/components/charts/chart-controls";
 import { formatLargeNumber, filterByTimeframe } from "@/lib/formatters";
 import { getFinancialStats } from "@/lib/financial-math";
 import { transformToLineDataWithKey, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/chart-utils";
 import type { Time } from "lightweight-charts";
+import { useDominancePrefs } from "@/stores/macro-preferences";
 
 /**
  * Crypto Dominance Card
@@ -23,8 +24,8 @@ import type { Time } from "lightweight-charts";
 export function DominanceCard() {
   const { data: response, isLoading, error } = useCryptoDominance(365);
   
-  // Local state for modal
-  const [timeframe, setTimeframe] = React.useState<Timeframe>("1Y");
+  // Get preferences from Zustand store (persisted)
+  const { timeframe, setTimeframe } = useDominancePrefs();
 
   // Extract data points from response
   const rawData = React.useMemo(() => {

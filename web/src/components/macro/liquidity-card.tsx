@@ -8,25 +8,30 @@ import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { calculateSMA, calculateEMA, getFinancialStats } from "@/lib/financial-math";
-import { TimeframeSelector, IndicatorToggle, LogScaleToggle, PurchasingPowerToggle, type Timeframe } from "@/components/charts/chart-controls";
+import { TimeframeSelector, IndicatorToggle, LogScaleToggle, PurchasingPowerToggle } from "@/components/charts/chart-controls";
 import { formatLargeNumber, filterByTimeframe } from "@/lib/formatters";
 import { MetricSummarySidebar } from "@/components/macro/metric-summary-sidebar";
 import { transformToLineDataWithKey, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/chart-utils";
 import { adjustSeriesByCPI, type SeriesPoint } from "@/lib/series-utils";
+import { useLiquidityPrefs } from "@/stores/macro-preferences";
 
 // Liquidity (M2) Chart Component
 export function LiquidityCard({ days }: { days?: number }) {
   const { data, isLoading, error } = useLiquidity(days);
-  const [adjustForInflation, setAdjustForInflation] = React.useState(false);
+  
+  // Get preferences from Zustand store (persisted)
+  const {
+    timeframe,
+    setTimeframe,
+    showSMA,
+    showEMA,
+    logScale,
+    adjustForInflation,
+    setPrefs,
+  } = useLiquidityPrefs();
 
   // Fetch CPI data when adjustment is enabled
   const { data: cpiData, isLoading: cpiLoading } = useCpi(adjustForInflation ? days : undefined);
-
-  // Local state for modal
-  const [timeframe, setTimeframe] = React.useState<Timeframe>("1Y");
-  const [showSMA, setShowSMA] = React.useState(false);
-  const [showEMA, setShowEMA] = React.useState(false);
-  const [logScale, setLogScale] = React.useState(false);
 
   // Use full data from backend (filtered by days)
   const chartData = React.useMemo(() => {
@@ -212,14 +217,14 @@ export function LiquidityCard({ days }: { days?: number }) {
           <div className="flex items-center gap-4">
             <TimeframeSelector value={timeframe} onChange={setTimeframe} />
             <div className="h-6 w-px bg-border/50" />
-            <IndicatorToggle label="SMA 20" checked={showSMA} onChange={setShowSMA} color="#fbbf24" />
-            <IndicatorToggle label="EMA 20" checked={showEMA} onChange={setShowEMA} color="#8b5cf6" />
+            <IndicatorToggle label="SMA 20" checked={showSMA} onChange={(v) => setPrefs({ showSMA: v })} color="#fbbf24" />
+            <IndicatorToggle label="EMA 20" checked={showEMA} onChange={(v) => setPrefs({ showEMA: v })} color="#8b5cf6" />
             <div className="h-6 w-px bg-border/50" />
-            <LogScaleToggle checked={logScale} onChange={setLogScale} />
+            <LogScaleToggle checked={logScale} onChange={(v) => setPrefs({ logScale: v })} />
             <div className="h-6 w-px bg-border/50" />
             <PurchasingPowerToggle
               checked={adjustForInflation}
-              onChange={setAdjustForInflation}
+              onChange={(v) => setPrefs({ adjustForInflation: v })}
               type="CPI"
               disabled={cpiLoading}
             />
