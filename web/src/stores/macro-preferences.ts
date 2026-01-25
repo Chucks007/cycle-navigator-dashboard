@@ -11,7 +11,7 @@
  */
 
 import { create } from "zustand";
-import { persist, devtools } from "zustand/middleware";
+import { persist, devtools, createJSONStorage } from "zustand/middleware";
 import type {
   MacroPreferencesStore,
   MacroPreferencesState,
@@ -114,8 +114,14 @@ export const useMacroPreferences = create<MacroPreferencesStore>()(
       }),
       {
         name: "macro-preferences",
-        // Only persist to localStorage in browser environment
-        skipHydration: typeof window === "undefined",
+        // Use safe storage that handles SSR (returns undefined on server)
+        storage: createJSONStorage(() => 
+          typeof window !== "undefined" ? localStorage : {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          }
+        ),
       }
     ),
     {
@@ -132,55 +138,60 @@ export const useMacroPreferences = create<MacroPreferencesStore>()(
 /**
  * Select only the global timeframe to minimize re-renders.
  */
-export const useMacroTimeframe = () =>
-  useMacroPreferences((state) => ({
-    timeframe: state.timeframe,
-    setTimeframe: state.setTimeframe,
-  }));
+export const useMacroTimeframe = () => {
+  const timeframe = useMacroPreferences((s) => s.timeframe);
+  const setTimeframe = useMacroPreferences((s) => s.setTimeframe);
+  return [timeframe, setTimeframe] as const;
+};
 
 /**
  * Select only liquidity chart preferences.
  */
-export const useLiquidityPrefs = () =>
-  useMacroPreferences((state) => ({
-    timeframe: state.timeframe,
-    setTimeframe: state.setTimeframe,
-    ...state.liquidity,
-    setPrefs: state.setLiquidityPrefs,
-  }));
+export const useLiquidityPrefs = () => {
+  const timeframe = useMacroPreferences((s) => s.timeframe);
+  const setTimeframe = useMacroPreferences((s) => s.setTimeframe);
+  const showSMA = useMacroPreferences((s) => s.liquidity.showSMA);
+  const showEMA = useMacroPreferences((s) => s.liquidity.showEMA);
+  const logScale = useMacroPreferences((s) => s.liquidity.logScale);
+  const adjustForInflation = useMacroPreferences((s) => s.liquidity.adjustForInflation);
+  const setPrefs = useMacroPreferences((s) => s.setLiquidityPrefs);
+  return { timeframe, setTimeframe, showSMA, showEMA, logScale, adjustForInflation, setPrefs };
+};
 
 /**
  * Select only debt status chart preferences.
  */
-export const useDebtStatusPrefs = () =>
-  useMacroPreferences((state) => ({
-    timeframe: state.timeframe,
-    setTimeframe: state.setTimeframe,
-    ...state.debtStatus,
-    setPrefs: state.setDebtStatusPrefs,
-  }));
+export const useDebtStatusPrefs = () => {
+  const timeframe = useMacroPreferences((s) => s.timeframe);
+  const setTimeframe = useMacroPreferences((s) => s.setTimeframe);
+  const showSMA = useMacroPreferences((s) => s.debtStatus.showSMA);
+  const logScale = useMacroPreferences((s) => s.debtStatus.logScale);
+  const setPrefs = useMacroPreferences((s) => s.setDebtStatusPrefs);
+  return { timeframe, setTimeframe, showSMA, logScale, setPrefs };
+};
 
 /**
  * Select only real rates chart preferences.
  */
-export const useRealRatesPrefs = () =>
-  useMacroPreferences((state) => ({
-    timeframe: state.timeframe,
-    setTimeframe: state.setTimeframe,
-    ...state.realRates,
-    setPrefs: state.setRealRatesPrefs,
-  }));
+export const useRealRatesPrefs = () => {
+  const timeframe = useMacroPreferences((s) => s.timeframe);
+  const setTimeframe = useMacroPreferences((s) => s.setTimeframe);
+  const showSMA = useMacroPreferences((s) => s.realRates.showSMA);
+  const logScale = useMacroPreferences((s) => s.realRates.logScale);
+  const setPrefs = useMacroPreferences((s) => s.setRealRatesPrefs);
+  return { timeframe, setTimeframe, showSMA, logScale, setPrefs };
+};
 
 /**
  * Select only dominance chart preferences.
  */
-export const useDominancePrefs = () =>
-  useMacroPreferences((state) => ({
-    timeframe: state.timeframe,
-    setTimeframe: state.setTimeframe,
-    ...state.dominance,
-    setPrefs: state.setDominancePrefs,
-  }));
+export const useDominancePrefs = () => {
+  const timeframe = useMacroPreferences((s) => s.timeframe);
+  const setTimeframe = useMacroPreferences((s) => s.setTimeframe);
+  const logScale = useMacroPreferences((s) => s.dominance.logScale);
+  const setPrefs = useMacroPreferences((s) => s.setDominancePrefs);
+  return { timeframe, setTimeframe, logScale, setPrefs };
+};
 
 // ============================================
 // Utilities

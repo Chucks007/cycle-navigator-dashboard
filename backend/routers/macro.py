@@ -39,10 +39,10 @@ def get_macro_summary(days: int = Query(None, description="Number of days of his
         latest_rates = real_rates['data'][-1] if real_rates['data'] else None
 
         summary = schemas.MacroMetrics(
-            m2_supply=latest_m2['value'] if latest_m2 else 0.0,
-            m2_growth=latest_m2['growth_rate'] if latest_m2 and latest_m2.get('growth_rate') else 0.0,
-            debt_to_tax_ratio=latest_debt['ratio'] if latest_debt else 0.0,
-            real_rate=latest_rates['real_rate'] if latest_rates else 0.0,
+            m2_supply=latest_m2.value if latest_m2 else 0.0,
+            m2_growth=latest_m2.growth_rate if latest_m2 and hasattr(latest_m2, 'growth_rate') else 0.0,
+            debt_to_tax_ratio=latest_debt.ratio if latest_debt else 0.0,
+            real_rate=latest_rates.real_rate if latest_rates else 0.0,
         )
 
         return schemas.MacroSummaryResponse(

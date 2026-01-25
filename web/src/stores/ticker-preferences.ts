@@ -11,7 +11,7 @@
  */
 
 import { create } from "zustand";
-import { persist, devtools } from "zustand/middleware";
+import { persist, devtools, createJSONStorage } from "zustand/middleware";
 import type {
   TickerPreferencesStore,
   TickerPreferencesState,
@@ -71,8 +71,14 @@ export const useTickerPreferences = create<TickerPreferencesStore>()(
       }),
       {
         name: "ticker-preferences",
-        // Only persist to localStorage in browser environment
-        skipHydration: typeof window === "undefined",
+        // Use safe storage that handles SSR (returns undefined on server)
+        storage: createJSONStorage(() => 
+          typeof window !== "undefined" ? localStorage : {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          }
+        ),
       }
     ),
     {
@@ -89,22 +95,22 @@ export const useTickerPreferences = create<TickerPreferencesStore>()(
 /**
  * Select chart display preferences (type, scale).
  */
-export const useTickerChartDisplay = () =>
-  useTickerPreferences((state) => ({
-    chartType: state.chartType,
-    setChartType: state.setChartType,
-    logScale: state.logScale,
-    setLogScale: state.setLogScale,
-  }));
+export const useTickerChartDisplay = () => {
+  const chartType = useTickerPreferences((s) => s.chartType);
+  const setChartType = useTickerPreferences((s) => s.setChartType);
+  const logScale = useTickerPreferences((s) => s.logScale);
+  const setLogScale = useTickerPreferences((s) => s.setLogScale);
+  return { chartType, setChartType, logScale, setLogScale };
+};
 
 /**
  * Select risk band preferences.
  */
-export const useTickerRiskBands = () =>
-  useTickerPreferences((state) => ({
-    showRiskBands: state.showRiskBands,
-    setShowRiskBands: state.setShowRiskBands,
-  }));
+export const useTickerRiskBands = () => {
+  const showRiskBands = useTickerPreferences((s) => s.showRiskBands);
+  const setShowRiskBands = useTickerPreferences((s) => s.setShowRiskBands);
+  return { showRiskBands, setShowRiskBands };
+};
 
 // ============================================
 // Utilities
