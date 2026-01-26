@@ -22,19 +22,38 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def init_database():
-    """Create database tables if they don't exist."""
+    """Create database tables using Alembic migrations."""
     try:
-        from backend.models import Base
-        from sqlalchemy import create_engine
-        from backend.config import DATABASE_URL
+        from alembic import command
+        from alembic.config import Config
+        from pathlib import Path
         
-        logger.info("Creating database tables...")
-        engine = create_engine(DATABASE_URL)
-        Base.metadata.create_all(bind=engine)
-        logger.info("✓ Database tables created successfully")
+        logger.info("Running database migrations with Alembic...")
+        
+        # Get Alembic configuration
+        project_root = Path(__file__).parent.parent
+        alembic_ini = project_root / "alembic.ini"
+        
+        if not alembic_ini.exists():
+            logger.error(f"Alembic configuration not found: {alembic_ini}")
+            logger.info("Falling back to manual table creation...")
+            # Fallback to old method
+            from backend.models import Base
+            from sqlalchemy import create_engine
+            from backend.config import DATABASE_URL
+            engine = create_engine(DATABASE_URL)
+            Base.metadata.create_all(bind=engine)
+            logger.info("✓ Database tables created successfully (manual)")
+            return True
+        
+        # Run migrations
+        config = Config(str(alembic_ini))
+        command.upgrade(config, "head")
+        
+        logger.info("✓ Database migrations completed successfully")
         return True
     except Exception as e:
-        logger.error(f"✗ Failed to create database tables: {e}")
+        logger.error(f"✗ Failed to run migrations: {e}")
         return False
 
 
@@ -68,6 +87,34 @@ def run_initial_fetch():
     except Exception as e:
         logger.error(f"✗ Failed to run initial fetch: {e}", exc_info=True)
         return False
+
+
+def run_crypto_initialization():
+    """Generate and seed synthetic crypto data for development."""
+    try:
+        # Import the seed function from our new script
+        import sys
+        import os
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from init_crypto_data import seed_crypto_data
+        
+        logger.info("Initializing crypto data (synthetic for development)...")
+        logger.info("This will generate 365 days of realistic synthetic data...")
+        
+        # Generate 365 days of synthetic data, but don't force overwrite
+        success = seed_crypto_data(days=365, force=False)
+        
+        if success:
+            logger.info("✓ Crypto data initialization completed")
+            return True
+        else:
+            logger.warning("Crypto data initialization had issues (may already exist)")
+            return True  # Don't fail the whole init process
+            
+    except Exception as e:
+        logger.error(f"✗ Failed to initialize crypto data: {e}", exc_info=True)
+        logger.warning("Continuing initialization without crypto data...")
+        return True  # Don't fail the whole init process
 
 
 def verify_setup():
@@ -119,14 +166,20 @@ def main():
         sys.exit(1)
     logger.info("")
     
-    # Step 2: Initial data fetch
+    # Step 2: Initial FRED data fetch
     logger.info("Step 2: Fetching initial FRED data")
     if not run_initial_fetch():
         logger.warning("Initial data fetch had errors, but continuing...")
     logger.info("")
     
-    # Step 3: Verify setup
-    logger.info("Step 3: Verifying setup")
+    # Step 3: Initialize crypto data
+    logger.info("Step 3: Initializing crypto data")
+    if not run_crypto_initialization():
+        logger.warning("Crypto initialization had errors, but continuing...")
+    logger.info("")
+    
+    # Step 4: Verify setup
+    logger.info("Step 4: Verifying setup")
     if not verify_setup():
         logger.error("Setup verification failed. Please check logs.")
         sys.exit(1)
@@ -140,6 +193,7 @@ def main():
     logger.info("1. The Celery worker will automatically update data daily at 2 AM UTC")
     logger.info("2. The dashboard will load macro data from the cache (sub-100ms)")
     logger.info("3. Monitor metadata.is_stale in API responses for data freshness")
+    logger.info("4. Crypto data is currently synthetic - run update_crypto_metrics task for real data")
     logger.info("")
 
 

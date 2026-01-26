@@ -18,8 +18,8 @@ from backend.config import (
     COINGECKO_RETRY_BACKOFF_BASE,
     COINGECKO_RETRY_MAX_ATTEMPTS,
     REDIS_CACHE_TTL,
-    REDIS_CRYPTO_CACHE_PREFIX,
 )
+from backend.cache_keys import CacheKeys
 from backend.models import CryptoData, CryptoMetadata
 from backend.tasks.common import (
     get_coingecko_client,
@@ -147,7 +147,7 @@ def cache_crypto_dominance_in_redis(db: Session):
             ]
         }
 
-        cache_key = f"{REDIS_CRYPTO_CACHE_PREFIX}dominance"
+        cache_key = CacheKeys.crypto_dominance()
         redis_client.setex(
             cache_key,
             REDIS_CACHE_TTL,

@@ -40,7 +40,9 @@ class MacroService:
         Returns:
             tuple: (pandas Series with data, last_updated datetime) or (None, None) if not found
         """
-        cache_key = f"{config.REDIS_CACHE_PREFIX}{series_id}"
+        from backend.cache_keys import CacheKeys
+        
+        cache_key = CacheKeys.macro_series(series_id)
         try:
             cached = redis_client.get(cache_key)
             if cached:

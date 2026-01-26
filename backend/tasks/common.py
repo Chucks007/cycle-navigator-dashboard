@@ -15,10 +15,10 @@ from backend.config import (
     COINGECKO_API_KEY,
     DATABASE_URL,
     FRED_API_KEY,
-    REDIS_CACHE_PREFIX,
     REDIS_LOCK_TIMEOUT,
     REDIS_URL,
 )
+from backend.cache_keys import CacheKeys
 from backend.services.crypto import CoinGeckoClient
 
 # Logger setup
@@ -103,12 +103,12 @@ def acquire_global_rate_limit_lock(lock_name: str = "rate_limit_lock") -> bool:
         bool: True if lock acquired, False otherwise
     """
     redis_client = get_redis_client()
-    lock_key = f"{REDIS_CACHE_PREFIX}{lock_name}"
+    lock_key = CacheKeys.rate_limit_lock(lock_name)
     return redis_client.set(lock_key, "1", nx=True, ex=REDIS_LOCK_TIMEOUT)
 
 
 def release_global_rate_limit_lock(lock_name: str = "rate_limit_lock"):
     """Release a global rate-limit lock."""
     redis_client = get_redis_client()
-    lock_key = f"{REDIS_CACHE_PREFIX}{lock_name}"
+    lock_key = CacheKeys.rate_limit_lock(lock_name)
     redis_client.delete(lock_key)

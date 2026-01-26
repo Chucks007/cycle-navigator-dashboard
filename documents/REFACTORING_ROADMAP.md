@@ -422,7 +422,7 @@ redis_client.set(CacheKeys.MACRO_SERIES("M2SL"), data)
 
 ## Quick Wins (1-2 hour fixes)
 
-### 1. Create `scripts/init_crypto_data.py`
+### 1. ✅ Create `scripts/init_crypto_data.py` - COMPLETED
 
 Formalize the synthetic data generation into a reproducible script.
 
@@ -430,7 +430,14 @@ Formalize the synthetic data generation into a reproducible script.
 **Effort**: Low
 **Impact**: High (enables fresh deployments)
 
-### 2. Add `backend/cache_keys.py`
+**Status**: ✅ Completed on 2026-01-25
+- Created `scripts/init_crypto_data.py` with CLI arguments
+- Integrated with `scripts/init_db.py` for automatic initialization
+- Supports custom time ranges and force overwrite
+- Generates realistic synthetic data with variance and trends
+- Documented in DEVELOPER_SETUP.md
+
+### 2. ✅ Add `backend/cache_keys.py` - COMPLETED
 
 Centralize all Redis key patterns in one file.
 
@@ -438,7 +445,16 @@ Centralize all Redis key patterns in one file.
 **Effort**: Low
 **Impact**: Medium (reduces bugs, improves maintainability)
 
-### 3. Create database migration with Alembic
+**Status**: ✅ Completed on 2026-01-25
+- Created `backend/cache_keys.py` with CacheKeys class
+- Implemented methods for all key types (macro, crypto, locks)
+- Added cache management utilities (invalidate, list keys)
+- Updated all services and tasks to use CacheKeys
+- Created `scripts/manage_cache.py` CLI tool
+- Backward compatible with existing code
+- Fully documented with examples
+
+### 3. ✅ Create database migration with Alembic - COMPLETED
 
 Move from manual table creation to proper migrations.
 
@@ -446,13 +462,34 @@ Move from manual table creation to proper migrations.
 **Effort**: Low-Medium
 **Impact**: High (production readiness)
 
-### 4. Add startup validation
+**Status**: ✅ Completed on 2026-01-25
+- Initialized Alembic in project root
+- Created initial migration from existing models
+- Built `scripts/migrate.py` CLI tool for migration management
+- Updated `scripts/init_db.py` to use Alembic migrations
+- Added startup validation to FastAPI (table existence check)
+- Created `/health/detailed` endpoint for service monitoring
+- Comprehensive documentation in MIGRATIONS.md
+- Backward compatible with manual table creation
+
+### 4. ✅ Add startup validation - COMPLETED
 
 Fail fast if database or Redis is misconfigured.
 
 **Time**: 30 minutes
 **Effort**: Low
 **Impact**: Medium (better error messages)
+
+**Status**: ✅ Completed on 2026-01-25
+- Enhanced FastAPI startup event handler with comprehensive validation
+- Validates environment variables (DATABASE_URL, REDIS_URL, API keys)
+- Checks database connectivity and PostgreSQL version
+- Verifies Redis cache connectivity and status
+- Validates required tables exist with record counts
+- Created `scripts/validate_env.py` for standalone validation
+- Tests API key validity for FRED and CoinGecko
+- Provides actionable error messages and fix suggestions
+- Exit codes for CI/CD integration
 
 ---
 

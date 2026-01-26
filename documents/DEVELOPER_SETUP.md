@@ -388,20 +388,70 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ## Database Initialization
 
-### Option 1: Automated Init Script
+### Option 1: Automated Init Script (Recommended)
 
 ```bash
 python scripts/init_db.py
 ```
 
 **This script:**
-1. Creates all database tables
+1. Runs Alembic migrations to create/update database tables
 2. Runs TimescaleDB migrations (hypertables, continuous aggregates, compression)
 3. Fetches initial FRED data (M2, CPI, federal debt, interest rates)
-4. Fetches initial CoinGecko data (market cap, dominance)
+4. Generates synthetic crypto data (365 days for development)
 5. Populates Redis cache
 
-### Option 2: Manual Migration
+**Verify setup after initialization:**
+
+```bash
+# Run comprehensive validation
+python scripts/validate_env.py
+```
+
+This checks database connectivity, Redis cache, API keys, and data population.
+
+### Option 1a: Crypto Data Only (Re-initialization)
+
+If you need to reset or regenerate crypto data separately:
+
+```bash
+# Generate 365 days of synthetic data (default)
+python scripts/init_crypto_data.py
+
+# Generate different time period
+python scripts/init_crypto_data.py --days 180
+
+# Force overwrite existing data
+python scripts/init_crypto_data.py --force
+```
+
+**Note:** Synthetic data is used for development. The Celery worker will fetch real data from CoinGecko via the `update_crypto_metrics` task, which runs daily.
+
+### Option 2: Manual Migration with Alembic
+
+```bash
+# Check migration status
+python scripts/migrate.py check
+
+# Show migration history
+python scripts/migrate.py history
+
+# Upgrade to latest migration
+python scripts/migrate.py upgrade
+
+# Or use Alembic directly
+alembic upgrade head
+```
+
+**For existing databases:**
+If you have an existing database with tables already created, stamp it with the current migration:
+
+```bash
+# Mark database as up-to-date without running migrations
+python scripts/migrate.py stamp
+```
+
+### Option 3: Legacy Manual Method
 
 ```bash
 # Check prerequisites

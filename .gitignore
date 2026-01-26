@@ -6,6 +6,10 @@
 *__pycache__/
 *.pyc
 
+# Alembic
+*.pyc
+__pycache__/
+
 # macOS
 .DS_Store
 streamlit.log

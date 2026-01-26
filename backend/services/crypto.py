@@ -141,7 +141,9 @@ class CryptoService:
         Returns:
             tuple: (list of data points, last_updated datetime) or (None, None) if not found
         """
-        cache_key = f"{config.REDIS_CRYPTO_CACHE_PREFIX}dominance"
+        from backend.cache_keys import CacheKeys
+        
+        cache_key = CacheKeys.crypto_dominance()
         try:
             cached = redis_client.get(cache_key)
             if cached:

@@ -22,9 +22,9 @@ from backend.config import (
     FRED_SERIES_INTEREST,
     FRED_SERIES_M2,
     FRED_SERIES_TAX,
-    REDIS_CACHE_PREFIX,
     REDIS_CACHE_TTL,
 )
+from backend.cache_keys import CacheKeys
 from backend.models import FREDSeriesData, FREDSeriesMetadata
 from backend.tasks.common import (
     acquire_global_rate_limit_lock,
@@ -138,7 +138,7 @@ def cache_series_in_redis(series_id: str, data: pd.Series):
         ]
     }
 
-    cache_key = f"{REDIS_CACHE_PREFIX}{series_id}"
+    cache_key = CacheKeys.macro_series(series_id)
     redis_client.setex(
         cache_key,
         REDIS_CACHE_TTL,
