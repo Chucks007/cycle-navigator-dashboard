@@ -7,9 +7,10 @@ All data is cached in Redis and updated daily by the background worker.
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 
 from ..services.crypto import CryptoService
+from ..utils import handle_api_errors
 from .utils import ERROR_RESPONSES
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ crypto_service = CryptoService()
 
 
 @router.get("/dominance", responses=ERROR_RESPONSES)
+@handle_api_errors
 def get_crypto_dominance(
     days: int = Query(365, description="Number of days of history to return (max 365 for demo key)")
 ):
@@ -48,10 +50,4 @@ def get_crypto_dominance(
             'metadata': {'last_updated': ISO timestamp, 'is_stale': bool}
         }
     """
-    try:
-        return crypto_service.get_dominance(days=days)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        logger.exception("Error fetching crypto dominance data")
-        raise HTTPException(status_code=500, detail=f"Error fetching crypto dominance: {str(e)}")
+    return crypto_service.get_dominance(days=days)

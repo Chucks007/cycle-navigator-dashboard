@@ -13,7 +13,7 @@ import json
 import logging
 import random
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 logging.basicConfig(
     level=logging.INFO,
@@ -45,7 +45,7 @@ def generate_synthetic_crypto_data(days: int = 365) -> list[dict]:
     base_btc_dominance = 52.0
     base_eth_dominance = 18.0
     
-    end_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    end_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     
     for i in range(days):
         timestamp = end_date - timedelta(days=(days - i - 1))
@@ -149,7 +149,7 @@ def seed_crypto_database(data_points: list[dict], force: bool = False) -> bool:
             ).first()
             
             if metadata:
-                metadata.last_fetched = datetime.utcnow()
+                metadata.last_fetched = datetime.now(timezone.utc)
                 metadata.observation_count = len(data_points)
                 metadata.last_observation_date = data_points[-1]['timestamp']
                 metadata.fetch_status = 'success'
@@ -157,7 +157,7 @@ def seed_crypto_database(data_points: list[dict], force: bool = False) -> bool:
             else:
                 metadata = CryptoMetadata(
                     metric_type='global',
-                    last_fetched=datetime.utcnow(),
+                    last_fetched=datetime.now(timezone.utc),
                     observation_count=len(data_points),
                     last_observation_date=data_points[-1]['timestamp'],
                     fetch_status='success',
@@ -198,7 +198,7 @@ def cache_crypto_data_in_redis(data_points: list[dict]) -> bool:
         
         # Format data for cache
         cache_data = {
-            'last_updated': datetime.utcnow().isoformat(),
+            'last_updated': datetime.now(timezone.utc).isoformat(),
             'data': [
                 {
                     'timestamp': point['timestamp'].isoformat(),

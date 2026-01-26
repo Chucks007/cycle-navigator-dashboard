@@ -1,16 +1,19 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Any
 
 import pandas as pd
 import redis
 from fredapi import Fred
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
 from .. import config, schemas
+from ..cache_keys import CacheKeys
 from ..models import FREDSeriesData, FREDSeriesMetadata
 from . import common as utils
+from .common import CachedDataService
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +24,17 @@ redis_client = redis.from_url(config.REDIS_URL, decode_responses=True)
 engine = create_engine(config.DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-class MacroService:
+# Import FRED series list from config (single source of truth)
+FRED_SERIES_LIST = config.FRED_SERIES_LIST
+
+
+class MacroService(CachedDataService):
+    """
+    Service for fetching macroeconomic data from FRED API.
+    
+    Inherits from CachedDataService for common Redis/DB fallback patterns.
+    """
+    
     def __init__(self):
         self.api_key = config.FRED_API_KEY
         self.fred = None
@@ -33,15 +46,13 @@ class MacroService:
         else:
             logger.warning("FRED_API_KEY not found in configuration.")
 
-    def _get_series_from_redis(self, series_id: str) -> tuple[pd.Series, datetime]:
+    def _get_series_from_redis(self, series_id: str) -> tuple[pd.Series | None, datetime | None]:
         """
         Get series data from Redis cache.
         
         Returns:
             tuple: (pandas Series with data, last_updated datetime) or (None, None) if not found
         """
-        from backend.cache_keys import CacheKeys
-        
         cache_key = CacheKeys.macro_series(series_id)
         try:
             cached = redis_client.get(cache_key)
@@ -100,12 +111,7 @@ class MacroService:
         finally:
             db.close()
 
-    def _is_data_stale(self, last_updated: datetime) -> bool:
-        """Check if data is stale based on configured threshold."""
-        if not last_updated:
-            return True
-        age_hours = (datetime.utcnow() - last_updated).total_seconds() / 3600
-        return age_hours > config.DATA_STALE_THRESHOLD_HOURS
+    # _is_data_stale is inherited from CachedDataService
 
     def _get_series(self, series_id: str) -> tuple[pd.Series, dict]:
         """
@@ -351,3 +357,129 @@ class MacroService:
 
 # Singleton instance
 macro_service = MacroService()
+
+
+def fetch_all_fred_series_sync() -> dict[str, Any]:
+    """
+    Synchronous FRED data fetch for initialization.
+    
+    Fetches all FRED series directly without using Celery tasks.
+    Used during application startup to populate the cache.
+    
+    Returns:
+        Dict with status, total count, successful count, and results
+    """
+    from backend.cache_keys import CacheKeys
+    
+    if not config.FRED_API_KEY:
+        logger.error("FRED_API_KEY not configured, cannot fetch FRED data")
+        return {
+            'status': 'failed',
+            'error': 'FRED_API_KEY not configured',
+            'total': len(FRED_SERIES_LIST),
+            'successful': 0,
+            'results': []
+        }
+    
+    fred = Fred(api_key=config.FRED_API_KEY)
+    db = SessionLocal()
+    results = []
+    
+    try:
+        for series_id in FRED_SERIES_LIST:
+            try:
+                logger.info(f"Fetching series {series_id} from FRED API (sync)")
+                data = fred.get_series(series_id)
+                
+                if data.empty:
+                    logger.warning(f"No data returned for series {series_id}")
+                    results.append({
+                        'status': 'failed',
+                        'series_id': series_id,
+                        'error': 'No data returned'
+                    })
+                    continue
+                
+                # Store in PostgreSQL
+                db.query(FREDSeriesData).filter(FREDSeriesData.series_id == series_id).delete()
+                observations = []
+                for date, value in data.items():
+                    if pd.notna(value):
+                        observations.append(FREDSeriesData(
+                            series_id=series_id,
+                            date=date,
+                            value=float(value),
+                        ))
+                db.bulk_save_objects(observations)
+                
+                # Update metadata
+                last_observation_date = data.index[-1] if not data.empty else None
+                metadata = db.query(FREDSeriesMetadata).filter(
+                    FREDSeriesMetadata.series_id == series_id
+                ).first()
+                
+                if metadata:
+                    metadata.last_fetched = datetime.now(timezone.utc)
+                    metadata.observation_count = len(observations)
+                    metadata.last_observation_date = last_observation_date
+                    metadata.fetch_status = 'success'
+                    metadata.error_message = None
+                else:
+                    metadata = FREDSeriesMetadata(
+                        series_id=series_id,
+                        last_fetched=datetime.now(timezone.utc),
+                        observation_count=len(observations),
+                        last_observation_date=last_observation_date,
+                        fetch_status='success',
+                        error_message=None,
+                    )
+                    db.add(metadata)
+                
+                db.commit()
+                
+                # Cache in Redis
+                cache_data = {
+                    'series_id': series_id,
+                    'last_updated': datetime.now(timezone.utc).isoformat(),
+                    'data': [
+                        {'date': date.isoformat(), 'value': float(value)}
+                        for date, value in data.items()
+                        if pd.notna(value)
+                    ]
+                }
+                cache_key = CacheKeys.macro_series(series_id)
+                redis_client.setex(
+                    cache_key,
+                    config.REDIS_CACHE_TTL,
+                    json.dumps(cache_data)
+                )
+                
+                logger.info(f"✓ Fetched {series_id}: {len(observations)} observations")
+                results.append({
+                    'status': 'success',
+                    'series_id': series_id,
+                    'observation_count': len(observations),
+                    'last_observation_date': last_observation_date.isoformat() if last_observation_date else None,
+                })
+                
+            except Exception as e:
+                logger.error(f"Failed to fetch {series_id}: {e}")
+                results.append({
+                    'status': 'failed',
+                    'series_id': series_id,
+                    'error': str(e)
+                })
+                db.rollback()
+        
+        success_count = sum(1 for r in results if r.get('status') == 'success')
+        
+        return {
+            'status': 'completed',
+            'total': len(FRED_SERIES_LIST),
+            'successful': success_count,
+            'failed': len(FRED_SERIES_LIST) - success_count,
+            'results': results,
+        }
+    
+    finally:
+        db.close()

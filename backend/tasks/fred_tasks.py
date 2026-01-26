@@ -6,7 +6,7 @@ storing in PostgreSQL, and caching in Redis.
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import pandas as pd
@@ -17,11 +17,7 @@ from backend.celery_app import celery_app
 from backend.config import (
     FRED_RETRY_BACKOFF_BASE,
     FRED_RETRY_MAX_ATTEMPTS,
-    FRED_SERIES_10Y_YIELD,
-    FRED_SERIES_CPI,
-    FRED_SERIES_INTEREST,
-    FRED_SERIES_M2,
-    FRED_SERIES_TAX,
+    FRED_SERIES_LIST,
     REDIS_CACHE_TTL,
 )
 from backend.cache_keys import CacheKeys
@@ -34,15 +30,6 @@ from backend.tasks.common import (
     logger,
     release_global_rate_limit_lock,
 )
-
-# FRED series to fetch
-FRED_SERIES_LIST = [
-    FRED_SERIES_M2,
-    FRED_SERIES_INTEREST,
-    FRED_SERIES_TAX,
-    FRED_SERIES_10Y_YIELD,
-    FRED_SERIES_CPI,
-]
 
 
 def store_series_in_db(db: Session, series_id: str, data: pd.Series) -> int:
@@ -95,7 +82,7 @@ def update_series_metadata(
     ).first()
 
     if metadata:
-        metadata.last_fetched = datetime.utcnow()
+        metadata.last_fetched = datetime.now(timezone.utc)
         metadata.observation_count = observation_count
         metadata.last_observation_date = last_observation_date
         metadata.fetch_status = status
@@ -103,7 +90,7 @@ def update_series_metadata(
     else:
         metadata = FREDSeriesMetadata(
             series_id=series_id,
-            last_fetched=datetime.utcnow(),
+            last_fetched=datetime.now(timezone.utc),
             observation_count=observation_count,
             last_observation_date=last_observation_date,
             fetch_status=status,
@@ -130,7 +117,7 @@ def cache_series_in_redis(series_id: str, data: pd.Series):
     # Convert to JSON-serializable format
     cache_data = {
         'series_id': series_id,
-        'last_updated': datetime.utcnow().isoformat(),
+        'last_updated': datetime.now(timezone.utc).isoformat(),
         'data': [
             {'date': date.isoformat(), 'value': float(value)}
             for date, value in data.items()
@@ -222,40 +209,35 @@ def update_all_fred_series(self: Task) -> dict[str, Any]:
 
     Fetches all required macro indicators from FRED, stores in DB,
     and updates Redis cache. Uses global lock to prevent concurrent runs.
+    
+    Uses Celery's group() for proper async parallel execution instead of
+    blocking .get() calls which violate Celery's async execution model.
 
     Returns:
-        Dict with summary of updates
+        Dict with summary of submitted tasks
     """
+    from celery import group
+    
     if not acquire_global_rate_limit_lock("fred_rate_limit_lock"):
         logger.warning("Another FRED update is already in progress, skipping")
         return {'status': 'skipped', 'reason': 'concurrent_update'}
 
     try:
         logger.info("Starting scheduled FRED data update")
-        results = []
-
-        for series_id in FRED_SERIES_LIST:
-            try:
-                result = fetch_fred_series.apply(args=[series_id]).get(timeout=60)
-                results.append(result)
-                logger.info(f"Updated {series_id}: {result}")
-            except Exception as e:
-                logger.error(f"Failed to update {series_id}: {e}", exc_info=True)
-                results.append({
-                    'status': 'failed',
-                    'series_id': series_id,
-                    'error': str(e)
-                })
-
-        success_count = sum(1 for r in results if r.get('status') == 'success')
+        
+        # Use group() for proper async parallel execution
+        # This avoids the anti-pattern of calling .get() inside a task
+        job = group(fetch_fred_series.s(series_id) for series_id in FRED_SERIES_LIST)
+        result = job.apply_async()
+        
+        logger.info(f"Submitted {len(FRED_SERIES_LIST)} FRED fetch tasks (group_id: {result.id})")
 
         return {
-            'status': 'completed',
+            'status': 'submitted',
             'total': len(FRED_SERIES_LIST),
-            'successful': success_count,
-            'failed': len(FRED_SERIES_LIST) - success_count,
-            'results': results,
-            'timestamp': datetime.utcnow().isoformat(),
+            'series': FRED_SERIES_LIST,
+            'group_id': result.id,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
         }
 
     finally:

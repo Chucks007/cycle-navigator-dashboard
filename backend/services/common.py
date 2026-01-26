@@ -1,6 +1,119 @@
 
+import logging
+from abc import ABC
+from datetime import datetime, timezone
+from typing import Any, Callable, TypeVar
+
 import numpy as np
 import pandas as pd
+
+from backend import config
+
+logger = logging.getLogger(__name__)
+
+# Type variable for generic cached data
+T = TypeVar("T")
+
+
+class CachedDataService(ABC):
+    """
+    Base class for services that use Redis cache with PostgreSQL fallback.
+    
+    Provides common patterns for:
+    - Data staleness checking
+    - Cache-first with database fallback
+    - Consistent metadata structure
+    
+    Subclasses should implement their own Redis/DB fetch methods.
+    """
+    
+    def _is_data_stale(self, last_updated: datetime | None) -> bool:
+        """
+        Check if data is stale based on configured threshold.
+        
+        Args:
+            last_updated: Timestamp of when data was last updated
+            
+        Returns:
+            True if data is stale or last_updated is None
+        """
+        if not last_updated:
+            return True
+        
+        # Make sure last_updated is timezone-aware for comparison
+        if last_updated.tzinfo is None:
+            last_updated = last_updated.replace(tzinfo=timezone.utc)
+            
+        age_hours = (datetime.now(timezone.utc) - last_updated).total_seconds() / 3600
+        return age_hours > config.DATA_STALE_THRESHOLD_HOURS
+    
+    def _get_with_fallback(
+        self,
+        cache_fn: Callable[[], tuple[T | None, datetime | None]],
+        db_fn: Callable[[], tuple[T | None, datetime | None]],
+    ) -> tuple[T | None, datetime | None, bool]:
+        """
+        Fetch data from cache first, falling back to database.
+        
+        Args:
+            cache_fn: Function that returns (data, last_updated) from cache
+            db_fn: Function that returns (data, last_updated) from database
+            
+        Returns:
+            Tuple of (data, last_updated, is_stale)
+        """
+        # Try cache first (fast path)
+        data, last_updated = cache_fn()
+        
+        # Fallback to database if not in cache
+        if data is None:
+            data, last_updated = db_fn()
+        
+        # Check staleness
+        is_stale = self._is_data_stale(last_updated)
+        
+        return data, last_updated, is_stale
+    
+    def _build_metadata(
+        self,
+        last_updated: datetime | None,
+        is_stale: bool,
+        error: str | None = None
+    ) -> dict[str, Any]:
+        """
+        Build consistent metadata structure for API responses.
+        
+        Args:
+            last_updated: Timestamp of last data update
+            is_stale: Whether the data is considered stale
+            error: Optional error message
+            
+        Returns:
+            Metadata dict with last_updated, is_stale, and optional error
+        """
+        metadata = {
+            'last_updated': last_updated.isoformat() if last_updated else None,
+            'is_stale': is_stale
+        }
+        if error:
+            metadata['error'] = error
+        return metadata
+    
+    def _parse_timestamp(self, timestamp_str: str) -> datetime:
+        """
+        Parse an ISO format timestamp string and ensure it's timezone-aware.
+        
+        Args:
+            timestamp_str: ISO format timestamp string
+            
+        Returns:
+            Timezone-aware datetime object (UTC if no timezone info present)
+        """
+        dt = datetime.fromisoformat(timestamp_str)
+        if dt.tzinfo is None:
+            # Assume UTC if no timezone info
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
 
 
 def align_dataframes(

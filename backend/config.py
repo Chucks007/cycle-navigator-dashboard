@@ -66,6 +66,15 @@ FRED_SERIES_TAX = 'W006RC1Q027SBEA'
 FRED_SERIES_10Y_YIELD = 'DGS10'
 FRED_SERIES_CPI = 'CPIAUCSL'
 
+# All FRED series to fetch (single source of truth)
+FRED_SERIES_LIST = [
+    FRED_SERIES_M2,
+    FRED_SERIES_INTEREST,
+    FRED_SERIES_TAX,
+    FRED_SERIES_10Y_YIELD,
+    FRED_SERIES_CPI,
+]
+
 DEFAULT_RISK_FREE_RATE = 0.04  # 4% fallback rate when unable to fetch current rate
 TRADING_DAYS_PER_YEAR = 252  # Standard number of trading days per year
 

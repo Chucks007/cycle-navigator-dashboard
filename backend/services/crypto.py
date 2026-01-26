@@ -8,7 +8,8 @@ as MacroService: Redis for fast cache, PostgreSQL as source of truth.
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import redis
 import requests
@@ -16,7 +17,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .. import config
+from ..cache_keys import CacheKeys
 from ..models import CryptoData, CryptoMetadata
+from .common import CachedDataService
 
 logger = logging.getLogger(__name__)
 
@@ -113,9 +116,11 @@ class CoinGeckoClient:
             return None
 
 
-class CryptoService:
+class CryptoService(CachedDataService):
     """
     Service for managing cryptocurrency market data with caching and persistence.
+    
+    Inherits from CachedDataService for common Redis/DB fallback patterns.
     
     Follows MacroService pattern:
     - Redis cache for fast frontend access (<100ms)
@@ -141,8 +146,6 @@ class CryptoService:
         Returns:
             tuple: (list of data points, last_updated datetime) or (None, None) if not found
         """
-        from backend.cache_keys import CacheKeys
-        
         cache_key = CacheKeys.crypto_dominance()
         try:
             cached = redis_client.get(cache_key)
@@ -175,7 +178,7 @@ class CryptoService:
                 return None, None
 
             # Get recent crypto data (limit by days)
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
             data_records = db.query(CryptoData).filter(
                 CryptoData.timestamp >= cutoff_date
             ).order_by(CryptoData.timestamp).all()
@@ -204,12 +207,7 @@ class CryptoService:
         finally:
             db.close()
 
-    def _is_data_stale(self, last_updated: datetime) -> bool:
-        """Check if data is stale based on configured threshold."""
-        if not last_updated:
-            return True
-        age_hours = (datetime.utcnow() - last_updated).total_seconds() / 3600
-        return age_hours > config.DATA_STALE_THRESHOLD_HOURS
+    # _is_data_stale is inherited from CachedDataService
 
     def get_dominance(self, days: int = 365) -> dict:
         """
@@ -252,10 +250,10 @@ class CryptoService:
 
         # Filter by days if data came from Redis (DB already filtered)
         if last_updated:
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
             data_points = [
                 point for point in data_points
-                if datetime.fromisoformat(point['timestamp']) >= cutoff_date
+                if self._parse_timestamp(point['timestamp']) >= cutoff_date
             ]
 
         # Check if data is stale
@@ -303,9 +301,166 @@ class CryptoService:
         altcoin_mcap = total_mcap - btc_mcap - eth_mcap
 
         return {
-            'timestamp': datetime.utcnow(),
+            'timestamp': datetime.now(timezone.utc),
             'total_mcap': total_mcap,
             'btc_dominance': btc_dominance,
             'eth_dominance': eth_dominance,
             'altcoin_mcap': altcoin_mcap
         }
+
+
+def fetch_crypto_dominance_sync() -> dict[str, Any]:
+    """
+    Synchronous crypto dominance fetch for initialization.
+    
+    Fetches global crypto data directly without using Celery tasks.
+    Used during application startup to populate the cache.
+    
+    Returns:
+        Dict with status and crypto data or error
+    """
+    from backend.cache_keys import CacheKeys
+    
+    if not config.COINGECKO_API_KEY:
+        logger.error("COINGECKO_API_KEY not configured, cannot fetch crypto data")
+        return {
+            'status': 'failed',
+            'error': 'COINGECKO_API_KEY not configured'
+        }
+    
+    client = CoinGeckoClient(api_key=config.COINGECKO_API_KEY)
+    db = SessionLocal()
+    
+    try:
+        logger.info("Fetching global crypto data from CoinGecko API (sync)")
+        global_data = client.get_global_data()
+        
+        if not global_data or 'data' not in global_data:
+            logger.warning("No data returned from CoinGecko API")
+            return {
+                'status': 'failed',
+                'error': 'No data returned from CoinGecko API'
+            }
+        
+        data = global_data['data']
+        
+        # Extract dominance percentages
+        btc_dominance = data.get('market_cap_percentage', {}).get('btc', 0.0)
+        eth_dominance = data.get('market_cap_percentage', {}).get('eth', 0.0)
+        
+        # Get total market cap in USD
+        total_mcap = data.get('total_market_cap', {}).get('usd', 0.0)
+        
+        # Calculate altcoin market cap (Total - BTC - ETH)
+        btc_mcap = total_mcap * (btc_dominance / 100.0)
+        eth_mcap = total_mcap * (eth_dominance / 100.0)
+        altcoin_mcap = total_mcap - btc_mcap - eth_mcap
+        
+        # Create snapshot
+        snapshot = {
+            'timestamp': datetime.now(timezone.utc),
+            'total_mcap': total_mcap,
+            'btc_dominance': btc_dominance,
+            'eth_dominance': eth_dominance,
+            'altcoin_mcap': altcoin_mcap
+        }
+        
+        # Check if data for this timestamp already exists (within same hour)
+        existing = db.query(CryptoData).filter(
+            CryptoData.timestamp >= snapshot['timestamp'].replace(minute=0, second=0, microsecond=0)
+        ).first()
+        
+        if existing:
+            # Update existing record
+            existing.total_mcap = snapshot['total_mcap']
+            existing.btc_dominance = snapshot['btc_dominance']
+            existing.eth_dominance = snapshot['eth_dominance']
+            existing.altcoin_mcap = snapshot['altcoin_mcap']
+            existing.updated_at = datetime.utcnow()
+            logger.info(f"Updated existing crypto data for {snapshot['timestamp']}")
+        else:
+            # Insert new record
+            crypto_data = CryptoData(
+                timestamp=snapshot['timestamp'],
+                total_mcap=snapshot['total_mcap'],
+                btc_dominance=snapshot['btc_dominance'],
+                eth_dominance=snapshot['eth_dominance'],
+                altcoin_mcap=snapshot['altcoin_mcap']
+            )
+            db.add(crypto_data)
+            logger.info(f"Inserted new crypto data for {snapshot['timestamp']}")
+        
+        # Update metadata
+        metadata = db.query(CryptoMetadata).filter(
+            CryptoMetadata.metric_type == 'global'
+        ).first()
+        
+        if metadata:
+            metadata.last_fetched = datetime.utcnow()
+            metadata.observation_count = 1
+            metadata.last_observation_date = snapshot['timestamp']
+            metadata.fetch_status = 'success'
+            metadata.error_message = None
+        else:
+            metadata = CryptoMetadata(
+                metric_type='global',
+                last_fetched=datetime.utcnow(),
+                observation_count=1,
+                last_observation_date=snapshot['timestamp'],
+                fetch_status='success',
+                error_message=None
+            )
+            db.add(metadata)
+        
+        db.commit()
+        
+        # Cache in Redis
+        cutoff_date = datetime.utcnow() - timedelta(days=365)
+        data_records = db.query(CryptoData).filter(
+            CryptoData.timestamp >= cutoff_date
+        ).order_by(CryptoData.timestamp).all()
+        
+        if data_records:
+            cache_data = {
+                'last_updated': datetime.utcnow().isoformat(),
+                'data': [
+                    {
+                        'timestamp': record.timestamp.isoformat(),
+                        'total_mcap': record.total_mcap,
+                        'btc_dominance': record.btc_dominance,
+                        'eth_dominance': record.eth_dominance,
+                        'altcoin_mcap': record.altcoin_mcap
+                    }
+                    for record in data_records
+                ]
+            }
+            
+            cache_key = CacheKeys.crypto_dominance()
+            redis_client.setex(
+                cache_key,
+                config.REDIS_CACHE_TTL,
+                json.dumps(cache_data)
+            )
+            logger.info(f"Cached {len(cache_data['data'])} crypto data points in Redis")
+        
+        logger.info(f"✓ Fetched crypto dominance: BTC {btc_dominance:.2f}%, ETH {eth_dominance:.2f}%")
+        
+        return {
+            'status': 'success',
+            'metric_type': 'global',
+            'total_mcap': total_mcap,
+            'btc_dominance': btc_dominance,
+            'eth_dominance': eth_dominance,
+            'altcoin_mcap': altcoin_mcap,
+            'timestamp': snapshot['timestamp'].isoformat(),
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch crypto dominance: {e}")
+        db.rollback()
+        return {
+            'status': 'failed',
+            'error': str(e)
+        }
+    finally:
+        db.close()

@@ -6,7 +6,7 @@ storing in PostgreSQL, and caching in Redis.
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from celery import Task
@@ -52,7 +52,7 @@ def store_crypto_data_in_db(db: Session, snapshot: dict[str, Any]) -> int:
             existing.btc_dominance = snapshot['btc_dominance']
             existing.eth_dominance = snapshot['eth_dominance']
             existing.altcoin_mcap = snapshot['altcoin_mcap']
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = datetime.now(timezone.utc)
             logger.info(f"Updated existing crypto data for {snapshot['timestamp']}")
         else:
             # Insert new record
@@ -90,7 +90,7 @@ def update_crypto_metadata(
         ).first()
 
         if metadata:
-            metadata.last_fetched = datetime.utcnow()
+            metadata.last_fetched = datetime.now(timezone.utc)
             metadata.observation_count = observation_count
             metadata.last_observation_date = last_observation_date
             metadata.fetch_status = status
@@ -98,7 +98,7 @@ def update_crypto_metadata(
         else:
             metadata = CryptoMetadata(
                 metric_type=metric_type,
-                last_fetched=datetime.utcnow(),
+                last_fetched=datetime.now(timezone.utc),
                 observation_count=observation_count,
                 last_observation_date=last_observation_date,
                 fetch_status=status,
@@ -123,7 +123,7 @@ def cache_crypto_dominance_in_redis(db: Session):
         redis_client = get_redis_client()
 
         # Get last 365 days of data
-        cutoff_date = datetime.utcnow() - timedelta(days=365)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=365)
         data_records = db.query(CryptoData).filter(
             CryptoData.timestamp >= cutoff_date
         ).order_by(CryptoData.timestamp).all()
@@ -134,7 +134,7 @@ def cache_crypto_dominance_in_redis(db: Session):
 
         # Format for cache
         cache_data = {
-            'last_updated': datetime.utcnow().isoformat(),
+            'last_updated': datetime.now(timezone.utc).isoformat(),
             'data': [
                 {
                     'timestamp': record.timestamp.isoformat(),
@@ -212,7 +212,7 @@ def update_crypto_metrics(self: Task) -> dict[str, Any]:
 
         # Create snapshot
         snapshot = {
-            'timestamp': datetime.utcnow(),
+            'timestamp': datetime.now(timezone.utc),
             'total_mcap': total_mcap,
             'btc_dominance': btc_dominance,
             'eth_dominance': eth_dominance,
