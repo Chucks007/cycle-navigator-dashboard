@@ -1,17 +1,20 @@
 /**
  * Ticker Analysis Preferences Store
- * 
+ *
  * Manages chart preferences for the Ticker Analysis page (/ticker).
- * 
+ *
  * Separate from macro preferences to avoid "state pollution" -
  * settings for stock analysis are distinct from macro regime analysis.
- * 
+ *
  * Persisted to localStorage via Zustand middleware.
  * Devtools enabled in development for debugging.
+ *
+ * Uses safeLocalStorage from create-preference-store.ts for SSR compatibility.
  */
 
 import { create } from "zustand";
 import { persist, devtools, createJSONStorage } from "zustand/middleware";
+import { safeLocalStorage } from "./create-preference-store";
 import type {
   TickerPreferencesStore,
   TickerPreferencesState,
@@ -40,7 +43,7 @@ const DEFAULT_STATE: TickerPreferencesState = {
 
 /**
  * Ticker preferences store with persistence and devtools.
- * 
+ *
  * Usage:
  * ```tsx
  * const { timeframe, setTimeframe, logScale, setLogScale } = useTickerPreferences();
@@ -71,14 +74,7 @@ export const useTickerPreferences = create<TickerPreferencesStore>()(
       }),
       {
         name: "ticker-preferences",
-        // Use safe storage that handles SSR (returns undefined on server)
-        storage: createJSONStorage(() => 
-          typeof window !== "undefined" ? localStorage : {
-            getItem: () => null,
-            setItem: () => {},
-            removeItem: () => {},
-          }
-        ),
+        storage: createJSONStorage(() => safeLocalStorage),
       }
     ),
     {

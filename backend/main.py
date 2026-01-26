@@ -4,11 +4,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import config
-from .routers import comparison, crypto, macro, risk, sentiment, stocks
+from .routers import comparison, config as config_router, crypto, macro, risk, sentiment, stocks
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+app = FastAPI(
+    title="Cycle Navigator Dashboard API",
+    description="Financial data API for macro analysis and ticker research",
+    version="0.1.0",
+)
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -26,6 +30,7 @@ app.include_router(sentiment.router)
 app.include_router(comparison.router)
 app.include_router(risk.router)
 app.include_router(crypto.router)
+app.include_router(config_router.router)
 
 
 @app.on_event("startup")

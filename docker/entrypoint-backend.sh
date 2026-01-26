@@ -9,7 +9,13 @@ echo "=========================================="
 echo "Waiting for dependencies..."
 sleep 5
 
-# Initialize cache with data
+# Check if we're running as a celery worker or beat scheduler
+if [[ "$1" == "celery" ]]; then
+    echo "Starting Celery: $@"
+    exec "$@"
+fi
+
+# Initialize cache with data (only for the main backend)
 echo "Initializing cache..."
 python -m backend.init_cache || {
     echo "⚠ Cache initialization failed, but continuing..."

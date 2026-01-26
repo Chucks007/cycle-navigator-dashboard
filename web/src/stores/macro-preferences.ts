@@ -1,17 +1,21 @@
 /**
  * Macro Dashboard Preferences Store
- * 
+ *
  * Manages chart preferences for the Macro Watchtower page.
- * 
+ *
  * Architecture:
  * - Timeframe is SHARED (global) for cross-chart correlation analysis
  * - Indicators (SMA, EMA, LogScale, Inflation) are ISOLATED (per-chart)
  * - Persisted to localStorage via Zustand middleware
  * - Devtools enabled in development for debugging
+ *
+ * Uses createPersistedStore and safeLocalStorage from create-preference-store.ts
+ * for consistent patterns across all preference stores.
  */
 
 import { create } from "zustand";
 import { persist, devtools, createJSONStorage } from "zustand/middleware";
+import { safeLocalStorage } from "./create-preference-store";
 import type {
   MacroPreferencesStore,
   MacroPreferencesState,
@@ -33,7 +37,7 @@ const DEFAULT_INDICATOR_PREFS: ChartIndicatorPreferences = {
 const DEFAULT_STATE: MacroPreferencesState = {
   // Global timeframe - default to 1Y for macro analysis
   timeframe: "1Y" as Timeframe,
-  
+
   // Per-chart defaults
   liquidity: { ...DEFAULT_INDICATOR_PREFS },
   debtStatus: {
@@ -55,7 +59,7 @@ const DEFAULT_STATE: MacroPreferencesState = {
 
 /**
  * Macro preferences store with persistence and devtools.
- * 
+ *
  * Usage:
  * ```tsx
  * const { timeframe, setTimeframe, liquidity, setLiquidityPrefs } = useMacroPreferences();
@@ -114,14 +118,7 @@ export const useMacroPreferences = create<MacroPreferencesStore>()(
       }),
       {
         name: "macro-preferences",
-        // Use safe storage that handles SSR (returns undefined on server)
-        storage: createJSONStorage(() => 
-          typeof window !== "undefined" ? localStorage : {
-            getItem: () => null,
-            setItem: () => {},
-            removeItem: () => {},
-          }
-        ),
+        storage: createJSONStorage(() => safeLocalStorage),
       }
     ),
     {
@@ -146,16 +143,14 @@ export const useMacroTimeframe = () => {
 
 /**
  * Select only liquidity chart preferences.
+ * Combines timeframe (shared) with chart-specific settings.
  */
 export const useLiquidityPrefs = () => {
   const timeframe = useMacroPreferences((s) => s.timeframe);
   const setTimeframe = useMacroPreferences((s) => s.setTimeframe);
-  const showSMA = useMacroPreferences((s) => s.liquidity.showSMA);
-  const showEMA = useMacroPreferences((s) => s.liquidity.showEMA);
-  const logScale = useMacroPreferences((s) => s.liquidity.logScale);
-  const adjustForInflation = useMacroPreferences((s) => s.liquidity.adjustForInflation);
+  const prefs = useMacroPreferences((s) => s.liquidity);
   const setPrefs = useMacroPreferences((s) => s.setLiquidityPrefs);
-  return { timeframe, setTimeframe, showSMA, showEMA, logScale, adjustForInflation, setPrefs };
+  return { ...prefs, timeframe, setTimeframe, setPrefs };
 };
 
 /**
@@ -164,10 +159,9 @@ export const useLiquidityPrefs = () => {
 export const useDebtStatusPrefs = () => {
   const timeframe = useMacroPreferences((s) => s.timeframe);
   const setTimeframe = useMacroPreferences((s) => s.setTimeframe);
-  const showSMA = useMacroPreferences((s) => s.debtStatus.showSMA);
-  const logScale = useMacroPreferences((s) => s.debtStatus.logScale);
+  const prefs = useMacroPreferences((s) => s.debtStatus);
   const setPrefs = useMacroPreferences((s) => s.setDebtStatusPrefs);
-  return { timeframe, setTimeframe, showSMA, logScale, setPrefs };
+  return { ...prefs, timeframe, setTimeframe, setPrefs };
 };
 
 /**
@@ -176,10 +170,9 @@ export const useDebtStatusPrefs = () => {
 export const useRealRatesPrefs = () => {
   const timeframe = useMacroPreferences((s) => s.timeframe);
   const setTimeframe = useMacroPreferences((s) => s.setTimeframe);
-  const showSMA = useMacroPreferences((s) => s.realRates.showSMA);
-  const logScale = useMacroPreferences((s) => s.realRates.logScale);
+  const prefs = useMacroPreferences((s) => s.realRates);
   const setPrefs = useMacroPreferences((s) => s.setRealRatesPrefs);
-  return { timeframe, setTimeframe, showSMA, logScale, setPrefs };
+  return { ...prefs, timeframe, setTimeframe, setPrefs };
 };
 
 /**
@@ -188,9 +181,9 @@ export const useRealRatesPrefs = () => {
 export const useDominancePrefs = () => {
   const timeframe = useMacroPreferences((s) => s.timeframe);
   const setTimeframe = useMacroPreferences((s) => s.setTimeframe);
-  const logScale = useMacroPreferences((s) => s.dominance.logScale);
+  const prefs = useMacroPreferences((s) => s.dominance);
   const setPrefs = useMacroPreferences((s) => s.setDominancePrefs);
-  return { timeframe, setTimeframe, logScale, setPrefs };
+  return { ...prefs, timeframe, setTimeframe, setPrefs };
 };
 
 // ============================================

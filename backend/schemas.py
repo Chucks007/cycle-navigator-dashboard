@@ -172,3 +172,52 @@ class RiskScoreResponse(BaseModel):
     current_band: CurrentBand
     current_price: float
     fair_value: float
+
+
+# --- Application Configuration ---
+
+class TimeframeConfig(BaseModel):
+    """Timeframe mapping for chart controls."""
+    id: str
+    label: str
+    days: int | None  # None = ALL
+    period: str  # yfinance period
+    interval: str  # yfinance interval
+
+
+class CacheConfig(BaseModel):
+    """Cache TTL and staleness configuration."""
+    ttl_seconds: int
+    stale_threshold_hours: int
+
+
+class ApiLimitsConfig(BaseModel):
+    """API rate limit information."""
+    fred_daily_limit: int
+    coingecko_per_minute: int
+
+
+class ChartDefaultsConfig(BaseModel):
+    """Default chart settings."""
+    sma_window: int
+    ema_window: int
+    rsi_window: int
+    default_ticker: str
+    default_tickers: list[str]
+
+
+class AppConfigResponse(BaseModel):
+    """
+    Application configuration response.
+    
+    Exposes non-sensitive configuration to frontend for synchronization.
+    This ensures frontend and backend use consistent settings.
+    """
+    version: str
+    timeframes: list[TimeframeConfig]
+    cache: CacheConfig
+    api_limits: ApiLimitsConfig
+    chart_defaults: ChartDefaultsConfig
+    market_indices: list[dict]
+    watchlist_tickers: list[str]
+
