@@ -22,6 +22,7 @@ from backend.config import (
 )
 from backend.cache_keys import CacheKeys
 from backend.models import FREDSeriesData, FREDSeriesMetadata
+from backend.services.macro import update_fred_series_data
 from backend.tasks.common import (
     acquire_global_rate_limit_lock,
     get_db,
@@ -30,108 +31,6 @@ from backend.tasks.common import (
     logger,
     release_global_rate_limit_lock,
 )
-
-
-def store_series_in_db(db: Session, series_id: str, data: pd.Series) -> int:
-    """
-    Store FRED series data in PostgreSQL.
-
-    Args:
-        db: Database session
-        series_id: FRED series ID
-        data: Pandas Series with datetime index and values
-
-    Returns:
-        int: Number of observations stored
-    """
-    if data.empty:
-        logger.warning(f"No data to store for series {series_id}")
-        return 0
-
-    # Delete existing data for this series to avoid duplicates
-    db.query(FREDSeriesData).filter(FREDSeriesData.series_id == series_id).delete()
-
-    # Insert new data
-    observations = []
-    for date, value in data.items():
-        if pd.notna(value):  # Skip NaN values
-            observations.append(FREDSeriesData(
-                series_id=series_id,
-                date=date,
-                value=float(value),
-            ))
-
-    db.bulk_save_objects(observations)
-    db.commit()
-
-    logger.info(f"Stored {len(observations)} observations for {series_id}")
-    return len(observations)
-
-
-def update_series_metadata(
-    db: Session,
-    series_id: str,
-    observation_count: int,
-    last_observation_date: datetime | None = None,
-    status: str = 'success',
-    error_message: str | None = None,
-):
-    """Update metadata for a FRED series."""
-    metadata = db.query(FREDSeriesMetadata).filter(
-        FREDSeriesMetadata.series_id == series_id
-    ).first()
-
-    if metadata:
-        metadata.last_fetched = datetime.now(timezone.utc)
-        metadata.observation_count = observation_count
-        metadata.last_observation_date = last_observation_date
-        metadata.fetch_status = status
-        metadata.error_message = error_message
-    else:
-        metadata = FREDSeriesMetadata(
-            series_id=series_id,
-            last_fetched=datetime.now(timezone.utc),
-            observation_count=observation_count,
-            last_observation_date=last_observation_date,
-            fetch_status=status,
-            error_message=error_message,
-        )
-        db.add(metadata)
-
-    db.commit()
-
-
-def cache_series_in_redis(series_id: str, data: pd.Series):
-    """
-    Cache FRED series data in Redis for fast access.
-
-    Args:
-        series_id: FRED series ID
-        data: Pandas Series with datetime index and values
-    """
-    if data.empty:
-        return
-
-    redis_client = get_redis_client()
-
-    # Convert to JSON-serializable format
-    cache_data = {
-        'series_id': series_id,
-        'last_updated': datetime.now(timezone.utc).isoformat(),
-        'data': [
-            {'date': date.isoformat(), 'value': float(value)}
-            for date, value in data.items()
-            if pd.notna(value)
-        ]
-    }
-
-    cache_key = CacheKeys.macro_series(series_id)
-    redis_client.setex(
-        cache_key,
-        REDIS_CACHE_TTL,
-        json.dumps(cache_data)
-    )
-    logger.info(f"Cached {series_id} in Redis with {len(cache_data['data'])} points")
 
 
 @celery_app.task(
@@ -167,36 +66,19 @@ def fetch_fred_series(self: Task, series_id: str) -> dict[str, Any]:
         if data.empty:
             error_msg = f"No data returned for series {series_id}"
             logger.warning(error_msg)
-            update_series_metadata(db, series_id, 0, status='failed', error_message=error_msg)
+            # Use shared method to update metadata with failure status
+            update_fred_series_data(db, series_id, data, status='failed', error_message=error_msg)
             return {'status': 'failed', 'error': error_msg}
 
-        # Store in PostgreSQL
-        observation_count = store_series_in_db(db, series_id, data)
-        last_observation_date = data.index[-1] if not data.empty else None
-
-        # Update metadata
-        update_series_metadata(
-            db,
-            series_id,
-            observation_count,
-            last_observation_date,
-            status='success'
-        )
-
-        # Cache in Redis
-        cache_series_in_redis(series_id, data)
-
-        return {
-            'status': 'success',
-            'series_id': series_id,
-            'observation_count': observation_count,
-            'last_observation_date': last_observation_date.isoformat() if last_observation_date else None,
-        }
+        # Use shared method to store in DB, update metadata, and cache in Redis
+        result = update_fred_series_data(db, series_id, data)
+        return result
 
     except Exception as e:
         error_msg = f"Error fetching {series_id}: {str(e)}"
         logger.error(error_msg, exc_info=True)
-        update_series_metadata(db, series_id, 0, status='failed', error_message=error_msg)
+        # Use shared method to update metadata with failure status
+        update_fred_series_data(db, series_id, pd.Series(), status='failed', error_message=error_msg)
         raise
     finally:
         db.close()
