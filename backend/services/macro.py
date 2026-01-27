@@ -192,7 +192,7 @@ class MacroService(CachedDataService):
             return {'data': [], 'metadata': metadata} if include_metadata else []
 
         # Calculate YoY Growth (12 months)
-        m2_growth = m2.pct_change(periods=12)
+        m2_growth = m2.pct_change(periods=12, fill_method=None)
 
         # Prepare DataFrame
         df = pd.DataFrame({'value': m2, 'growth_rate': m2_growth})
@@ -302,7 +302,7 @@ class MacroService(CachedDataService):
             return {'data': [], 'metadata': combined_metadata} if include_metadata else []
 
         # CPI YoY Inflation Rate (Decimal)
-        cpi_yoy = cpi.pct_change(periods=12)
+        cpi_yoy = cpi.pct_change(periods=12, fill_method=None)
 
         # GS10 is in Percent (e.g. 4.2). Convert to decimal to match CPI YoY
         gs10_decimal = gs10 / 100.0

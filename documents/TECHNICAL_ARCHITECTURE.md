@@ -618,7 +618,7 @@ Before deploying to production:
 - [ ] Run TimescaleDB migration on staging environment
 - [ ] Verify continuous aggregates are created: `SELECT * FROM timescaledb_information.continuous_aggregates;`
 - [ ] Test compression policies: `SELECT * FROM timescaledb_information.compression_settings;`
-- [ ] Update Celery module paths in CI/CD scripts (old: `backend.services.macro_worker` → new: `backend.celery_app`)
+- [x] ✅ Updated Celery module paths (deprecated: `backend.services.macro_worker` → current: `backend.celery_app`)
 - [ ] Verify all service health checks pass: `podman-compose ps`
 - [ ] Schedule maintenance window for production deployment
 - [ ] Monitor query latency after deployment
@@ -627,10 +627,10 @@ Before deploying to production:
 
 **1. Celery Module Path Change**
 
-- **Old Path:** `backend.services.macro_worker`
-- **New Path:** `backend.celery_app`
-- **Compatibility:** Old path still works via shim but emits deprecation warning
-- **Action Required:** Update docker-compose.yml and any CI/CD scripts
+- **Deprecated Path:** `backend.services.macro_worker` (still works via compatibility shim with deprecation warning)
+- **Current Path:** `backend.celery_app`
+- **Status:** Migration complete - all scripts and docs updated
+- **Action Required:** Use `backend.celery_app` in all new deployments
 
 **2. TimescaleDB Hypertables**
 
@@ -642,11 +642,18 @@ Before deploying to production:
 
 If critical issues occur:
 
-1. **Celery Revert:**
+1. **Celery Revert (not recommended - deprecated path):**
+   ```yaml
+   # docker-compose.yml (legacy compatibility only)
+   celery-worker:
+     command: celery -A backend.services.macro_worker worker --loglevel=info  # Deprecated
+   ```
+   
+   **Recommended approach:**
    ```yaml
    # docker-compose.yml
    celery-worker:
-     command: celery -A backend.services.macro_worker worker --loglevel=info
+     command: celery -A backend.celery_app worker --loglevel=info  # Current
    ```
 
 2. **Database Restore:**

@@ -65,6 +65,11 @@ addopts = [
     "-ra",
 ]
 filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning",
+    # Only ignore specific known third-party deprecations
+    # Fail on any deprecations from our own code
+    "error::DeprecationWarning",
+    "error::PendingDeprecationWarning",
+    # Allow specific third-party library warnings that we can't control
+    "ignore::DeprecationWarning:urllib3",
+    "ignore::DeprecationWarning:pkg_resources",
 ]

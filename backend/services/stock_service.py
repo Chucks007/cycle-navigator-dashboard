@@ -384,7 +384,7 @@ class StockService:
             close_series = close_col
 
         close_series = pd.to_numeric(close_series, errors='coerce')
-        returns = close_series.pct_change().dropna()
+        returns = close_series.pct_change(fill_method=None).dropna()
 
         if len(returns) < 2:
             return np.nan, np.nan

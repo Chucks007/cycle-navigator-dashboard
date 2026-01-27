@@ -60,7 +60,7 @@ def init_database():
 def run_initial_fetch():
     """Run initial FRED data fetch to populate cache."""
     try:
-        from backend.services.macro_worker import update_all_fred_series
+        from backend.tasks.fred_tasks import update_all_fred_series
         
         logger.info("Running initial FRED data fetch...")
         logger.info("This may take a minute as we fetch historical data...")

@@ -249,6 +249,65 @@ export function downsampleData<T>(data: T[], targetPoints: number = 50): T[] {
 }
 
 /**
+ * Create indicator series (SMA/EMA) for chart overlays
+ * 
+ * @param data - Array of data points with date and optional sma/ema values
+ * @param options - Configuration for which indicators to show
+ * @returns Array of ExtraSeriesConfig for chart overlay
+ */
+export function createIndicatorSeries<T extends { date: string | number; sma?: number | null; ema?: number | null }>(
+  data: T[],
+  options: { showSMA?: boolean; showEMA?: boolean; smaLabel?: string; emaLabel?: string; smaColor?: string; emaColor?: string }
+): ExtraSeriesConfig[] {
+  const {
+    showSMA = false,
+    showEMA = false,
+    smaLabel = "SMA 20",
+    emaLabel = "EMA 20",
+    smaColor = "#fbbf24",
+    emaColor = "#8b5cf6"
+  } = options;
+
+  const series: ExtraSeriesConfig[] = [];
+
+  if (showSMA) {
+    const smaData = data
+      .filter(d => d.sma != null)
+      .map(d => ({
+        time: toChartTime(d.date),
+        value: d.sma as number
+      }));
+    if (smaData.length > 0) {
+      series.push({
+        data: smaData,
+        color: smaColor,
+        lineWidth: 1,
+        title: smaLabel
+      });
+    }
+  }
+
+  if (showEMA) {
+    const emaData = data
+      .filter(d => d.ema != null)
+      .map(d => ({
+        time: toChartTime(d.date),
+        value: d.ema as number
+      }));
+    if (emaData.length > 0) {
+      series.push({
+        data: emaData,
+        color: emaColor,
+        lineWidth: 1,
+        title: emaLabel
+      });
+    }
+  }
+
+  return series;
+}
+
+/**
  * Transform risk band data from API into ExtraSeriesConfig format for chart overlay.
  * 
  * @param bands - Array of RiskBand objects from API

@@ -485,15 +485,20 @@ docker-compose up -d
 
 ### Celery Task Rollback
 
-**Revert Celery Module Path:**
+**DEPRECATED:** The old Celery module path `backend.services.macro_worker` is deprecated.
+
+**Current (Recommended) Celery Module Path:**
 
 ```yaml
 # docker-compose.yml
 celery-worker:
-  command: celery -A backend.services.macro_worker worker --loglevel=info  # Old path
+  command: celery -A backend.celery_app worker --loglevel=info  # Current path
+```
 
-# Instead of:
-# command: celery -A backend.celery_app worker --loglevel=info  # New path
+**Legacy path (for reference only - deprecated):**
+
+```yaml
+# command: celery -A backend.services.macro_worker worker --loglevel=info  # Old deprecated path
 ```
 
 **Restart worker:**
