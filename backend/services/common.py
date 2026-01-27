@@ -99,6 +99,37 @@ class CachedDataService(ABC):
             metadata['error'] = error
         return metadata
     
+    def fetch_data_with_metadata(
+        self,
+        cache_fn: Callable[[], tuple[T | None, datetime | None]],
+        db_fn: Callable[[], tuple[T | None, datetime | None]],
+        error_msg: str = "No data available"
+    ) -> tuple[T | None, dict[str, Any]]:
+        """
+        Fetch data from cache first, falling back to database, and build metadata.
+        
+        This is the primary method for services to use when fetching cached data.
+        It combines _get_with_fallback and _build_metadata for convenience.
+        
+        Args:
+            cache_fn: Function that returns (data, last_updated) from cache
+            db_fn: Function that returns (data, last_updated) from database
+            error_msg: Error message to include in metadata if no data found
+            
+        Returns:
+            Tuple of (data, metadata_dict)
+            - data: The fetched data (or None if not found)
+            - metadata: Dict with last_updated, is_stale, and optional error
+        """
+        # Use the existing fallback logic
+        data, last_updated, is_stale = self._get_with_fallback(cache_fn, db_fn)
+        
+        # Build metadata
+        error = error_msg if data is None else None
+        metadata = self._build_metadata(last_updated, is_stale, error)
+        
+        return data, metadata
+    
     def _parse_timestamp(self, timestamp_str: str) -> datetime:
         """
         Parse an ISO format timestamp string and ensure it's timezone-aware.

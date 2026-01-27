@@ -228,43 +228,33 @@ class CryptoService(CachedDataService):
         # Limit days to demo key constraint
         days = min(days, config.COINGECKO_HISTORICAL_DAYS_LIMIT)
 
-        # Try Redis first (fast cache)
-        data_points, last_updated = self._get_dominance_from_redis()
+        # Use base class method for cache/DB fallback
+        data_points, metadata = self.fetch_data_with_metadata(
+            cache_fn=lambda: self._get_dominance_from_redis(),
+            db_fn=lambda: self._get_dominance_from_db(days=days),
+            error_msg='No data available. Background worker may not have run yet.'
+        )
 
-        # Fallback to PostgreSQL if not in Redis
-        if data_points is None:
-            logger.warning("Dominance data not in Redis, falling back to database")
-            data_points, last_updated = self._get_dominance_from_db(days=days)
-
-        # If still no data, return empty
+        # If no data found, return empty with error metadata
         if data_points is None:
             logger.error("No dominance data found in cache or database")
             return {
                 'data': [],
-                'metadata': {
-                    'last_updated': None,
-                    'is_stale': True,
-                    'error': 'No data available. Background worker may not have run yet.'
-                }
+                'metadata': metadata
             }
 
         # Filter by days if data came from Redis (DB already filtered)
-        if last_updated:
+        # Check if we need to filter (data_points will have timestamps)
+        if data_points:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
             data_points = [
                 point for point in data_points
                 if self._parse_timestamp(point['timestamp']) >= cutoff_date
             ]
 
-        # Check if data is stale
-        is_stale = self._is_data_stale(last_updated)
-        if is_stale:
-            logger.warning(f"Dominance data is stale (last_updated: {last_updated})")
-
-        metadata = {
-            'last_updated': last_updated.isoformat() if last_updated else None,
-            'is_stale': is_stale
-        }
+        # Log warnings for stale data
+        if metadata.get('is_stale'):
+            logger.warning(f"Dominance data is stale (last_updated: {metadata.get('last_updated')})")
 
         return {
             'data': data_points,

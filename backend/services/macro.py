@@ -120,29 +120,22 @@ class MacroService(CachedDataService):
         Returns:
             tuple: (pandas Series with data, metadata dict with last_updated and is_stale)
         """
-        # Try Redis first (fast cache)
-        series, last_updated = self._get_series_from_redis(series_id)
-
-        # Fallback to PostgreSQL if not in Redis
-        if series is None:
-            logger.warning(f"{series_id} not in Redis, falling back to database")
-            series, last_updated = self._get_series_from_db(series_id)
-
-        # If still no data, return empty
+        # Use base class method for cache/DB fallback
+        series, metadata = self.fetch_data_with_metadata(
+            cache_fn=lambda: self._get_series_from_redis(series_id),
+            db_fn=lambda: self._get_series_from_db(series_id),
+            error_msg=f"No data found for {series_id} in cache or database"
+        )
+        
+        # If no data found, return empty Series with error metadata
         if series is None:
             logger.error(f"No data found for {series_id} in cache or database")
-            return pd.Series(dtype=float), {'last_updated': None, 'is_stale': True}
-
-        # Check if data is stale
-        is_stale = self._is_data_stale(last_updated)
-        if is_stale:
-            logger.warning(f"{series_id} data is stale (last_updated: {last_updated})")
-
-        metadata = {
-            'last_updated': last_updated.isoformat() if last_updated else None,
-            'is_stale': is_stale
-        }
-
+            return pd.Series(dtype=float), metadata
+        
+        # Log warnings for stale data or cache misses
+        if metadata.get('is_stale'):
+            logger.warning(f"{series_id} data is stale (last_updated: {metadata.get('last_updated')})")
+        
         return series, metadata
 
     def _prepare_macro_response(self, df: pd.DataFrame, metadata: dict, days: int = None) -> tuple[list, dict]:

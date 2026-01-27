@@ -291,6 +291,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get App Config
+         * @description Returns application configuration.
+         *
+         *     This endpoint exposes non-sensitive configuration values that the frontend
+         *     needs to stay in sync with the backend. Changes to these values in config.py
+         *     are automatically reflected here.
+         *
+         *     Use cases:
+         *     - Timeframe options for chart controls
+         *     - Cache TTL for data freshness indicators
+         *     - API rate limits for client-side throttling
+         *     - Chart indicator defaults
+         *     - Market indices and watchlist tickers
+         *
+         *     Note: Sensitive values (API keys, database URLs) are NOT exposed.
+         */
+        get: operations["get_app_config_api_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -298,8 +331,33 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Health Check */
+        /**
+         * Health Check
+         * @description Basic health check endpoint.
+         */
         get: operations["health_check_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health/detailed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Detailed Health Check
+         * @description Detailed health check with database, Redis, and table validation.
+         *
+         *     Returns status of all critical services.
+         */
+        get: operations["detailed_health_check_health_detailed_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -312,6 +370,38 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ApiLimitsConfig
+         * @description API rate limit information.
+         */
+        ApiLimitsConfig: {
+            /** Fred Daily Limit */
+            fred_daily_limit: number;
+            /** Coingecko Per Minute */
+            coingecko_per_minute: number;
+        };
+        /**
+         * AppConfigResponse
+         * @description Application configuration response.
+         *
+         *     Exposes non-sensitive configuration to frontend for synchronization.
+         *     This ensures frontend and backend use consistent settings.
+         */
+        AppConfigResponse: {
+            /** Version */
+            version: string;
+            /** Timeframes */
+            timeframes: components["schemas"]["TimeframeConfig"][];
+            cache: components["schemas"]["CacheConfig"];
+            api_limits: components["schemas"]["ApiLimitsConfig"];
+            chart_defaults: components["schemas"]["ChartDefaultsConfig"];
+            /** Market Indices */
+            market_indices: {
+                [key: string]: unknown;
+            }[];
+            /** Watchlist Tickers */
+            watchlist_tickers: string[];
+        };
         /** CPIPoint */
         CPIPoint: {
             /** Date */
@@ -327,6 +417,32 @@ export interface components {
             /** Data */
             data: components["schemas"]["CPIPoint"][];
             metadata: components["schemas"]["MacroDataMetadata"];
+        };
+        /**
+         * CacheConfig
+         * @description Cache TTL and staleness configuration.
+         */
+        CacheConfig: {
+            /** Ttl Seconds */
+            ttl_seconds: number;
+            /** Stale Threshold Hours */
+            stale_threshold_hours: number;
+        };
+        /**
+         * ChartDefaultsConfig
+         * @description Default chart settings.
+         */
+        ChartDefaultsConfig: {
+            /** Sma Window */
+            sma_window: number;
+            /** Ema Window */
+            ema_window: number;
+            /** Rsi Window */
+            rsi_window: number;
+            /** Default Ticker */
+            default_ticker: string;
+            /** Default Tickers */
+            default_tickers: string[];
         };
         /** ComparisonResult */
         ComparisonResult: {
@@ -591,6 +707,22 @@ export interface components {
             sharpe_ratio?: number | null;
             /** Risk Free Rate */
             risk_free_rate: number;
+        };
+        /**
+         * TimeframeConfig
+         * @description Timeframe mapping for chart controls.
+         */
+        TimeframeConfig: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Days */
+            days: number | null;
+            /** Period */
+            period: string;
+            /** Interval */
+            interval: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1280,7 +1412,47 @@ export interface operations {
             };
         };
     };
+    get_app_config_api_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppConfigResponse"];
+                };
+            };
+        };
+    };
     health_check_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    detailed_health_check_health_detailed_get: {
         parameters: {
             query?: never;
             header?: never;
