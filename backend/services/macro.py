@@ -355,6 +355,45 @@ class MacroService(CachedDataService):
         data_points = [schemas.CPIPoint(**r) for r in records]
         return {'data': data_points, 'metadata': metadata} if include_metadata else data_points
 
+    def get_dashboard_summary(self, days: int = None) -> dict:
+        """
+        Aggregates all macro indicators and calculates summary metrics.
+        This moves business logic out of the router and into the service layer.
+        
+        Args:
+            days: Optional number of days of history to return for series data
+            
+        Returns:
+            Dict containing liquidity, debt_status, real_rates, cpi data and summary metrics
+        """
+        # Fetch all macro data series
+        liquidity = self.get_liquidity(days=days, include_metadata=True)
+        debt_status = self.get_debt_status(days=days, include_metadata=True)
+        real_rates = self.get_real_rates(include_metadata=True)
+        cpi = self.get_cpi_series(include_metadata=True)
+
+        # Extract latest values for the summary object
+        latest_m2 = liquidity['data'][-1] if liquidity['data'] else None
+        latest_debt = debt_status['data'][-1] if debt_status['data'] else None
+        latest_rates = real_rates['data'][-1] if real_rates['data'] else None
+
+        # Build summary metrics from latest values
+        # Handle None values and missing attributes properly
+        summary = schemas.MacroMetrics(
+            m2_supply=latest_m2.value if latest_m2 else 0.0,
+            m2_growth=(latest_m2.growth_rate if hasattr(latest_m2, 'growth_rate') and latest_m2.growth_rate is not None else 0.0) if latest_m2 else 0.0,
+            debt_to_tax_ratio=latest_debt.ratio if latest_debt else 0.0,
+            real_rate=latest_rates.real_rate if latest_rates else 0.0,
+        )
+
+        return {
+            "liquidity": liquidity,
+            "debt_status": debt_status,
+            "real_rates": real_rates,
+            "cpi": cpi,
+            "summary": summary
+        }
+
 # Singleton instance
 macro_service = MacroService()
 

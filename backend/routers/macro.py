@@ -27,31 +27,9 @@ def get_macro_summary(days: int = Query(None, description="Number of days of his
     
     The response includes a summary object with the latest values for quick display.
     """
-    # Fetch all macro data
-    liquidity = macro_service.get_liquidity(days=days, include_metadata=True)
-    debt_status = macro_service.get_debt_status(days=days, include_metadata=True)
-    real_rates = macro_service.get_real_rates(include_metadata=True)
-    cpi = macro_service.get_cpi_series(include_metadata=True)
-
-    # Calculate summary metrics from latest values
-    latest_m2 = liquidity['data'][-1] if liquidity['data'] else None
-    latest_debt = debt_status['data'][-1] if debt_status['data'] else None
-    latest_rates = real_rates['data'][-1] if real_rates['data'] else None
-
-    summary = schemas.MacroMetrics(
-        m2_supply=latest_m2.value if latest_m2 else 0.0,
-        m2_growth=latest_m2.growth_rate if latest_m2 and hasattr(latest_m2, 'growth_rate') else 0.0,
-        debt_to_tax_ratio=latest_debt.ratio if latest_debt else 0.0,
-        real_rate=latest_rates.real_rate if latest_rates else 0.0,
-    )
-
-    return schemas.MacroSummaryResponse(
-        liquidity=liquidity,
-        debt_status=debt_status,
-        real_rates=real_rates,
-        cpi=cpi,
-        summary=summary,
-    )
+    # Delegate to service layer for business logic
+    summary_data = macro_service.get_dashboard_summary(days=days)
+    return schemas.MacroSummaryResponse(**summary_data)
 
 
 @router.get("/liquidity", response_model=schemas.LiquidityResponse, responses=ERROR_RESPONSES)
