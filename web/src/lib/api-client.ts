@@ -28,6 +28,7 @@ import {
   AppConfigSchema,
   HealthResponseSchema,
 } from '@/schemas/api-schemas';
+import { API_ROUTES } from './routes';
 
 // Use relative path for browser requests (proxied by Next.js rewrites)
 // Only use absolute URL for server-side or when explicitly set for external access
@@ -117,45 +118,45 @@ class ApiClient {
   // Stock
   public async getStockMetrics(ticker: string, period: string = '1d', interval: string = '1m'): Promise<StockMetrics> {
     const query = new URLSearchParams({ period, interval });
-    return this.validatedRequest(`/api/stock/${ticker}?${query.toString()}`, StockMetricsSchema);
+    return this.validatedRequest(`${API_ROUTES.STOCK.METRICS(ticker)}?${query.toString()}`, StockMetricsSchema);
   }
 
   public async getStockHistory(ticker: string, period: string = '1d', interval: string = '1m'): Promise<StockHistoryPoint[]> {
     const query = new URLSearchParams({ period, interval });
-    return this.validatedRequest(`/api/stock/${ticker}/history?${query.toString()}`, z.array(StockHistoryPointSchema));
+    return this.validatedRequest(`${API_ROUTES.STOCK.HISTORY(ticker)}?${query.toString()}`, z.array(StockHistoryPointSchema));
   }
 
   public async getStockIndicators(ticker: string, period: string = '1d', interval: string = '1m'): Promise<StockIndicatorsPoint[]> {
     const query = new URLSearchParams({ period, interval });
-    return this.validatedRequest(`/api/stock/${ticker}/indicators?${query.toString()}`, z.array(StockIndicatorsPointSchema));
+    return this.validatedRequest(`${API_ROUTES.STOCK.INDICATORS(ticker)}?${query.toString()}`, z.array(StockIndicatorsPointSchema));
   }
 
   // Sentiment
   public async getSentiment(ticker: string): Promise<SentimentResponse> {
-    return this.validatedRequest(`/api/sentiment/${ticker}`, SentimentResponseSchema);
+    return this.validatedRequest(API_ROUTES.SENTIMENT.BY_TICKER(ticker), SentimentResponseSchema);
   }
 
   // Macro - Backend returns {data: [...], metadata: {...}}, we extract the data array
   public async getLiquidity(days?: number): Promise<LiquidityPoint[]> {
     const query = days ? `?days=${days}` : '';
-    const response = await this.validatedRequest(`/api/macro/liquidity${query}`, LiquidityResponseSchema);
+    const response = await this.validatedRequest(`${API_ROUTES.MACRO.LIQUIDITY}${query}`, LiquidityResponseSchema);
     return response.data || [];
   }
 
   public async getDebtStatus(days?: number): Promise<DebtPoint[]> {
     const query = days ? `?days=${days}` : '';
-    const response = await this.validatedRequest(`/api/macro/debt-status${query}`, DebtStatusResponseSchema);
+    const response = await this.validatedRequest(`${API_ROUTES.MACRO.DEBT_STATUS}${query}`, DebtStatusResponseSchema);
     return response.data || [];
   }
 
   public async getRealRates(): Promise<RealRatePoint[]> {
-    const response = await this.validatedRequest('/api/macro/real-rates', RealRatesResponseSchema);
+    const response = await this.validatedRequest(API_ROUTES.MACRO.REAL_RATES, RealRatesResponseSchema);
     return response.data || [];
   }
 
   public async getCpi(days?: number): Promise<CPIPoint[]> {
     const query = days ? `?days=${days}` : '';
-    const response = await this.validatedRequest(`/api/macro/cpi${query}`, CPIResponseSchema);
+    const response = await this.validatedRequest(`${API_ROUTES.MACRO.CPI}${query}`, CPIResponseSchema);
     return response.data || [];
   }
 
@@ -165,32 +166,32 @@ class ApiClient {
    */
   public async getMacroSummary(days?: number): Promise<MacroSummaryResponse> {
     const query = days ? `?days=${days}` : '';
-    return this.validatedRequest(`/api/macro/summary${query}`, MacroSummaryResponseSchema);
+    return this.validatedRequest(`${API_ROUTES.MACRO.SUMMARY}${query}`, MacroSummaryResponseSchema);
   }
 
   // Crypto
   public async getCryptoDominance(days: number = 365): Promise<CryptoDominanceResponse> {
     const query = `?days=${days}`;
-    return this.validatedRequest(`/api/crypto/dominance${query}`, CryptoDominanceResponseSchema);
+    return this.validatedRequest(`${API_ROUTES.CRYPTO.DOMINANCE}${query}`, CryptoDominanceResponseSchema);
   }
 
   // Risk / Regression Bands
   public async getRiskData(ticker: string): Promise<RiskResponse> {
-    return this.validatedRequest(`/api/v1/risk/${ticker}`, RiskResponseSchema);
+    return this.validatedRequest(API_ROUTES.RISK.DATA(ticker), RiskResponseSchema);
   }
 
   public async getRiskScore(ticker: string): Promise<RiskScoreResponse> {
-    return this.validatedRequest(`/api/v1/risk/${ticker}/score`, RiskScoreResponseSchema);
+    return this.validatedRequest(API_ROUTES.RISK.SCORE(ticker), RiskScoreResponseSchema);
   }
 
   // Health
   public async checkHealth(): Promise<{ status: string }> {
-    return this.validatedRequest('/health', HealthResponseSchema);
+    return this.validatedRequest(API_ROUTES.HEALTH, HealthResponseSchema);
   }
 
   // Configuration
   public async getConfig(): Promise<AppConfig> {
-    return this.validatedRequest('/api/config', AppConfigSchema);
+    return this.validatedRequest(API_ROUTES.CONFIG, AppConfigSchema);
   }
 }
 
