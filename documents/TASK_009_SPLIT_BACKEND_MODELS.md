@@ -1,8 +1,9 @@
 # Task 009: Split Backend Models
 
-**Status**: Pending
+**Status**: Completed
 **Priority**: Low
 **Created**: 2026-01-26
+**Completed**: 2026-01-27
 
 ## Context
 `backend/models.py` currently contains SQLAlchemy models for all domains (Macro/FRED, Crypto, Stocks/Comparison). While the file is not yet huge (~100-150 lines), mixing distinct domains in a single file is a pattern that leads to "God Files".
