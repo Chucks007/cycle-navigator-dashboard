@@ -1,8 +1,9 @@
 # Task 008: Centralize API Routes
 
-**Status**: Pending
+**Status**: Completed
 **Priority**: Low
 **Created**: 2026-01-26
+**Completed**: 2026-01-27
 
 ## Context
 The frontend `web/src/lib/api-client.ts` and potentially some hooks/components contain hardcoded string paths for API endpoints (e.g., `/api/macro/liquidity`, `/api/stocks/ticker`).
