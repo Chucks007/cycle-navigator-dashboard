@@ -4,6 +4,7 @@ import * as React from "react";
 import { TrendingUp, TrendingDown, Maximize2 } from "lucide-react";
 import { SparklineChart, LightweightChart } from "@/components/charts/lightweight-chart";
 import { Badge } from "@/components/ui/badge";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 import {
   Dialog,
   DialogContent,
@@ -92,13 +93,10 @@ export function ExpandableBucketCard({
   return (
     <>
       {/* Clickable Card */}
-      <div
+      <DashboardCard
+        variant="interactive"
         className={cn(
-          "group relative overflow-hidden rounded-xl border p-5 backdrop-blur-xl",
-          "border-border/50 bg-card/50",
-          "transition-all duration-200 cursor-pointer",
-          "hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+          "group p-5",
           isLoading && "pointer-events-none opacity-70"
         )}
         onClick={handleOpen}
@@ -112,8 +110,6 @@ export function ExpandableBucketCard({
         }}
         aria-label={`Expand ${title} details`}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
-        
         {/* Expand icon indicator */}
         <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-20">
           <Maximize2 className="h-4 w-4 text-muted-foreground" />
@@ -175,7 +171,7 @@ export function ExpandableBucketCard({
             </div>
           </div>
         </div>
-      </div>
+      </DashboardCard>
 
       {/* Expanded Modal */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>

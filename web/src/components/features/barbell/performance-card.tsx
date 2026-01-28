@@ -4,6 +4,7 @@ import * as React from "react";
 import { TrendingUp, TrendingDown, Maximize2 } from "lucide-react";
 import { SparklineChart, LightweightChart } from "@/components/charts/lightweight-chart";
 import { Badge } from "@/components/ui/badge";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 import {
   Dialog,
   DialogContent,
@@ -68,13 +69,10 @@ export function ExpandablePerformanceCard({
   return (
     <>
       {/* Clickable Card */}
-      <div
+      <DashboardCard
+        variant="interactive"
         className={cn(
-          "group relative overflow-hidden rounded-lg border p-4 backdrop-blur-xl",
-          "border-border/50 bg-card/50",
-          "transition-all duration-200 cursor-pointer",
-          "hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+          "group p-4",
           isLoading && "pointer-events-none opacity-70"
         )}
         onClick={handleOpen}
@@ -88,60 +86,56 @@ export function ExpandablePerformanceCard({
         }}
         aria-label={`Expand ${asset.name} details`}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
-        
         {/* Expand icon indicator */}
         <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-20">
           <Maximize2 className="h-4 w-4 text-muted-foreground" />
         </div>
 
-        <div className="relative z-10">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <div
-                className="h-3 w-3 rounded-full"
-                style={{ backgroundColor: asset.color }}
-              />
-              <span className="font-mono font-medium">{asset.ticker}</span>
-            </div>
-            <Badge variant={asset.assetType === "hard" ? "default" : "secondary"}>
-              {asset.assetType === "hard" ? "🪨 Hard" : "📄 Paper"}
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground">{asset.name}</p>
-          
-          {/* Sparkline */}
-          <div className="mt-2 h-[50px]">
-            {isLoading ? (
-              <div className="h-full animate-pulse rounded bg-muted/20" />
-            ) : (
-              <SparklineChart
-                data={sparklineData}
-                color={asset.color}
-                height={50}
-              />
-            )}
-          </div>
-          
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-2xl font-bold">{asset.currentValue.toFixed(1)}</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
             <div
-              className={cn(
-                "flex items-center gap-1 text-sm font-medium",
-                isPositive ? "text-emerald-500" : "text-red-500"
-              )}
-            >
-              {isPositive ? (
-                <TrendingUp className="h-4 w-4" />
-              ) : (
-                <TrendingDown className="h-4 w-4" />
-              )}
-              {isPositive ? "+" : ""}
-              {asset.pctGain.toFixed(2)}%
-            </div>
+              className="h-3 w-3 rounded-full"
+              style={{ backgroundColor: asset.color }}
+            />
+            <span className="font-mono font-medium">{asset.ticker}</span>
+          </div>
+          <Badge variant={asset.assetType === "hard" ? "default" : "secondary"}>
+            {asset.assetType === "hard" ? "🪨 Hard" : "📄 Paper"}
+          </Badge>
+        </div>
+        <p className="text-sm text-muted-foreground">{asset.name}</p>
+        
+        {/* Sparkline */}
+        <div className="mt-2 h-[50px]">
+          {isLoading ? (
+            <div className="h-full animate-pulse rounded bg-muted/20" />
+          ) : (
+            <SparklineChart
+              data={sparklineData}
+              color={asset.color}
+              height={50}
+            />
+          )}
+        </div>
+        
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-2xl font-bold">{asset.currentValue.toFixed(1)}</span>
+          <div
+            className={cn(
+              "flex items-center gap-1 text-sm font-medium",
+              isPositive ? "text-emerald-500" : "text-red-500"
+            )}
+          >
+            {isPositive ? (
+              <TrendingUp className="h-4 w-4" />
+            ) : (
+              <TrendingDown className="h-4 w-4" />
+            )}
+            {isPositive ? "+" : ""}
+            {asset.pctGain.toFixed(2)}%
           </div>
         </div>
-      </div>
+      </DashboardCard>
 
       {/* Expanded Modal */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>

@@ -16,6 +16,7 @@ import { ChartSkeleton } from "@/components/charts/synced-chart";
 import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { LightweightChart, SparklineChart } from "@/components/charts/lightweight-chart";
 import { MetricCard, MetricCardSkeleton } from "@/components/ui/metric-card";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -276,9 +277,7 @@ function TickerAnalysisContent() {
       </form>
 
       {/* Main Ticker Card */}
-      <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/50 backdrop-blur-xl p-6">
-        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
-        <div className="relative z-10">
+      <DashboardCard className="p-6">
           {metricsLoading ? (
             <div className="animate-pulse space-y-4">
               <div className="h-10 w-32 bg-muted/30 rounded" />
@@ -315,8 +314,7 @@ function TickerAnalysisContent() {
               </div>
             </>
           )}
-        </div>
-      </div>
+      </DashboardCard>
 
       {/* Key Metrics Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -491,9 +489,8 @@ function TickerAnalysisContent() {
       <section id="indicators">
         <div className="grid gap-6 lg:grid-cols-2">
         {/* Technical Indicators */}
-        <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/50 backdrop-blur-xl p-6">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
-          <div className="relative z-10 space-y-4">
+        <DashboardCard className="p-6">
+          <div className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Gauge className="h-5 w-5" />
               <h3 className="text-lg font-semibold">Technical Indicators</h3>
@@ -562,12 +559,11 @@ function TickerAnalysisContent() {
               </p>
             )}
           </div>
-        </div>
+        </DashboardCard>
 
         {/* Sentiment Analysis */}
-        <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/50 backdrop-blur-xl p-6">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
-          <div className="relative z-10 space-y-4">
+        <DashboardCard className="p-6">
+          <div className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Activity className="h-5 w-5" />
               <h3 className="text-lg font-semibold">Sentiment Analysis</h3>
@@ -611,21 +607,18 @@ function TickerAnalysisContent() {
               </p>
             )}
           </div>
-        </div>
+        </DashboardCard>
         </div>
       </section>
 
       {/* Fundamentals Section - Placeholder */}
       <section id="fundamentals">
-        <div className="relative overflow-hidden rounded-xl border border-border/50 bg-card/50 backdrop-blur-xl p-6">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent" />
-          <div className="relative z-10">
+        <DashboardCard className="p-6">
             <h3 className="text-lg font-semibold mb-4">Fundamentals</h3>
             <p className="text-muted-foreground text-center py-8">
               Fundamental analysis coming soon...
             </p>
-          </div>
-        </div>
+        </DashboardCard>
       </section>
     </div>
   );

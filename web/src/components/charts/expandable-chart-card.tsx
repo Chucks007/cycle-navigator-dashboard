@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 import { ChartSkeleton } from "./synced-chart";
 import { Maximize2 } from "lucide-react";
 
@@ -90,12 +91,10 @@ export function ExpandableChartCard({
   return (
     <>
       {/* Condensed Card (Grid View) */}
-      <div
+      <DashboardCard
+        variant="interactive"
         className={cn(
-          "group relative overflow-hidden rounded-xl border border-border/50 bg-card/50 p-4 backdrop-blur-xl",
-          "transition-all duration-200 cursor-pointer",
-          "hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+          "group p-4",
           isLoading && "pointer-events-none opacity-70",
           className
         )}
@@ -110,57 +109,52 @@ export function ExpandableChartCard({
         }}
         aria-label={`Expand ${title} chart`}
       >
-        {/* Glassmorphism effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
-        
         {/* Expand icon indicator */}
         <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-20">
           <Maximize2 className="h-4 w-4 text-muted-foreground" />
         </div>
 
-        <div className="relative z-10">
-          {/* Header with title and metric */}
-          <div className="mb-2 flex items-start justify-between">
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-medium text-foreground truncate">{title}</h3>
-              {subtitle && (
-                <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Metric display */}
-          {metricValue && (
-            <div className="mb-3 flex items-baseline gap-2">
-              <span className={cn("text-2xl font-bold", variantStyles[variant])}>
-                {isLoading ? "—" : metricValue}
-              </span>
-              {metricChange !== undefined && !isLoading && (
-                <span
-                  className={cn(
-                    "text-xs font-medium",
-                    metricChange > 0 ? "text-green-500" : metricChange < 0 ? "text-red-500" : "text-muted-foreground"
-                  )}
-                >
-                  {metricChange > 0 ? "+" : ""}
-                  {metricChange.toFixed(2)}% {changeLabel}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Sparkline chart */}
-          <div className="h-[160px] w-full mt-4">
-            {isLoading ? (
-              <div className="h-full flex items-center justify-center">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-              </div>
-            ) : (
-              condensedChart
+        {/* Header with title and metric */}
+        <div className="mb-2 flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-medium text-foreground truncate">{title}</h3>
+            {subtitle && (
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>
             )}
           </div>
         </div>
-      </div>
+
+        {/* Metric display */}
+        {metricValue && (
+          <div className="mb-3 flex items-baseline gap-2">
+            <span className={cn("text-2xl font-bold", variantStyles[variant])}>
+              {isLoading ? "—" : metricValue}
+            </span>
+            {metricChange !== undefined && !isLoading && (
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  metricChange > 0 ? "text-green-500" : metricChange < 0 ? "text-red-500" : "text-muted-foreground"
+                )}
+              >
+                {metricChange > 0 ? "+" : ""}
+                {metricChange.toFixed(2)}% {changeLabel}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Sparkline chart */}
+        <div className="h-[160px] w-full mt-4">
+          {isLoading ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+            </div>
+          ) : (
+            condensedChart
+          )}
+        </div>
+      </DashboardCard>
 
       {/* Expanded Modal (Detail View) */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>

@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 
 interface ChartContainerProps {
   children: React.ReactNode;
@@ -34,12 +35,9 @@ export function ChartContainer({
   interactive = false,
 }: ChartContainerProps) {
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-xl border border-border/50 bg-card/50 p-6 backdrop-blur-xl transition-all duration-200",
-        interactive && "cursor-pointer hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5",
-        className
-      )}
+    <DashboardCard
+      variant={interactive ? "interactive" : "default"}
+      className={cn("p-6", className)}
       onClick={onClick}
       role={interactive ? "button" : undefined}
       tabIndex={interactive ? 0 : undefined}
@@ -50,24 +48,19 @@ export function ChartContainer({
         }
       } : undefined}
     >
-      {/* Glassmorphism effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
-
-      <div className="relative z-10">
-        {(title || actions) && (
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              {title && <h3 className="text-lg font-semibold">{title}</h3>}
-              {subtitle && (
-                <p className="text-sm text-muted-foreground">{subtitle}</p>
-              )}
-            </div>
-            {actions}
+      {(title || actions) && (
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            {title && <h3 className="text-lg font-semibold">{title}</h3>}
+            {subtitle && (
+              <p className="text-sm text-muted-foreground">{subtitle}</p>
+            )}
           </div>
-        )}
-        {children}
-      </div>
-    </div>
+          {actions}
+        </div>
+      )}
+      {children}
+    </DashboardCard>
   );
 }
 
