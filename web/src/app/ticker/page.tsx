@@ -44,121 +44,13 @@ import {
 } from "@/lib/chart-utils";
 import { RiskScoreCard, RiskChart } from "@/components/charts/risk-chart";
 import { useTickerPreferences, timeframeToPeriodInterval } from "@/stores/ticker-preferences";
+import { ChartTypeToggle } from "@/components/features/ticker/chart-toggle";
+import { SentimentGauge } from "@/components/features/ticker/sentiment-gauge";
+import { IndicatorDisplay } from "@/components/features/ticker/indicator-display";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-// Chart Type Toggle Component
-interface ChartTypeToggleProps {
-  value: "line" | "candlestick";
-  onChange: (value: "line" | "candlestick") => void;
-}
-
-function ChartTypeToggle({ value, onChange }: ChartTypeToggleProps) {
-  return (
-    <div className="inline-flex items-center rounded-lg border p-1 bg-muted/50">
-      <button
-        onClick={() => onChange("line")}
-        className={cn(
-          "px-3 py-1 text-xs font-medium rounded-md transition-all",
-          value === "line"
-            ? "bg-background shadow-sm text-foreground"
-            : "text-muted-foreground hover:text-foreground"
-        )}
-      >
-        Line
-      </button>
-      <button
-        onClick={() => onChange("candlestick")}
-        className={cn(
-          "px-3 py-1 text-xs font-medium rounded-md transition-all",
-          value === "candlestick"
-            ? "bg-background shadow-sm text-foreground"
-            : "text-muted-foreground hover:text-foreground"
-        )}
-      >
-        Candles
-      </button>
-    </div>
-  );
-}
-
-// Sentiment Gauge Component
-interface SentimentGaugeProps {
-  score: number;
-  label: string;
-}
-
-function SentimentGauge({ score, label }: SentimentGaugeProps) {
-  // Score from 1-5, normalize to 0-100
-  const normalized = ((score - 1) / 4) * 100;
-  
-  let color = "bg-muted";
-  let textColor = "text-muted-foreground";
-  
-  if (score >= 4) {
-    color = "bg-emerald-500";
-    textColor = "text-emerald-500";
-  } else if (score >= 3) {
-    color = "bg-yellow-500";
-    textColor = "text-yellow-500";
-  } else if (score >= 2) {
-    color = "bg-orange-500";
-    textColor = "text-orange-500";
-  } else {
-    color = "bg-red-500";
-    textColor = "text-red-500";
-  }
-  
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">{label}</span>
-        <span className={cn("text-sm font-medium", textColor)}>
-          {score.toFixed(1)} / 5
-        </span>
-      </div>
-      <div className="h-2 w-full rounded-full bg-muted/30 overflow-hidden">
-        <div
-          className={cn("h-full rounded-full transition-all duration-500", color)}
-          style={{ width: `${normalized}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// Technical Indicator Display
-interface IndicatorDisplayProps {
-  name: string;
-  value: number | string;
-  signal?: "buy" | "sell" | "neutral";
-  description?: string;
-}
-
-function IndicatorDisplay({ name, value, signal, description }: IndicatorDisplayProps) {
-  return (
-    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/10 border border-border/50">
-      <div>
-        <span className="font-medium">{name}</span>
-        {description && (
-          <p className="text-xs text-muted-foreground">{description}</p>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="font-mono">{typeof value === "number" ? value.toFixed(2) : value}</span>
-        {signal && (
-          <Badge
-            variant={signal === "buy" ? "default" : signal === "sell" ? "destructive" : "secondary"}
-          >
-            {signal.toUpperCase()}
-          </Badge>
-        )}
-      </div>
-    </div>
-  );
 }
 
 export default function TickerAnalysisPage() {
