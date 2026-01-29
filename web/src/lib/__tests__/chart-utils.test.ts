@@ -1,8 +1,8 @@
-/// <reference types="jest" />
 /**
  * Unit tests for chart-utils.ts
  * Tests date parsing, data transformation, and edge case handling
  */
+import { describe, it, expect } from 'vitest';
 import {
   toChartTime,
   transformToLineData,
