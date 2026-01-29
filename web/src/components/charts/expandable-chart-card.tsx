@@ -12,6 +12,7 @@ import {
 import { DashboardCard } from "@/components/ui/dashboard-card";
 import { ChartSkeleton } from "./synced-chart";
 import { Maximize2 } from "lucide-react";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 interface ExpandableChartCardProps {
   /** Unique identifier for this chart */
@@ -202,7 +203,9 @@ export function ExpandableChartCard({
               {isLoading ? (
                 <ChartSkeleton height={400} />
               ) : (
-                detailedChart
+                <ErrorBoundary title="Chart Error">
+                  {detailedChart}
+                </ErrorBoundary>
               )}
             </div>
 

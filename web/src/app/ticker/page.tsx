@@ -146,7 +146,8 @@ function TickerAnalysisContent() {
       .map((point) => ({
         time: toChartTime(point.Datetime),
         value: point.Close,
-      }));
+      }))
+      .filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
   }, [history]);
 
   // OHLC data for candlestick chart
@@ -182,7 +183,8 @@ function TickerAnalysisContent() {
       .map((point) => ({
         time: toChartTime(point.Datetime),
         value: point.Volume,
-      }));
+      }))
+      .filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
   }, [history]);
 
   // Risk Bands Series

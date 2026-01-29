@@ -251,7 +251,7 @@ export default function BarbellStrategyPage() {
                     data={ratioData.map(d => ({
                       time: toChartTime(d.date),
                       value: d.ratio
-                    })).filter(d => !isNaN(d.value))}
+                    })).filter((d): d is ChartDataPoint => d.time !== null && !isNaN(d.value))}
                     colors={{ lineColor: "#3b82f6" }}
                     title="Hard/Soft Ratio"
                   />
@@ -311,7 +311,7 @@ export default function BarbellStrategyPage() {
                     data={ratioData.map(d => ({
                       time: toChartTime(d.date),
                       value: d.hardIndex
-                    })).filter(d => !isNaN(d.value))}
+                    })).filter((d): d is ChartDataPoint => d.time !== null && !isNaN(d.value))}
                     colors={{ lineColor: "#FFD700" }}
                     title="Hard Assets Index"
                   />
@@ -360,7 +360,7 @@ export default function BarbellStrategyPage() {
                     data={ratioData.map(d => ({
                       time: toChartTime(d.date),
                       value: d.softIndex
-                    })).filter(d => !isNaN(d.value))}
+                    })).filter((d): d is ChartDataPoint => d.time !== null && !isNaN(d.value))}
                     colors={{ lineColor: "#00D4FF" }}
                     title="Paper Assets Index"
                   />
@@ -481,7 +481,7 @@ export default function BarbellStrategyPage() {
                   data: (data ?? []).slice(-60).map(d => ({
                     time: toChartTime(d.date),
                     value: (d as any)[ticker]
-                  })).filter(pt => pt.value !== undefined && !isNaN(pt.value)),
+                  })).filter((pt): pt is ChartDataPoint => pt.time !== null && pt.value !== undefined && !isNaN(pt.value)),
                   color: HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color,
                   name: ticker
                 }));
@@ -489,7 +489,7 @@ export default function BarbellStrategyPage() {
                   data: (data ?? []).slice(-60).map(d => ({
                     time: toChartTime(d.date),
                     value: (d as any)[ticker]
-                  })).filter(pt => pt.value !== undefined && !isNaN(pt.value)),
+                  })).filter((pt): pt is ChartDataPoint => pt.time !== null && pt.value !== undefined && !isNaN(pt.value)),
                   color: SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color,
                   name: ticker
                 }));
@@ -527,7 +527,7 @@ export default function BarbellStrategyPage() {
                   data: (data ?? []).map(d => ({
                     time: toChartTime(d.date),
                     value: (d as any)[ticker]
-                  })).filter(pt => pt.value !== undefined && !isNaN(pt.value)),
+                  })).filter((pt): pt is ChartDataPoint => pt.time !== null && pt.value !== undefined && !isNaN(pt.value)),
                   color: HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color,
                   name: HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.name
                 }));
@@ -535,7 +535,7 @@ export default function BarbellStrategyPage() {
                   data: (data ?? []).map(d => ({
                     time: toChartTime(d.date),
                     value: (d as any)[ticker]
-                  })).filter(pt => pt.value !== undefined && !isNaN(pt.value)),
+                  })).filter((pt): pt is ChartDataPoint => pt.time !== null && pt.value !== undefined && !isNaN(pt.value)),
                   color: SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color,
                   name: SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.name
                 }));
@@ -579,7 +579,7 @@ export default function BarbellStrategyPage() {
                   data={ratioData.slice(-60).map(d => ({
                       time: toChartTime(d.date),
                       value: d.ratio
-                  })).filter(d => !isNaN(d.value))}
+                  })).filter((d): d is ChartDataPoint => d.time !== null && !isNaN(d.value))}
                   colors={{ lineColor: "#3b82f6" }}
                   title="Hard/Soft Ratio"
                   height={160}
@@ -597,7 +597,7 @@ export default function BarbellStrategyPage() {
                   data={ratioData.map(d => ({
                       time: toChartTime(d.date),
                       value: d.ratio
-                  })).filter(d => !isNaN(d.value))}
+                  })).filter((d): d is ChartDataPoint => d.time !== null && !isNaN(d.value))}
                   colors={{ lineColor: "#3b82f6" }}
                   title="Hard/Soft Ratio"
                />

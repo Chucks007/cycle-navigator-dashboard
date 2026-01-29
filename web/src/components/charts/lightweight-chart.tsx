@@ -517,10 +517,22 @@ export function LightweightChart({
           if (typeof param.time === 'string') {
             dateStr = param.time;
           } else if (typeof param.time === 'number') {
-             dateStr = new Date(param.time * 1000).toISOString().split('T')[0];
-          } else {
+             // Guard against invalid numbers (NaN, Infinity)
+             if (isFinite(param.time) && param.time > 0) {
+               try {
+                 const date = new Date(param.time * 1000);
+                 if (!isNaN(date.getTime())) {
+                   dateStr = date.toISOString().split('T')[0];
+                 }
+               } catch (e) {
+                 console.warn('Invalid crosshair time:', param.time);
+               }
+             }
+          } else if (param.time && typeof param.time === 'object') {
              const bd = param.time as { day: number; month: number; year: number };
-             dateStr = `${bd.year}-${String(bd.month).padStart(2, '0')}-${String(bd.day).padStart(2, '0')}`;
+             if (bd.year && bd.month && bd.day) {
+               dateStr = `${bd.year}-${String(bd.month).padStart(2, '0')}-${String(bd.day).padStart(2, '0')}`;
+             }
           }
 
           setLegendData({

@@ -50,7 +50,7 @@ export function ExpandableBucketCard({
       const values = tickers.map((t) => point[t] ?? 0);
       const avg = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
       return { time: toChartTime(point.date), value: avg };
-    });
+    }).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
   }, [data, assets]);
 
   // Detailed chart data with multiple series
@@ -64,14 +64,14 @@ export function ExpandableBucketCard({
     const mainData = data.map((point) => ({
       time: toChartTime(point.date),
       value: point[firstAsset.ticker] ?? 0,
-    }));
+    })).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
 
     // Others as extra series
     const extras: ExtraSeriesConfig[] = assets.slice(1).map((asset) => ({
       data: data.map((point) => ({
         time: toChartTime(point.date),
         value: point[asset.ticker] ?? 0,
-      })),
+      })).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value)),
       color: asset.color,
       title: asset.name,
       lineWidth: 2,

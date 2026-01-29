@@ -50,10 +50,20 @@ export interface ExtraSeriesConfig {
 
 /**
  * Convert ISO date string (YYYY-MM-DD) or timestamp to Lightweight Charts Time format
- * Lightweight Charts accepts: 'YYYY-MM-DD' string, Unix timestamp (seconds), or BusinessDay object
+ * Always returns UTC timestamps (numbers) for maximum compatibility with all chart types
+ * Returns null for invalid inputs to allow callers to filter them out
  */
-export function toChartTime(dateInput: string | number | Date): Time {
+export function toChartTime(dateInput: string | number | Date): Time | null {
+  // Validate input is not null/undefined/empty
+  if (dateInput === null || dateInput === undefined || dateInput === "") {
+    return null;
+  }
+
   if (typeof dateInput === "number") {
+    // Validate number is not NaN or Infinity
+    if (!isFinite(dateInput) || dateInput <= 0) {
+      return null;
+    }
     // If it's a timestamp in milliseconds (> year 2000 in seconds), convert to seconds
     if (dateInput > 1e12) {
       return Math.floor(dateInput / 1000) as UTCTimestamp;
@@ -62,41 +72,43 @@ export function toChartTime(dateInput: string | number | Date): Time {
   }
 
   if (dateInput instanceof Date) {
-    return Math.floor(dateInput.getTime() / 1000) as UTCTimestamp;
-  }
-
-  // String date - return as-is if it's YYYY-MM-DD format
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-    return dateInput as Time;
-  }
-
-  // Handle YYYY-MM-DD HH:MM:SS format
-  if (typeof dateInput === "string" && (dateInput.includes(" ") || dateInput.includes("T"))) {
-    const d = new Date(dateInput);
-    if (!isNaN(d.getTime())) {
-      // If midnight (00:00:00), treat as daily data (return YYYY-MM-DD to avoid weekend gaps)
-      // We check the string parts to avoid timezone conversion issues
-      const timePart = dateInput.split(/[ T]/)[1]; // Get time part after space or T
-      if (timePart && (timePart === "00:00:00" || timePart.startsWith("00:00:00"))) {
-        return dateInput.split(/[ T]/)[0] as Time;
-      }
-      return Math.floor(d.getTime() / 1000) as UTCTimestamp;
+    const timestamp = dateInput.getTime();
+    if (!isFinite(timestamp)) {
+      return null;
     }
+    return Math.floor(timestamp / 1000) as UTCTimestamp;
   }
 
-  // Parse ISO string and convert to YYYY-MM-DD (Fallback)
-  const date = new Date(dateInput);
-  return date.toISOString().split("T")[0] as Time;
+  // For string dates, always convert to UTC timestamp for consistency
+  // This ensures compatibility with all chart types (especially candlestick/OHLC)
+  try {
+    const date = new Date(dateInput);
+    if (!isNaN(date.getTime())) {
+      return Math.floor(date.getTime() / 1000) as UTCTimestamp;
+    }
+  } catch (e) {
+    // Invalid date string
+  }
+  
+  return null;
 }
 
 /**
  * Transform API response data to Lightweight Charts format for line/area series
  * Ensures data is sorted by date ascending (library requirement)
+ * Filters out items with invalid dates or values
  */
 export function transformToLineData<
   T extends { date: string | number; value: number }
 >(data: T[]): ChartDataPoint[] {
   return [...data]
+    .filter((item) => {
+      // Filter out items with invalid values
+      if (item.value === null || item.value === undefined || !isFinite(item.value)) {
+        return false;
+      }
+      return true;
+    })
     .sort((a, b) => {
       const dateA = new Date(a.date).getTime();
       const dateB = new Date(b.date).getTime();
@@ -105,17 +117,23 @@ export function transformToLineData<
     .map((item) => ({
       time: toChartTime(item.date),
       value: item.value,
-    }));
+    }))
+    .filter((item): item is ChartDataPoint => item.time !== null); // Filter out null times
 }
 
 /**
  * Transform API response data with custom value key
+ * Filters out items with invalid dates or values
  */
 export function transformToLineDataWithKey<T extends { date: string | number }>(
   data: T[],
   valueKey: keyof T
 ): ChartDataPoint[] {
   return [...data]
+    .filter((item) => {
+      const val = Number(item[valueKey]);
+      return isFinite(val);
+    })
     .sort((a, b) => {
       const dateA = new Date(a.date).getTime();
       const dateB = new Date(b.date).getTime();
@@ -124,12 +142,14 @@ export function transformToLineDataWithKey<T extends { date: string | number }>(
     .map((item) => ({
       time: toChartTime(item.date),
       value: Number(item[valueKey]),
-    }));
+    }))
+    .filter((item): item is ChartDataPoint => item.time !== null);
 }
 
 /**
  * Transform OHLC data for candlestick series
  * Handles both standard OHLC format and yfinance-style format (Datetime, Open, High, Low, Close)
+ * Filters out items with invalid dates or OHLC values
  */
 export function transformToOHLCData<
   T extends {
@@ -146,6 +166,17 @@ export function transformToOHLCData<
   }
 >(data: T[]): OHLCDataPoint[] {
   return [...data]
+    .filter((item) => {
+      const open = item.open ?? item.Open ?? 0;
+      const high = item.high ?? item.High ?? 0;
+      const low = item.low ?? item.Low ?? 0;
+      const close = item.close ?? item.Close ?? 0;
+      // Filter out items with invalid OHLC values
+      if (!isFinite(open) || !isFinite(high) || !isFinite(low) || !isFinite(close)) {
+        return false;
+      }
+      return true;
+    })
     .sort((a, b) => {
       const dateA = new Date(a.date ?? a.Datetime ?? 0).getTime();
       const dateB = new Date(b.date ?? b.Datetime ?? 0).getTime();
@@ -157,11 +188,13 @@ export function transformToOHLCData<
       high: item.high ?? item.High ?? 0,
       low: item.low ?? item.Low ?? 0,
       close: item.close ?? item.Close ?? 0,
-    }));
+    }))
+    .filter((item): item is OHLCDataPoint => item.time !== null);
 }
 
 /**
  * Transform data for histogram series (e.g., volume)
+ * Filters out items with invalid dates or values
  */
 export function transformToHistogramData<
   T extends { date?: string | number; Datetime?: string | number }
@@ -171,6 +204,10 @@ export function transformToHistogramData<
   colorFn?: (item: T) => string
 ): HistogramDataPoint[] {
   return [...data]
+    .filter((item) => {
+      const val = Number(item[valueKey]);
+      return isFinite(val);
+    })
     .sort((a, b) => {
       const dateA = new Date(a.date ?? a.Datetime ?? 0).getTime();
       const dateB = new Date(b.date ?? b.Datetime ?? 0).getTime();
@@ -180,7 +217,8 @@ export function transformToHistogramData<
       time: toChartTime(item.date ?? item.Datetime ?? ""),
       value: Number(item[valueKey]),
       ...(colorFn ? { color: colorFn(item) } : {}),
-    }));
+    }))
+    .filter((item): item is HistogramDataPoint => item.time !== null);
 }
 
 /**
@@ -276,7 +314,8 @@ export function createIndicatorSeries<T extends { date: string | number; sma?: n
       .map(d => ({
         time: toChartTime(d.date),
         value: d.sma as number
-      }));
+      }))
+      .filter((d): d is ChartDataPoint => d.time !== null && isFinite(d.value));
     if (smaData.length > 0) {
       series.push({
         data: smaData,
@@ -293,7 +332,8 @@ export function createIndicatorSeries<T extends { date: string | number; sma?: n
       .map(d => ({
         time: toChartTime(d.date),
         value: d.ema as number
-      }));
+      }))
+      .filter((d): d is ChartDataPoint => d.time !== null && isFinite(d.value));
     if (emaData.length > 0) {
       series.push({
         data: emaData,
@@ -350,7 +390,8 @@ export function transformRiskBandsToSeries(
         .map((v) => ({
           time: toChartTime(v.date),
           value: v.value,
-        })),
+        }))
+        .filter((v): v is ChartDataPoint => v.time !== null),
       color: finalColor,
       lineWidth,
       priceLineVisible: false,
