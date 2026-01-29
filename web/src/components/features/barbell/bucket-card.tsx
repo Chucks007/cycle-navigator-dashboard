@@ -14,13 +14,19 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toChartTime, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/chart-utils";
+
+// Type for asset data points
+interface AssetDataPoint {
+  date: string;
+  [ticker: string]: string | number; // date is string, asset values are numbers
+}
 import type { AssetPerformance } from "./performance-card";
 
 interface BucketCardProps {
   title: string;
   description: string;
   assets: AssetPerformance[];
-  data: any[];
+  data: AssetDataPoint[];
   bucketType: "defensive" | "offensive";
   isLoading?: boolean;
 }

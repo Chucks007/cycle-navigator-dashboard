@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
@@ -36,6 +36,7 @@ const subNavConfig: SubNavConfig = {
 
 export function SubNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const [activeFilter, setActiveFilter] = React.useState<string | null>(null);
 
   // Get the base path for matching (handle /ticker?symbol=XXX)
@@ -52,7 +53,7 @@ export function SubNav() {
 
     // If there's an href, navigate to it
     if (item.href) {
-      window.location.href = item.href;
+      router.push(item.href);
       return;
     }
 

@@ -50,7 +50,7 @@ export interface MacroMetricCardConfig<T extends MacroDataPoint> {
   showEMA?: boolean;
   logScale?: boolean;
   adjustForInflation?: boolean;
-  setPrefs: (prefs: Record<string, any>) => void;
+  setPrefs: (prefs: Partial<Pick<MacroMetricCardConfig<T>, 'showSMA' | 'showEMA' | 'logScale' | 'adjustForInflation'>>) => void;
   
   // Indicator configuration
   smaWindow?: number;

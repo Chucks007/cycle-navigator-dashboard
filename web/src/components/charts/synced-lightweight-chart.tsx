@@ -98,6 +98,11 @@ export function useSyncedCharts() {
   return context;
 }
 
+export function useSyncedChartsSafe() {
+  const context = React.useContext(SyncedChartsContext);
+  return context; // Returns null if not in provider
+}
+
 // Theme-aware chart options
 function getChartOptions(theme: string | undefined): DeepPartial<ChartOptions> {
   const isDark = theme === "dark";
@@ -198,13 +203,8 @@ export function SyncedLightweightChart({
   const extraSeriesRefs = React.useRef<ISeriesApi<"Line">[]>([]);
   const { resolvedTheme } = useTheme();
 
-  // Try to use sync context if available
-  let syncContext: SyncedChartsContextValue | null = null;
-  try {
-    syncContext = useSyncedCharts();
-  } catch {
-    // No sync context available - chart works standalone
-  }
+  // Safely get sync context - returns null if not available
+  const syncContext = useSyncedChartsSafe();
 
   // Create chart
   React.useEffect(() => {

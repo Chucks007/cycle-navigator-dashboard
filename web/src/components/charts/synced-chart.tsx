@@ -147,18 +147,6 @@ export function SyncedAreaChart({
   formatTooltip,
   mode = 'detailed',
 }: SyncedChartProps) {
-  // For condensed mode, render optimized sparkline
-  if (mode === 'condensed') {
-    return (
-      <SparklineChart
-        data={data}
-        xDataKey={xDataKey}
-        lines={lines}
-        height={height}
-      />
-    );
-  }
-
   // Parse dates to timestamps to ensure X-axis scales correctly
   const processedData = React.useMemo(() => {
     return data.map((item) => {
@@ -170,6 +158,18 @@ export function SyncedAreaChart({
       return item;
     });
   }, [data, xDataKey]);
+
+  // For condensed mode, render optimized sparkline
+  if (mode === 'condensed') {
+    return (
+      <SparklineChart
+        data={data}
+        xDataKey={xDataKey}
+        lines={lines}
+        height={height}
+      />
+    );
+  }
 
   return (
     <ResponsiveContainer width="100%" height={height}>

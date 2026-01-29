@@ -38,6 +38,12 @@ const COMPARISON_PERIODS = {
   "10Y": "10y",
 };
 
+// Type for asset data points
+interface AssetDataPoint {
+  date: string;
+  [ticker: string]: string | number; // date is string, asset values are numbers
+}
+
 // Mock data generator for demo (replace with actual API when available)
 function generateMockData(period: string) {
   const points = period === "YTD" ? 50 : period === "1Y" ? 252 : period === "3Y" ? 756 : 1260;
@@ -156,7 +162,7 @@ export default function BarbellStrategyPage() {
   const ratioData = React.useMemo(() => {
     if (!data) return [];
     
-    return data.map((point: any) => {
+    return data.map((point: AssetDataPoint) => {
       const getPrice = (ticker: string) => {
         let val = point[ticker];
         // Robust key lookup
@@ -478,17 +484,17 @@ export default function BarbellStrategyPage() {
             <div className="h-[160px] w-full">
               {(() => {
                 const hardSeries = selectedHard.map(ticker => ({
-                  data: (data ?? []).slice(-60).map(d => ({
+                  data: (data ?? []).slice(-60).map((d: AssetDataPoint) => ({
                     time: toChartTime(d.date),
-                    value: (d as any)[ticker]
+                    value: d[ticker] as number
                   })).filter((pt): pt is ChartDataPoint => pt.time !== null && pt.value !== undefined && !isNaN(pt.value)),
                   color: HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color,
                   name: ticker
                 }));
                 const softSeries = selectedSoft.map(ticker => ({
-                  data: (data ?? []).slice(-60).map(d => ({
+                  data: (data ?? []).slice(-60).map((d: AssetDataPoint) => ({
                     time: toChartTime(d.date),
-                    value: (d as any)[ticker]
+                    value: d[ticker] as number
                   })).filter((pt): pt is ChartDataPoint => pt.time !== null && pt.value !== undefined && !isNaN(pt.value)),
                   color: SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color,
                   name: ticker
@@ -524,17 +530,17 @@ export default function BarbellStrategyPage() {
             <div className="h-[400px] w-full">
               {(() => {
                 const hardSeries = selectedHard.map(ticker => ({
-                  data: (data ?? []).map(d => ({
+                  data: (data ?? []).map((d: AssetDataPoint) => ({
                     time: toChartTime(d.date),
-                    value: (d as any)[ticker]
+                    value: d[ticker] as number
                   })).filter((pt): pt is ChartDataPoint => pt.time !== null && pt.value !== undefined && !isNaN(pt.value)),
                   color: HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.color,
                   name: HARD_ASSETS[ticker as keyof typeof HARD_ASSETS]?.name
                 }));
                 const softSeries = selectedSoft.map(ticker => ({
-                  data: (data ?? []).map(d => ({
+                  data: (data ?? []).map((d: AssetDataPoint) => ({
                     time: toChartTime(d.date),
-                    value: (d as any)[ticker]
+                    value: d[ticker] as number
                   })).filter((pt): pt is ChartDataPoint => pt.time !== null && pt.value !== undefined && !isNaN(pt.value)),
                   color: SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.color,
                   name: SOFT_ASSETS[ticker as keyof typeof SOFT_ASSETS]?.name

@@ -483,19 +483,19 @@ export function LightweightChart({
         let val: number | null = null;
         
         if (seriesData) {
-            if ('value' in seriesData) val = (seriesData as any).value;
-            else if ('close' in seriesData) val = (seriesData as any).close;
+            if ('value' in seriesData) val = seriesData.value;
+            else if ('close' in seriesData) val = seriesData.close;
         }
 
         if (val !== null) {
           const sourceData = data || ohlcData || [];
-          const idx = (sourceData as any[]).findIndex((d: any) => d.time === param.time);
+          const idx = sourceData.findIndex((d: ChartDataPoint | OHLCDataPoint) => d.time === param.time);
           
           let pctStr = "";
           let color = undefined;
 
           if (idx > 0) {
-             const prev = (sourceData as any[])[idx - 1];
+             const prev = sourceData[idx - 1];
              const prevVal = 'value' in prev ? prev.value : prev.close;
              if (prevVal !== 0) {
                const change = ((val - prevVal) / prevVal) * 100;

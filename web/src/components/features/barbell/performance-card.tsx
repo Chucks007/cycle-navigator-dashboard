@@ -15,6 +15,12 @@ import {
 import { cn } from "@/lib/utils";
 import { toChartTime, type ChartDataPoint } from "@/lib/chart-utils";
 
+// Type for asset data points
+interface AssetDataPoint {
+  date: string;
+  [ticker: string]: string | number; // date is string, asset values are numbers
+}
+
 export interface AssetPerformance {
   ticker: string;
   name: string;
@@ -26,7 +32,7 @@ export interface AssetPerformance {
 
 interface ExpandablePerformanceCardProps {
   asset: AssetPerformance;
-  data: any[];
+  data: AssetDataPoint[];
   isLoading?: boolean;
 }
 
