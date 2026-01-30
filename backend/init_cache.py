@@ -10,7 +10,6 @@ and can timeout if Celery isn't ready.
 """
 
 import logging
-import sys
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,19 +27,19 @@ def initialize_cache():
 
     try:
         # Import synchronous fetch functions (not Celery tasks)
-        from backend.services.macro import fetch_all_fred_series_sync
         from backend.services.crypto import fetch_crypto_dominance_sync
+        from backend.services.macro import fetch_all_fred_series_sync
 
         # Fetch FRED macro data synchronously
         logger.info("Fetching FRED macro series...")
         try:
             fred_result = fetch_all_fred_series_sync()
-            
+
             if fred_result.get('status') == 'completed':
                 successful = fred_result.get('successful', 0)
                 total = fred_result.get('total', 0)
                 logger.info(f"✓ FRED cache populated: {successful}/{total} series")
-                
+
                 # Log individual series results
                 for result in fred_result.get('results', []):
                     if result.get('status') == 'success':

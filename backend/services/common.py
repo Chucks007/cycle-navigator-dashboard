@@ -1,8 +1,9 @@
 
 import logging
 from abc import ABC
-from datetime import datetime, timezone
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any, TypeVar
 
 import numpy as np
 import pandas as pd
@@ -26,7 +27,7 @@ class CachedDataService(ABC):
     
     Subclasses should implement their own Redis/DB fetch methods.
     """
-    
+
     def _is_data_stale(self, last_updated: datetime | None) -> bool:
         """
         Check if data is stale based on configured threshold.
@@ -39,14 +40,14 @@ class CachedDataService(ABC):
         """
         if not last_updated:
             return True
-        
+
         # Make sure last_updated is timezone-aware for comparison
         if last_updated.tzinfo is None:
-            last_updated = last_updated.replace(tzinfo=timezone.utc)
-            
-        age_hours = (datetime.now(timezone.utc) - last_updated).total_seconds() / 3600
+            last_updated = last_updated.replace(tzinfo=UTC)
+
+        age_hours = (datetime.now(UTC) - last_updated).total_seconds() / 3600
         return age_hours > config.DATA_STALE_THRESHOLD_HOURS
-    
+
     def _get_with_fallback(
         self,
         cache_fn: Callable[[], tuple[T | None, datetime | None]],
@@ -64,16 +65,16 @@ class CachedDataService(ABC):
         """
         # Try cache first (fast path)
         data, last_updated = cache_fn()
-        
+
         # Fallback to database if not in cache
         if data is None:
             data, last_updated = db_fn()
-        
+
         # Check staleness
         is_stale = self._is_data_stale(last_updated)
-        
+
         return data, last_updated, is_stale
-    
+
     def _build_metadata(
         self,
         last_updated: datetime | None,
@@ -98,7 +99,7 @@ class CachedDataService(ABC):
         if error:
             metadata['error'] = error
         return metadata
-    
+
     def fetch_data_with_metadata(
         self,
         cache_fn: Callable[[], tuple[T | None, datetime | None]],
@@ -123,13 +124,13 @@ class CachedDataService(ABC):
         """
         # Use the existing fallback logic
         data, last_updated, is_stale = self._get_with_fallback(cache_fn, db_fn)
-        
+
         # Build metadata
         error = error_msg if data is None else None
         metadata = self._build_metadata(last_updated, is_stale, error)
-        
+
         return data, metadata
-    
+
     def _parse_timestamp(self, timestamp_str: str) -> datetime:
         """
         Parse an ISO format timestamp string and ensure it's timezone-aware.
@@ -143,7 +144,7 @@ class CachedDataService(ABC):
         dt = datetime.fromisoformat(timestamp_str)
         if dt.tzinfo is None:
             # Assume UTC if no timezone info
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         return dt
 
 

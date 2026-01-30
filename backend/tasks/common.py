@@ -11,6 +11,7 @@ from fredapi import Fred
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from backend.cache_keys import CacheKeys
 from backend.config import (
     COINGECKO_API_KEY,
     DATABASE_URL,
@@ -18,7 +19,6 @@ from backend.config import (
     REDIS_LOCK_TIMEOUT,
     REDIS_URL,
 )
-from backend.cache_keys import CacheKeys
 from backend.services.crypto import CoinGeckoClient
 
 # Logger setup

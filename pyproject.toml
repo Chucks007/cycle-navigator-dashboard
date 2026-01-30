@@ -72,4 +72,5 @@ filterwarnings = [
     # Allow specific third-party library warnings that we can't control
     "ignore::DeprecationWarning:urllib3",
     "ignore::DeprecationWarning:pkg_resources",
+    "ignore::DeprecationWarning:dateutil",
 ]

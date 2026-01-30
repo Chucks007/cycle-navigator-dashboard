@@ -8,7 +8,7 @@ as MacroService: Redis for fast cache, PostgreSQL as source of truth.
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import redis
@@ -178,7 +178,7 @@ class CryptoService(CachedDataService):
                 return None, None
 
             # Get recent crypto data (limit by days)
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+            cutoff_date = datetime.now(UTC) - timedelta(days=days)
             data_records = db.query(CryptoData).filter(
                 CryptoData.timestamp >= cutoff_date
             ).order_by(CryptoData.timestamp).all()
@@ -246,7 +246,7 @@ class CryptoService(CachedDataService):
         # Filter by days if data came from Redis (DB already filtered)
         # Check if we need to filter (data_points will have timestamps)
         if data_points:
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+            cutoff_date = datetime.now(UTC) - timedelta(days=days)
             data_points = [
                 point for point in data_points
                 if self._parse_timestamp(point['timestamp']) >= cutoff_date
@@ -291,7 +291,7 @@ class CryptoService(CachedDataService):
         altcoin_mcap = total_mcap - btc_mcap - eth_mcap
 
         return {
-            'timestamp': datetime.now(timezone.utc),
+            'timestamp': datetime.now(UTC),
             'total_mcap': total_mcap,
             'btc_dominance': btc_dominance,
             'eth_dominance': eth_dominance,
@@ -323,20 +323,20 @@ def update_crypto_dominance_data(
     try:
         observation_count = 0
         last_observation_date = None
-        
+
         if snapshot and status == 'success':
             # Store in PostgreSQL - upsert logic
             existing = db.query(CryptoData).filter(
                 CryptoData.timestamp >= snapshot['timestamp'].replace(minute=0, second=0, microsecond=0)
             ).first()
-            
+
             if existing:
                 # Update existing record
                 existing.total_mcap = snapshot['total_mcap']
                 existing.btc_dominance = snapshot['btc_dominance']
                 existing.eth_dominance = snapshot['eth_dominance']
                 existing.altcoin_mcap = snapshot['altcoin_mcap']
-                existing.updated_at = datetime.now(timezone.utc)
+                existing.updated_at = datetime.now(UTC)
                 logger.info(f"Updated existing crypto data for {snapshot['timestamp']}")
             else:
                 # Insert new record
@@ -349,17 +349,17 @@ def update_crypto_dominance_data(
                 )
                 db.add(crypto_data)
                 logger.info(f"Inserted new crypto data for {snapshot['timestamp']}")
-            
+
             observation_count = 1
             last_observation_date = snapshot['timestamp']
-        
+
         # Update metadata
         metadata = db.query(CryptoMetadata).filter(
             CryptoMetadata.metric_type == 'global'
         ).first()
-        
+
         if metadata:
-            metadata.last_fetched = datetime.now(timezone.utc)
+            metadata.last_fetched = datetime.now(UTC)
             metadata.observation_count = observation_count
             metadata.last_observation_date = last_observation_date
             metadata.fetch_status = status
@@ -367,26 +367,26 @@ def update_crypto_dominance_data(
         else:
             metadata = CryptoMetadata(
                 metric_type='global',
-                last_fetched=datetime.now(timezone.utc),
+                last_fetched=datetime.now(UTC),
                 observation_count=observation_count,
                 last_observation_date=last_observation_date,
                 fetch_status=status,
                 error_message=error_message
             )
             db.add(metadata)
-        
+
         db.commit()
-        
+
         # Cache in Redis (only if we have data)
         if snapshot and status == 'success':
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=365)
+            cutoff_date = datetime.now(UTC) - timedelta(days=365)
             data_records = db.query(CryptoData).filter(
                 CryptoData.timestamp >= cutoff_date
             ).order_by(CryptoData.timestamp).all()
-            
+
             if data_records:
                 cache_data = {
-                    'last_updated': datetime.now(timezone.utc).isoformat(),
+                    'last_updated': datetime.now(UTC).isoformat(),
                     'data': [
                         {
                             'timestamp': record.timestamp.isoformat(),
@@ -398,7 +398,7 @@ def update_crypto_dominance_data(
                         for record in data_records
                     ]
                 }
-                
+
                 cache_key = CacheKeys.crypto_dominance()
                 redis_client.setex(
                     cache_key,
@@ -406,14 +406,14 @@ def update_crypto_dominance_data(
                     json.dumps(cache_data)
                 )
                 logger.info(f"Cached {len(cache_data['data'])} crypto data points in Redis")
-        
+
         return {
             'status': 'success',
             'metric_type': 'global',
             'observation_count': observation_count,
             'last_observation_date': last_observation_date.isoformat() if last_observation_date else None,
         }
-        
+
     except Exception as e:
         db.rollback()
         logger.error(f"Error updating crypto dominance data: {e}", exc_info=True)
@@ -430,57 +430,56 @@ def fetch_crypto_dominance_sync() -> dict[str, Any]:
     Returns:
         Dict with status and crypto data or error
     """
-    from backend.cache_keys import CacheKeys
-    
+
     if not config.COINGECKO_API_KEY:
         logger.error("COINGECKO_API_KEY not configured, cannot fetch crypto data")
         return {
             'status': 'failed',
             'error': 'COINGECKO_API_KEY not configured'
         }
-    
+
     client = CoinGeckoClient(api_key=config.COINGECKO_API_KEY)
     db = SessionLocal()
-    
+
     try:
         logger.info("Fetching global crypto data from CoinGecko API (sync)")
         global_data = client.get_global_data()
-        
+
         if not global_data or 'data' not in global_data:
             logger.warning("No data returned from CoinGecko API")
             return {
                 'status': 'failed',
                 'error': 'No data returned from CoinGecko API'
             }
-        
+
         data = global_data['data']
-        
+
         # Extract dominance percentages
         btc_dominance = data.get('market_cap_percentage', {}).get('btc', 0.0)
         eth_dominance = data.get('market_cap_percentage', {}).get('eth', 0.0)
-        
+
         # Get total market cap in USD
         total_mcap = data.get('total_market_cap', {}).get('usd', 0.0)
-        
+
         # Calculate altcoin market cap (Total - BTC - ETH)
         btc_mcap = total_mcap * (btc_dominance / 100.0)
         eth_mcap = total_mcap * (eth_dominance / 100.0)
         altcoin_mcap = total_mcap - btc_mcap - eth_mcap
-        
+
         # Create snapshot
         snapshot = {
-            'timestamp': datetime.now(timezone.utc),
+            'timestamp': datetime.now(UTC),
             'total_mcap': total_mcap,
             'btc_dominance': btc_dominance,
             'eth_dominance': eth_dominance,
             'altcoin_mcap': altcoin_mcap
         }
-        
+
         # Use shared method to store, update metadata, and cache
         result = update_crypto_dominance_data(db, snapshot)
-        
+
         logger.info(f"✓ Fetched crypto dominance: BTC {btc_dominance:.2f}%, ETH {eth_dominance:.2f}%")
-        
+
         # Add additional fields to result
         result.update({
             'total_mcap': total_mcap,
@@ -489,9 +488,9 @@ def fetch_crypto_dominance_sync() -> dict[str, Any]:
             'altcoin_mcap': altcoin_mcap,
             'timestamp': snapshot['timestamp'].isoformat(),
         })
-        
+
         return result
-        
+
     except Exception as e:
         logger.error(f"Failed to fetch crypto dominance: {e}")
         # Use shared method to handle error

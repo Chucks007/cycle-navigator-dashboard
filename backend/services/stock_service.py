@@ -155,8 +155,8 @@ class StockService:
                     "pct_delta": pct_delta
                 }
 
-            except Exception:
-                # Skip failures for individual tickers in batch
+            except Exception as e:
+                logger.error(f"Error processing ticker {ticker}: {e}", exc_info=True)
                 continue
 
         return results

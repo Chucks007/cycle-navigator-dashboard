@@ -6,7 +6,7 @@ regression bands, and other analytics that don't require
 external API calls.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from celery import Task
@@ -42,7 +42,7 @@ def calculate_risk_metrics(self: Task, ticker: str = "BTC") -> dict[str, Any]:
         result = {
             'status': 'success',
             'ticker': ticker,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': datetime.now(UTC).isoformat(),
             'metrics': {
                 # Add computed metrics here
             }
@@ -81,7 +81,7 @@ def aggregate_monthly_metrics(self: Task) -> dict[str, Any]:
 
         result = {
             'status': 'success',
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': datetime.now(UTC).isoformat(),
         }
 
         logger.info("Completed monthly metric aggregation")

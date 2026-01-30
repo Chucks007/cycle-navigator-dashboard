@@ -5,29 +5,23 @@ Handles fetching macroeconomic data from FRED (Federal Reserve Economic Data),
 storing in PostgreSQL, and caching in Redis.
 """
 
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pandas as pd
 from celery import Task
-from sqlalchemy.orm import Session
 
 from backend.celery_app import celery_app
 from backend.config import (
     FRED_RETRY_BACKOFF_BASE,
     FRED_RETRY_MAX_ATTEMPTS,
     FRED_SERIES_LIST,
-    REDIS_CACHE_TTL,
 )
-from backend.cache_keys import CacheKeys
-from backend.models import FREDSeriesData, FREDSeriesMetadata
 from backend.services.macro import update_fred_series_data
 from backend.tasks.common import (
     acquire_global_rate_limit_lock,
     get_db,
     get_fred_client,
-    get_redis_client,
     logger,
     release_global_rate_limit_lock,
 )
@@ -99,19 +93,19 @@ def update_all_fred_series(self: Task) -> dict[str, Any]:
         Dict with summary of submitted tasks
     """
     from celery import group
-    
+
     if not acquire_global_rate_limit_lock("fred_rate_limit_lock"):
         logger.warning("Another FRED update is already in progress, skipping")
         return {'status': 'skipped', 'reason': 'concurrent_update'}
 
     try:
         logger.info("Starting scheduled FRED data update")
-        
+
         # Use group() for proper async parallel execution
         # This avoids the anti-pattern of calling .get() inside a task
         job = group(fetch_fred_series.s(series_id) for series_id in FRED_SERIES_LIST)
         result = job.apply_async()
-        
+
         logger.info(f"Submitted {len(FRED_SERIES_LIST)} FRED fetch tasks (group_id: {result.id})")
 
         return {
@@ -119,7 +113,7 @@ def update_all_fred_series(self: Task) -> dict[str, Any]:
             'total': len(FRED_SERIES_LIST),
             'series': FRED_SERIES_LIST,
             'group_id': result.id,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': datetime.now(UTC).isoformat(),
         }
 
     finally:

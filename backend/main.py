@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import config
 from .health import health_service
-from .routers import comparison, config as config_router, crypto, macro, risk, sentiment, stocks
+from .routers import comparison, crypto, macro, risk, sentiment, stocks
+from .routers import config as config_router
 
 logger = logging.getLogger(__name__)
 

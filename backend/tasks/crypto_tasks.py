@@ -5,27 +5,20 @@ Handles fetching cryptocurrency market data from CoinGecko,
 storing in PostgreSQL, and caching in Redis.
 """
 
-import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from celery import Task
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from backend.celery_app import celery_app
 from backend.config import (
     COINGECKO_RETRY_BACKOFF_BASE,
     COINGECKO_RETRY_MAX_ATTEMPTS,
-    REDIS_CACHE_TTL,
 )
-from backend.cache_keys import CacheKeys
-from backend.models import CryptoData, CryptoMetadata
 from backend.services.crypto import update_crypto_dominance_data
 from backend.tasks.common import (
     get_coingecko_client,
     get_db,
-    get_redis_client,
     logger,
 )
 
@@ -84,7 +77,7 @@ def update_crypto_metrics(self: Task) -> dict[str, Any]:
 
         # Create snapshot
         snapshot = {
-            'timestamp': datetime.now(timezone.utc),
+            'timestamp': datetime.now(UTC),
             'total_mcap': total_mcap,
             'btc_dominance': btc_dominance,
             'eth_dominance': eth_dominance,
@@ -93,7 +86,7 @@ def update_crypto_metrics(self: Task) -> dict[str, Any]:
 
         # Use shared method to store in DB, update metadata, and cache in Redis
         result = update_crypto_dominance_data(db, snapshot)
-        
+
         # Add additional fields to result
         result.update({
             'total_mcap': total_mcap,
@@ -102,7 +95,7 @@ def update_crypto_metrics(self: Task) -> dict[str, Any]:
             'altcoin_mcap': altcoin_mcap,
             'timestamp': snapshot['timestamp'].isoformat(),
         })
-        
+
         return result
 
     except Exception as e:

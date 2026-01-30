@@ -7,9 +7,10 @@ Contains reusable utilities including:
 """
 
 import logging
+from collections.abc import Callable
 from functools import wraps
 from types import SimpleNamespace
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 from fastapi import HTTPException
 from requests.exceptions import ConnectionError, RequestException, Timeout

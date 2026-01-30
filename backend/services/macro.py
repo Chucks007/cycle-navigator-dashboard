@@ -1,13 +1,13 @@
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pandas as pd
 import redis
 from fredapi import Fred
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from .. import config, schemas
 from ..cache_keys import CacheKeys
@@ -34,7 +34,7 @@ class MacroService(CachedDataService):
     
     Inherits from CachedDataService for common Redis/DB fallback patterns.
     """
-    
+
     def __init__(self):
         self.api_key = config.FRED_API_KEY
         self.fred = None
@@ -126,16 +126,16 @@ class MacroService(CachedDataService):
             db_fn=lambda: self._get_series_from_db(series_id),
             error_msg=f"No data found for {series_id} in cache or database"
         )
-        
+
         # If no data found, return empty Series with error metadata
         if series is None:
             logger.error(f"No data found for {series_id} in cache or database")
             return pd.Series(dtype=float), metadata
-        
+
         # Log warnings for stale data or cache misses
         if metadata.get('is_stale'):
             logger.warning(f"{series_id} data is stale (last_updated: {metadata.get('last_updated')})")
-        
+
         return series, metadata
 
     def _prepare_macro_response(self, df: pd.DataFrame, metadata: dict, days: int = None) -> tuple[list, dict]:
@@ -416,12 +416,12 @@ def update_fred_series_data(
     """
     observation_count = 0
     last_observation_date = None
-    
+
     try:
         if not data.empty and status == 'success':
             # Store in PostgreSQL - delete existing and bulk insert new
             db.query(FREDSeriesData).filter(FREDSeriesData.series_id == series_id).delete()
-            
+
             observations = []
             for date, value in data.items():
                 if pd.notna(value):  # Skip NaN values
@@ -430,22 +430,22 @@ def update_fred_series_data(
                         date=date,
                         value=float(value),
                     ))
-            
+
             db.bulk_save_objects(observations)
             observation_count = len(observations)
             last_observation_date = data.index[-1] if not data.empty else None
-            
+
             logger.info(f"Stored {observation_count} observations for {series_id}")
         else:
             logger.warning(f"No data to store for series {series_id}")
-        
+
         # Update metadata
         metadata = db.query(FREDSeriesMetadata).filter(
             FREDSeriesMetadata.series_id == series_id
         ).first()
-        
+
         if metadata:
-            metadata.last_fetched = datetime.now(timezone.utc)
+            metadata.last_fetched = datetime.now(UTC)
             metadata.observation_count = observation_count
             metadata.last_observation_date = last_observation_date
             metadata.fetch_status = status
@@ -453,21 +453,21 @@ def update_fred_series_data(
         else:
             metadata = FREDSeriesMetadata(
                 series_id=series_id,
-                last_fetched=datetime.now(timezone.utc),
+                last_fetched=datetime.now(UTC),
                 observation_count=observation_count,
                 last_observation_date=last_observation_date,
                 fetch_status=status,
                 error_message=error_message,
             )
             db.add(metadata)
-        
+
         db.commit()
-        
+
         # Cache in Redis (only if we have data)
         if not data.empty and status == 'success':
             cache_data = {
                 'series_id': series_id,
-                'last_updated': datetime.now(timezone.utc).isoformat(),
+                'last_updated': datetime.now(UTC).isoformat(),
                 'data': [
                     {'date': date.isoformat(), 'value': float(value)}
                     for date, value in data.items()
@@ -481,14 +481,14 @@ def update_fred_series_data(
                 json.dumps(cache_data)
             )
             logger.info(f"Cached {series_id} in Redis with {len(cache_data['data'])} points")
-        
+
         return {
             'status': 'success',
             'series_id': series_id,
             'observation_count': observation_count,
             'last_observation_date': last_observation_date.isoformat() if last_observation_date else None,
         }
-        
+
     except Exception as e:
         db.rollback()
         logger.error(f"Error updating FRED series data for {series_id}: {e}", exc_info=True)
@@ -505,8 +505,7 @@ def fetch_all_fred_series_sync() -> dict[str, Any]:
     Returns:
         Dict with status, total count, successful count, and results
     """
-    from backend.cache_keys import CacheKeys
-    
+
     if not config.FRED_API_KEY:
         logger.error("FRED_API_KEY not configured, cannot fetch FRED data")
         return {
@@ -516,17 +515,17 @@ def fetch_all_fred_series_sync() -> dict[str, Any]:
             'successful': 0,
             'results': []
         }
-    
+
     fred = Fred(api_key=config.FRED_API_KEY)
     db = SessionLocal()
     results = []
-    
+
     try:
         for series_id in FRED_SERIES_LIST:
             try:
                 logger.info(f"Fetching series {series_id} from FRED API (sync)")
                 data = fred.get_series(series_id)
-                
+
                 if data.empty:
                     logger.warning(f"No data returned for series {series_id}")
                     # Use shared method to handle failed fetch
@@ -543,12 +542,12 @@ def fetch_all_fred_series_sync() -> dict[str, Any]:
                         'error': 'No data returned'
                     })
                     continue
-                
+
                 # Use shared method to store, update metadata, and cache
                 result = update_fred_series_data(db, series_id, data)
                 logger.info(f"✓ Fetched {series_id}: {result['observation_count']} observations")
                 results.append(result)
-                
+
             except Exception as e:
                 logger.error(f"Failed to fetch {series_id}: {e}")
                 # Use shared method to handle error
@@ -564,9 +563,9 @@ def fetch_all_fred_series_sync() -> dict[str, Any]:
                     'series_id': series_id,
                     'error': str(e)
                 })
-        
+
         success_count = sum(1 for r in results if r.get('status') == 'success')
-        
+
         return {
             'status': 'completed',
             'total': len(FRED_SERIES_LIST),
@@ -574,6 +573,6 @@ def fetch_all_fred_series_sync() -> dict[str, Any]:
             'failed': len(FRED_SERIES_LIST) - success_count,
             'results': results,
         }
-    
+
     finally:
         db.close()
