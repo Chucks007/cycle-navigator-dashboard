@@ -1,8 +1,9 @@
 # Task 010: Finalize UI Card Standardization
 
-**Status**: Pending
+**Status**: Completed
 **Priority**: Medium
 **Created**: 2026-01-29
+**Completed**: 2026-01-30
 
 ## Context
 A new UI primitive `DashboardCard` was created (Task 007) to enforce a consistent "glassmorphism" style across the application. However, several components still use the legacy shadcn `Card` component or raw HTML `div`s with inline Tailwind classes. This results in visual inconsistencies (different borders, shadows, opacity).
