@@ -3,6 +3,7 @@ import {
   StockMetrics,
   StockHistoryPoint,
   StockIndicatorsPoint,
+  StockFundamentals,
   SentimentResponse,
   LiquidityPoint,
   DebtPoint,
@@ -16,6 +17,7 @@ import {
   StockMetricsSchema,
   StockHistoryPointSchema,
   StockIndicatorsPointSchema,
+  StockFundamentalsSchema,
   SentimentResponseSchema,
   LiquidityResponseSchema,
   DebtStatusResponseSchema,
@@ -129,6 +131,10 @@ class ApiClient {
   public async getStockIndicators(ticker: string, period: string = '1d', interval: string = '1m'): Promise<StockIndicatorsPoint[]> {
     const query = new URLSearchParams({ period, interval });
     return this.validatedRequest(`${API_ROUTES.STOCK.INDICATORS(ticker)}?${query.toString()}`, z.array(StockIndicatorsPointSchema));
+  }
+
+  public async getStockFundamentals(ticker: string): Promise<StockFundamentals> {
+    return this.validatedRequest(API_ROUTES.STOCK.FUNDAMENTALS(ticker), StockFundamentalsSchema);
   }
 
   // Sentiment

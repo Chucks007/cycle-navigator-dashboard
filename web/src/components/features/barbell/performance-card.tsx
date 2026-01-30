@@ -49,19 +49,25 @@ export function ExpandablePerformanceCard({
   // Get sparkline data (last 30 points)
   const sparklineData = React.useMemo((): ChartDataPoint[] => {
     if (!data || data.length === 0) return [];
-    return data.slice(-30).map((point) => ({
-      time: toChartTime(point.date),
-      value: point[asset.ticker] ?? 0,
-    })).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
+    return data.slice(-30).map((point) => {
+      const val = point[asset.ticker];
+      return {
+        time: toChartTime(point.date),
+        value: typeof val === 'number' ? val : 0,
+      };
+    }).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
   }, [data, asset.ticker]);
 
   // Full chart data
   const chartData = React.useMemo((): ChartDataPoint[] => {
     if (!data || data.length === 0) return [];
-    return data.map((point) => ({
-      time: toChartTime(point.date),
-      value: point[asset.ticker] ?? 0,
-    })).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
+    return data.map((point) => {
+      const val = point[asset.ticker];
+      return {
+        time: toChartTime(point.date),
+        value: typeof val === 'number' ? val : 0,
+      };
+    }).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
   }, [data, asset.ticker]);
 
   const handleOpen = React.useCallback(() => {

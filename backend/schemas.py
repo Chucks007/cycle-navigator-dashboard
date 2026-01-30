@@ -14,6 +14,26 @@ class StockMetrics(BaseModel):
     sharpe_ratio: float | None = None
     risk_free_rate: float
 
+
+class StockFundamentals(BaseModel):
+    """Fundamental metrics for stock valuation and risk analysis."""
+    ticker: str
+    name: str | None = None
+    market_cap: float | None = None
+    trailing_pe: float | None = None
+    forward_pe: float | None = None
+    beta: float | None = None
+    fifty_two_week_high: float | None = None
+    fifty_two_week_low: float | None = None
+    dividend_yield: float | None = None
+    trailing_eps: float | None = None
+    profit_margin: float | None = None
+    price_to_sales: float | None = None
+    debt_to_equity: float | None = None
+    sector: str | None = None
+    industry: str | None = None
+
+
 class StockHistoryPoint(BaseModel):
     Datetime: str
     Open: float

@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+
+# Build outputs (rebuilt inside container)
+.next
+out
+dist
+
+# Development
+*.log
+npm-debug.log*
+
+# Testing
+coverage
+.nyc_output
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env*.local

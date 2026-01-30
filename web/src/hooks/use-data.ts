@@ -11,6 +11,7 @@ import {
   type StockMetrics,
   type StockHistoryPoint,
   type StockIndicatorsPoint,
+  type StockFundamentals,
   type SentimentResponse,
   type RiskResponse,
   type RiskScoreResponse,
@@ -102,6 +103,15 @@ export function useStockIndicators(
     queryKey: ["stock", "indicators", ticker, period, interval],
     queryFn: () => apiClient.getStockIndicators(ticker, period, interval),
     enabled: !!ticker,
+  });
+}
+
+export function useStockFundamentals(ticker: string) {
+  return useQuery<StockFundamentals, Error>({
+    queryKey: ["stock", "fundamentals", ticker],
+    queryFn: () => apiClient.getStockFundamentals(ticker),
+    enabled: !!ticker,
+    staleTime: 15 * 60 * 1000, // 15 minutes - fundamentals don't change often
   });
 }
 

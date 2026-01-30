@@ -42,6 +42,24 @@ export const StockIndicatorsPointSchema = z.object({
   RSI_14: z.number().nullable(),
 });
 
+export const StockFundamentalsSchema = z.object({
+  ticker: z.string(),
+  name: z.string().nullable(),
+  market_cap: z.number().nullable(),
+  trailing_pe: z.number().nullable(),
+  forward_pe: z.number().nullable(),
+  beta: z.number().nullable(),
+  fifty_two_week_high: z.number().nullable(),
+  fifty_two_week_low: z.number().nullable(),
+  dividend_yield: z.number().nullable(),
+  trailing_eps: z.number().nullable(),
+  profit_margin: z.number().nullable(),
+  price_to_sales: z.number().nullable(),
+  debt_to_equity: z.number().nullable(),
+  sector: z.string().nullable(),
+  industry: z.string().nullable(),
+});
+
 // ===========================
 // Sentiment Schemas
 // ===========================
@@ -276,6 +294,7 @@ export const HealthResponseSchema = z.object({
 export type StockMetrics = z.infer<typeof StockMetricsSchema>;
 export type StockHistoryPoint = z.infer<typeof StockHistoryPointSchema>;
 export type StockIndicatorsPoint = z.infer<typeof StockIndicatorsPointSchema>;
+export type StockFundamentals = z.infer<typeof StockFundamentalsSchema>;
 export type SentimentArticle = z.infer<typeof SentimentArticleSchema>;
 export type SentimentResponse = z.infer<typeof SentimentResponseSchema>;
 export type LiquidityPoint = z.infer<typeof LiquidityPointSchema>;

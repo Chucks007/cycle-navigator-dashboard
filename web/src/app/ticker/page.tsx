@@ -30,6 +30,7 @@ import {
   useStockMetrics,
   useStockHistory,
   useStockIndicators,
+  useStockFundamentals,
   useSentiment,
   useRiskData,
 } from "@/hooks/use-data";
@@ -48,6 +49,7 @@ import { useTickerPreferences, timeframeToPeriodInterval } from "@/stores/ticker
 import { ChartTypeToggle } from "@/components/features/ticker/chart-toggle";
 import { SentimentGauge } from "@/components/features/ticker/sentiment-gauge";
 import { IndicatorDisplay } from "@/components/features/ticker/indicator-display";
+import { FinancialsTable } from "@/components/features/ticker/financials-table";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -115,6 +117,7 @@ function TickerAnalysisContent() {
   const { data: history, isLoading: historyLoading } = useStockHistory(ticker, period, interval);
   const { data: indicators, isLoading: indicatorsLoading } = useStockIndicators(ticker, period, interval);
   const { data: sentiment, isLoading: sentimentLoading } = useSentiment(ticker);
+  const { data: fundamentals, isLoading: fundamentalsLoading, error: fundamentalsError } = useStockFundamentals(ticker);
 
   // Risk Data (Only relevant for BTC/ETH, but safe to call for others - handles errors gracefully)
   const isCrypto = ticker === "BTC" || ticker === "ETH" || ticker === "BTC-USD" || ticker === "ETH-USD";
@@ -613,14 +616,14 @@ function TickerAnalysisContent() {
         </div>
       </section>
 
-      {/* Fundamentals Section - Placeholder */}
+      {/* Fundamentals Section */}
       <section id="fundamentals">
-        <DashboardCard className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Fundamentals</h3>
-            <p className="text-muted-foreground text-center py-8">
-              Fundamental analysis coming soon...
-            </p>
-        </DashboardCard>
+        <FinancialsTable
+          data={fundamentals}
+          isLoading={fundamentalsLoading}
+          error={fundamentalsError}
+          currentPrice={metrics?.last_close}
+        />
       </section>
     </div>
   );

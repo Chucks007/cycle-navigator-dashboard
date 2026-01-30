@@ -469,3 +469,81 @@ class TestFetchNewsSentiment:
 
         assert result.news_count == 10
         assert len(result.headlines) == 10
+
+
+# --- Tests for Stock Fundamentals ---
+
+class TestFetchFundamentals:
+    """Tests for the fetch_fundamentals method."""
+
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.services.get_yf")
+    def test_fetch_fundamentals_with_valid_data(self, mock_yf, mock_error):
+        """Test fetch_fundamentals with valid stock data."""
+        mock_ticker = MagicMock()
+        mock_ticker.info = {
+            'shortName': 'Apple Inc.',
+            'marketCap': 3000000000000,
+            'trailingPE': 28.5,
+            'forwardPE': 25.2,
+            'beta': 1.2,
+            'fiftyTwoWeekHigh': 199.62,
+            'fiftyTwoWeekLow': 164.08,
+            'dividendYield': 0.0045,
+            'trailingEps': 6.42,
+            'profitMargins': 0.265,
+            'priceToSalesTrailing12Months': 7.8,
+            'debtToEquity': 170.73,
+            'sector': 'Technology',
+            'industry': 'Consumer Electronics',
+            'regularMarketPrice': 185.0,
+        }
+        mock_yf.return_value.Ticker.return_value = mock_ticker
+
+        result = stock_service.fetch_fundamentals("AAPL")
+
+        assert result.ticker == "AAPL"
+        assert result.name == "Apple Inc."
+        assert result.market_cap == 3000000000000
+        assert result.trailing_pe == 28.5
+        assert result.beta == 1.2
+
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.services.get_yf")
+    def test_fetch_fundamentals_with_missing_data(self, mock_yf, mock_error):
+        """Test fetch_fundamentals handles missing fields gracefully."""
+        mock_ticker = MagicMock()
+        mock_ticker.info = {
+            'shortName': 'Test Corp',
+            'regularMarketPrice': 50.0,
+            # Missing most fields
+        }
+        mock_yf.return_value.Ticker.return_value = mock_ticker
+
+        result = stock_service.fetch_fundamentals("TEST")
+
+        assert result.ticker == "TEST"
+        assert result.name == "Test Corp"
+        assert result.market_cap is None
+        assert result.trailing_pe is None
+        assert result.beta is None
+
+    @patch("backend.services.get_yf_import_error", return_value=None)
+    @patch("backend.services.get_yf")
+    def test_fetch_fundamentals_with_crypto_ticker(self, mock_yf, mock_error):
+        """Test fetch_fundamentals with crypto ticker (limited fundamentals)."""
+        mock_ticker = MagicMock()
+        mock_ticker.info = {
+            'shortName': 'Bitcoin USD',
+            'regularMarketPrice': 43000.0,
+            # Crypto tickers typically have no P/E, dividends, etc.
+        }
+        mock_yf.return_value.Ticker.return_value = mock_ticker
+
+        result = stock_service.fetch_fundamentals("BTC-USD")
+
+        assert result.ticker == "BTC-USD"
+        assert result.name == "Bitcoin USD"
+        assert result.trailing_pe is None
+        assert result.dividend_yield is None
+

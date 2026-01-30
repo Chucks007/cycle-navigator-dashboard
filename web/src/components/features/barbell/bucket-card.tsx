@@ -53,7 +53,10 @@ export function ExpandableBucketCard({
     if (!data || data.length === 0) return [];
     const tickers = assets.map((a) => a.ticker);
     return data.slice(-30).map((point) => {
-      const values = tickers.map((t) => point[t] ?? 0);
+      const values: number[] = tickers.map((t) => {
+        const val = point[t];
+        return typeof val === 'number' ? val : 0;
+      });
       const avg = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
       return { time: toChartTime(point.date), value: avg };
     }).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
@@ -67,17 +70,23 @@ export function ExpandableBucketCard({
 
     // Use first asset as main series
     const firstAsset = assets[0];
-    const mainData = data.map((point) => ({
-      time: toChartTime(point.date),
-      value: point[firstAsset.ticker] ?? 0,
-    })).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
+    const mainData = data.map((point) => {
+      const val = point[firstAsset.ticker];
+      return {
+        time: toChartTime(point.date),
+        value: typeof val === 'number' ? val : 0,
+      };
+    }).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
 
     // Others as extra series
     const extras: ExtraSeriesConfig[] = assets.slice(1).map((asset) => ({
-      data: data.map((point) => ({
-        time: toChartTime(point.date),
-        value: point[asset.ticker] ?? 0,
-      })).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value)),
+      data: data.map((point) => {
+        const val = point[asset.ticker];
+        return {
+          time: toChartTime(point.date),
+          value: typeof val === 'number' ? val : 0,
+        };
+      }).filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value)),
       color: asset.color,
       title: asset.name,
       lineWidth: 2,

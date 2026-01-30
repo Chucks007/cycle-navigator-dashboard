@@ -55,6 +55,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/stock/{ticker}/fundamentals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Stock Fundamentals
+         * @description Fetch fundamental metrics for a stock.
+         *
+         *     Returns valuation metrics (P/E, P/S), risk metrics (Beta, 52-week range),
+         *     and profitability metrics (EPS, Profit Margin, Dividend Yield).
+         */
+        get: operations["get_stock_fundamentals_api_stock__ticker__fundamentals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/macro/summary": {
         parameters: {
             query?: never;
@@ -659,6 +682,42 @@ export interface components {
             /** Message */
             message?: string | null;
         };
+        /**
+         * StockFundamentals
+         * @description Fundamental metrics for stock valuation and risk analysis.
+         */
+        StockFundamentals: {
+            /** Ticker */
+            ticker: string;
+            /** Name */
+            name?: string | null;
+            /** Market Cap */
+            market_cap?: number | null;
+            /** Trailing Pe */
+            trailing_pe?: number | null;
+            /** Forward Pe */
+            forward_pe?: number | null;
+            /** Beta */
+            beta?: number | null;
+            /** Fifty Two Week High */
+            fifty_two_week_high?: number | null;
+            /** Fifty Two Week Low */
+            fifty_two_week_low?: number | null;
+            /** Dividend Yield */
+            dividend_yield?: number | null;
+            /** Trailing Eps */
+            trailing_eps?: number | null;
+            /** Profit Margin */
+            profit_margin?: number | null;
+            /** Price To Sales */
+            price_to_sales?: number | null;
+            /** Debt To Equity */
+            debt_to_equity?: number | null;
+            /** Sector */
+            sector?: string | null;
+            /** Industry */
+            industry?: string | null;
+        };
         /** StockHistoryPoint */
         StockHistoryPoint: {
             /** Datetime */
@@ -875,6 +934,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StockIndicatorsPoint"][];
+                };
+            };
+            /** @description Invalid Request / Bad Input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Upstream Provider Error (FRED/Yahoo/Connectivity) */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_stock_fundamentals_api_stock__ticker__fundamentals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ticker: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockFundamentals"];
                 };
             };
             /** @description Invalid Request / Bad Input */

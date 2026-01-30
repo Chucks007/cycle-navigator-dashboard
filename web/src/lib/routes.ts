@@ -13,6 +13,7 @@ export const API_ROUTES = {
     METRICS: (ticker: string) => `/api/stock/${ticker}`,
     HISTORY: (ticker: string) => `/api/stock/${ticker}/history`,
     INDICATORS: (ticker: string) => `/api/stock/${ticker}/indicators`,
+    FUNDAMENTALS: (ticker: string) => `/api/stock/${ticker}/fundamentals`,
   },
 
   /**

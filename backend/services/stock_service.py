@@ -438,6 +438,92 @@ class StockService:
             risk_free_rate=risk_free_rate
         )
 
+    # ==================== Fundamentals ====================
+
+    @functools.lru_cache(maxsize=128)
+    def _fetch_fundamentals_cached(
+        self,
+        ticker: str,
+        cache_key: str
+    ) -> dict:
+        """
+        Internal cached fetcher for yfinance fundamentals (.info).
+        
+        Args:
+            ticker: Stock symbol (e.g., 'AAPL')
+            cache_key: Timestamp-based key for 15-minute cache buckets
+            
+        Returns:
+            dict: Raw fundamentals data from yfinance
+        """
+        yf = services.get_yf()
+        error = services.get_yf_import_error()
+
+        if error is not None:
+            raise Exception(f"yfinance not available: {error}")
+
+        try:
+            logger.info(f"Fetching fundamentals for {ticker} from yfinance...")
+            stock = yf.Ticker(ticker)
+            info = stock.info
+
+            if not info or info.get('regularMarketPrice') is None:
+                logger.warning(f"No fundamental data found for ticker: {ticker}")
+                return {}
+
+            return info
+
+        except Exception as e:
+            logger.error(f"Error fetching fundamentals for {ticker}: {e}")
+            raise Exception(f"Error fetching fundamentals: {e}")
+
+    def fetch_fundamentals(self, ticker: str) -> schemas.StockFundamentals:
+        """
+        Fetches fundamental metrics for a stock from yfinance.
+        
+        Returns key valuation and risk metrics including:
+        - Market Cap, P/E ratios, Beta
+        - 52-week High/Low
+        - Dividend Yield, EPS, Profit Margin
+        - Price-to-Sales, Debt-to-Equity
+        
+        Args:
+            ticker: Stock symbol (e.g., 'AAPL')
+            
+        Returns:
+            schemas.StockFundamentals: Pydantic model with fundamental metrics
+        """
+        # Cache key for 15 minutes (900 seconds)
+        cache_key = str(int(datetime.now().timestamp() // 900))
+        info = self._fetch_fundamentals_cached(ticker.upper(), cache_key)
+
+        def safe_get(key: str, default=None):
+            """Safely extract a value from info dict, handling NaN."""
+            value = info.get(key, default)
+            if value is None:
+                return default
+            if isinstance(value, float) and np.isnan(value):
+                return default
+            return value
+
+        return schemas.StockFundamentals(
+            ticker=ticker.upper(),
+            name=safe_get('shortName') or safe_get('longName'),
+            market_cap=safe_get('marketCap'),
+            trailing_pe=safe_get('trailingPE'),
+            forward_pe=safe_get('forwardPE'),
+            beta=safe_get('beta'),
+            fifty_two_week_high=safe_get('fiftyTwoWeekHigh'),
+            fifty_two_week_low=safe_get('fiftyTwoWeekLow'),
+            dividend_yield=safe_get('dividendYield'),
+            trailing_eps=safe_get('trailingEps'),
+            profit_margin=safe_get('profitMargins'),
+            price_to_sales=safe_get('priceToSalesTrailing12Months'),
+            debt_to_equity=safe_get('debtToEquity'),
+            sector=safe_get('sector'),
+            industry=safe_get('industry'),
+        )
+
 
 # ==================== Singleton Instance ====================
 
