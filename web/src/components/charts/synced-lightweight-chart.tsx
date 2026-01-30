@@ -206,7 +206,7 @@ export function SyncedLightweightChart({
   // Safely get sync context - returns null if not available
   const syncContext = useSyncedChartsSafe();
 
-  // Create chart
+  // Create chart (recreate when fundamental properties change)
   React.useEffect(() => {
     if (!containerRef.current) return;
 
@@ -293,7 +293,40 @@ export function SyncedLightweightChart({
       mainSeriesRef.current = null;
       extraSeriesRefs.current = [];
     };
-  }, [id, seriesType]);
+  }, [id, seriesType, resolvedTheme, height, logScale, syncContext, color, topColor, bottomColor, title, syncCrosshair, syncTimeScale, data, extraSeries]);
+
+  // Update data when it changes
+  React.useEffect(() => {
+    if (!mainSeriesRef.current) return;
+    mainSeriesRef.current.setData(data);
+    chartRef.current?.timeScale().fitContent();
+  }, [data]);
+
+  // Update extra series when they change
+  React.useEffect(() => {
+    if (!chartRef.current) return;
+    
+    // Remove existing extra series
+    extraSeriesRefs.current.forEach(series => {
+      chartRef.current!.removeSeries(series);
+    });
+    extraSeriesRefs.current = [];
+    
+    // Add new extra series
+    if (extraSeries) {
+      extraSeriesRefs.current = extraSeries.map((config) => {
+        const extra = chartRef.current!.addSeries(LineSeries, {
+          color: config.color,
+          lineWidth: config.lineWidth ?? 1,
+          priceLineVisible: config.priceLineVisible ?? false,
+          lastValueVisible: config.lastValueVisible ?? false,
+          title: config.title,
+        } as DeepPartial<LineStyleOptions & SeriesOptionsCommon>);
+        extra.setData(config.data);
+        return extra;
+      });
+    }
+  }, [extraSeries]);
 
   // Update theme
   React.useEffect(() => {

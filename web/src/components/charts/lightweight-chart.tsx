@@ -213,7 +213,7 @@ export function LightweightChart({
   const { resolvedTheme } = useTheme();
   const [legendData, setLegendData] = React.useState<LegendData | null>(null);
 
-  // Create chart and series
+  // Create chart and series (only recreate on series type change)
   React.useEffect(() => {
     if (!containerRef.current) return;
 
@@ -300,7 +300,7 @@ export function LightweightChart({
 
     mainSeriesRef.current = series;
 
-    // Set data
+    // Set initial data
     if (seriesType === "Candlestick" && ohlcData) {
       series.setData(ohlcData);
     } else if (data) {
@@ -351,7 +351,65 @@ export function LightweightChart({
       mainSeriesRef.current = null;
       extraSeriesRefs.current = [];
     };
-  }, [seriesType]); // Only recreate on series type change
+  }, [seriesType, resolvedTheme, height, priceScaleVisible, logScale, autoScale, timeScaleVisible, priceLineVisible, lastValueVisible, title, priceFormat, colors, data, ohlcData, extraSeries, fitContent]);
+
+  // Update data when it changes
+  React.useEffect(() => {
+    if (!mainSeriesRef.current) return;
+    
+    if (seriesType === "Candlestick" && ohlcData) {
+      mainSeriesRef.current.setData(ohlcData);
+    } else if (data) {
+      mainSeriesRef.current.setData(data);
+    }
+    
+    if (fitContent && chartRef.current) {
+      chartRef.current.timeScale().fitContent();
+    }
+  }, [data, ohlcData, seriesType, fitContent]);
+
+  // Update extra series when they change
+  React.useEffect(() => {
+    if (!chartRef.current) return;
+    
+    // Remove existing extra series
+    extraSeriesRefs.current.forEach(series => {
+      chartRef.current!.removeSeries(series);
+    });
+    extraSeriesRefs.current = [];
+    
+    // Add new extra series
+    if (extraSeries && extraSeries.length > 0) {
+      extraSeriesRefs.current = extraSeries.map((config) => {
+        let extraLine;
+        if (config.seriesType === "Area") {
+          extraLine = chartRef.current!.addSeries(AreaSeries, {
+            lineColor: config.color,
+            topColor: config.topColor,
+            bottomColor: config.bottomColor,
+            lineWidth: config.lineWidth ?? 1,
+            lineStyle: config.lineStyle ?? 0,
+            priceLineVisible: config.priceLineVisible ?? false,
+            lastValueVisible: config.lastValueVisible ?? false,
+            title: config.title,
+            priceFormat,
+          } as DeepPartial<AreaStyleOptions & SeriesOptionsCommon>);
+        } else {
+          extraLine = chartRef.current!.addSeries(LineSeries, {
+            color: config.color,
+            lineWidth: config.lineWidth ?? 1,
+            lineStyle: config.lineStyle ?? 0,
+            priceLineVisible: config.priceLineVisible ?? false,
+            lastValueVisible: config.lastValueVisible ?? false,
+            title: config.title,
+            priceFormat,
+          } as DeepPartial<LineStyleOptions & SeriesOptionsCommon>);
+        }
+        extraLine.setData(config.data);
+        return extraLine as ISeriesApi<"Line" | "Area">;
+      });
+    }
+  }, [extraSeries, priceFormat]);
 
   // Update theme
   React.useEffect(() => {
