@@ -6,7 +6,7 @@ import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { LogScaleToggle, RegressionBandsToggle } from "@/components/charts/chart-controls";
 import { useRiskData, useStockHistory } from "@/hooks/use-data";
 import { transformRiskBandsToSeries, transformToOHLCData } from "@/lib/chart-utils";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ExtraSeriesConfig } from "@/lib/chart-utils";
@@ -99,26 +99,26 @@ export function RiskChart({ ticker, title }: RiskChartProps) {
   // Loading State
   if (riskLoading || priceLoading) {
     return (
-       <Card className="h-[450px]">
-        <CardHeader>
+       <DashboardCard className="h-[450px] p-6 flex flex-col gap-6">
+        <div className="pb-2">
           <Skeleton className="h-6 w-32" />
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="flex-1">
           <Skeleton className="h-full w-full" />
-        </CardContent>
-       </Card>
+        </div>
+       </DashboardCard>
     );
   }
 
   // Error State
   if (riskError) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-destructive">Error Loading Data</CardTitle>
-          <CardDescription>{riskError.message}</CardDescription>
-        </CardHeader>
-      </Card>
+      <DashboardCard className="p-6">
+        <div className="grid auto-rows-min grid-rows-[auto_auto] items-start gap-2">
+          <div className="leading-none font-semibold text-destructive">Error Loading Data</div>
+          <div className="text-muted-foreground text-sm">{riskError.message}</div>
+        </div>
+      </DashboardCard>
     );
   }
 
@@ -163,10 +163,10 @@ export function RiskScoreCard({ ticker }: { ticker: string }) {
 
   if (isLoading) {
     return (
-      <Card className="p-4">
+      <DashboardCard className="p-4">
         <Skeleton className="h-4 w-16 mb-2" />
         <Skeleton className="h-8 w-24" />
-      </Card>
+      </DashboardCard>
     );
   }
 
@@ -175,7 +175,7 @@ export function RiskScoreCard({ ticker }: { ticker: string }) {
   }
 
   return (
-    <Card className="p-4">
+    <DashboardCard className="p-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">{ticker} Risk</p>
@@ -193,6 +193,6 @@ export function RiskScoreCard({ ticker }: { ticker: string }) {
       <p className="text-xs text-muted-foreground mt-1">
         Fair Value: ${data.fair_value.toLocaleString()}
       </p>
-    </Card>
+    </DashboardCard>
   );
 }

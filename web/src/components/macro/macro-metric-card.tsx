@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { AlertTriangle } from "lucide-react";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 import { LightweightChart, SparklineChart } from "@/components/charts/lightweight-chart";
 import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { calculateSMA, calculateEMA, getFinancialStats } from "@/lib/financial-math";
@@ -193,12 +194,12 @@ export function MacroMetricCard<T extends MacroDataPoint>(config: MacroMetricCar
   // Error state
   if (error) {
     return (
-      <div className="rounded-xl border border-destructive/50 bg-card/50 p-4">
+      <DashboardCard className="p-4">
         <div className="flex items-center gap-2 text-destructive">
           <AlertTriangle className="h-4 w-4" />
           <span className="text-sm">Failed to load {title.toLowerCase()}</span>
         </div>
-      </div>
+      </DashboardCard>
     );
   }
 

@@ -20,7 +20,7 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 
 interface Props {
   children: ReactNode;
@@ -68,14 +68,14 @@ export class ErrorBoundary extends Component<Props, State> {
 
       // Default error UI
       return (
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-destructive">
+        <DashboardCard className="border-destructive/50 bg-destructive/5 p-6 flex flex-col gap-6">
+          <div className="grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 pb-3">
+            <div className="leading-none font-semibold flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
               {this.props.title || "Something went wrong"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </div>
+          </div>
+          <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               {this.state.error?.message || "An unexpected error occurred"}
             </p>
@@ -88,8 +88,8 @@ export class ErrorBoundary extends Component<Props, State> {
               <RefreshCw className="h-4 w-4" />
               Try Again
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </DashboardCard>
       );
     }
 

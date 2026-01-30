@@ -8,7 +8,7 @@
 
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { DashboardCard } from "@/components/ui/dashboard-card";
 
 /**
  * Loading skeleton for chart cards.
@@ -24,8 +24,8 @@ export function ChartSkeleton({
   height?: string;
 }) {
   return (
-    <Card className={cn("animate-pulse", className)}>
-      <CardHeader className="pb-2">
+    <DashboardCard className={cn("animate-pulse p-6 flex flex-col gap-6", className)}>
+      <div className="grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 pb-2">
         <div className="flex items-center justify-between">
           <Skeleton className="h-6 w-32" />
           {showControls && (
@@ -35,11 +35,11 @@ export function ChartSkeleton({
             </div>
           )}
         </div>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div>
         <Skeleton className={cn("w-full rounded-lg", height)} />
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardCard>
   );
 }
 
@@ -55,15 +55,15 @@ export function MetricCardSkeleton({
   showChange?: boolean;
 }) {
   return (
-    <Card className={cn("animate-pulse", className)}>
-      <CardHeader className="pb-2">
+    <DashboardCard className={cn("animate-pulse p-6 flex flex-col gap-6", className)}>
+      <div className="grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 pb-2">
         <Skeleton className="h-4 w-24" />
-      </CardHeader>
-      <CardContent className="space-y-2">
+      </div>
+      <div className="space-y-2">
         <Skeleton className="h-8 w-28" />
         {showChange && <Skeleton className="h-4 w-16" />}
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardCard>
   );
 }
 
