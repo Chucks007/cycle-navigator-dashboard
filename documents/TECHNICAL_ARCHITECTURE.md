@@ -22,7 +22,7 @@ This document provides a comprehensive overview of the Cycle Navigator Dashboard
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │                         Frontend Layer                            │
-│                  Next.js 15 (React Server Components)             │
+│                  Next.js 16 (React Server Components)             │
 │              ShadcN UI + Recharts + TanStack Query               │
 └────────────────────────────┬─────────────────────────────────────┘
                              │ HTTP/REST
@@ -55,7 +55,7 @@ This document provides a comprehensive overview of the Cycle Navigator Dashboard
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **Frontend** | Next.js 15, TypeScript, React 19 | Server-side rendering, client-side interactivity |
+| **Frontend** | Next.js 16, TypeScript, React 19 | Server-side rendering, client-side interactivity |
 | **UI Components** | ShadcN UI, Radix UI, Tailwind CSS | Accessible, styled component library |
 | **Charts** | Recharts | Interactive financial visualizations |
 | **State Management** | TanStack Query, React Context | Data fetching, caching, global state |
@@ -167,25 +167,17 @@ CREATE TABLE fred_series_metadata (
 
 ### Migration Process
 
-**Files:**
-- [scripts/timescale_migrations.sql](../scripts/timescale_migrations.sql)
-- [scripts/run_timescale_migrations.py](../scripts/run_timescale_migrations.py)
+Database migrations are managed using **Alembic**.
 
-**Steps:**
+- **Schema Changes**: Handled by Alembic (`scripts/migrate.py`).
+- **Hypertable Conversion**: Handled by `scripts/init_db.py` or legacy `scripts/run_timescale_migrations.py`.
 
-```bash
-# 1. CRITICAL: Back up production database
-pg_dump -h localhost -U cycle_user cycle_navigator > backup_$(date +%Y%m%d).sql
+For detailed migration instructions, see the **Database Management** section in [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md).
 
-# 2. Check prerequisites (TimescaleDB installed, version compatibility)
-python scripts/run_timescale_migrations.py --check-only
-
-# 3. Preview SQL without executing
-python scripts/run_timescale_migrations.py --dry-run
-
-# 4. Run migration (one-way operation - schedule maintenance window)
-python scripts/run_timescale_migrations.py
-```
+**Key Files:**
+- `alembic/versions/` - Schema migration versions
+- `scripts/migrate.py` - Alembic wrapper script
+- `scripts/init_db.py` - Full database initialization
 
 **Note:** Converting to hypertables is **irreversible**. Rollback requires restoring from backup.
 
@@ -569,14 +561,20 @@ def is_data_stale(last_updated: datetime) -> bool:
 
 ### Cache Keys
 
-```
-Pattern: {service}:{series_id}:{params}
+All Redis cache keys are managed through the `CacheKeys` class in `backend/cache_keys.py`. This ensures consistency and discoverability.
 
-Examples:
-- macro:M2SL:365
-- macro:CPIAUCSL:730
-- crypto:global:365
-- stock:AAPL:365
+**Key Patterns:**
+- **Macro Series**: `macro:{series_id}` (e.g., `macro:M2SL`)
+- **Macro Metadata**: `macro:meta:{series_id}`
+- **Crypto Dominance**: `crypto:dominance`
+- **Crypto History**: `crypto:history:{coin}:{days}`
+- **Locks**: `lock:{type}:{name}`
+
+**Management Tools:**
+Use `scripts/manage_cache.py` for cache operations:
+```bash
+python scripts/manage_cache.py list
+python scripts/manage_cache.py clear crypto
 ```
 
 ---
@@ -607,72 +605,12 @@ WHERE series_id = 'M2SL' AND month >= '2025-01-01';
 
 ---
 
-## Migration & Deployment
+## Deployment
 
-### Deployment Checklist
+For comprehensive deployment instructions, CI/CD pipeline details, container publishing, and rollback procedures, please refer to the **[Deployment Guide](DEPLOYMENT.md)**.
 
-Before deploying to production:
-
-- [ ] Back up production database: `pg_dump cycle_navigator > backup.sql`
-- [ ] Test multi-stage Docker build locally: `podman build -f docker/backend.Dockerfile .`
-- [ ] Run TimescaleDB migration on staging environment
-- [ ] Verify continuous aggregates are created: `SELECT * FROM timescaledb_information.continuous_aggregates;`
-- [ ] Test compression policies: `SELECT * FROM timescaledb_information.compression_settings;`
-- [x] ✅ Updated Celery module paths (deprecated: `backend.services.macro_worker` → current: `backend.celery_app`)
-- [ ] Verify all service health checks pass: `podman-compose ps`
-- [ ] Schedule maintenance window for production deployment
-- [ ] Monitor query latency after deployment
-
-### Breaking Changes
-
-**1. Celery Module Path Change**
-
-- **Deprecated Path:** `backend.services.macro_worker` (still works via compatibility shim with deprecation warning)
-- **Current Path:** `backend.celery_app`
-- **Status:** Migration complete - all scripts and docs updated
-- **Action Required:** Use `backend.celery_app` in all new deployments
-
-**2. TimescaleDB Hypertables**
-
-- **Impact:** After migration, tables become hypertables (one-way conversion)
-- **Most Queries:** Work unchanged
-- **DDL Operations:** May differ (e.g., cannot add foreign keys to distributed hypertables)
-
-### Rollback Plan
-
-If critical issues occur:
-
-1. **Celery Revert (not recommended - deprecated path):**
-   ```yaml
-   # docker-compose.yml (legacy compatibility only)
-   celery-worker:
-     command: celery -A backend.services.macro_worker worker --loglevel=info  # Deprecated
-   ```
-   
-   **Recommended approach:**
-   ```yaml
-   # docker-compose.yml
-   celery-worker:
-     command: celery -A backend.celery_app worker --loglevel=info  # Current
-   ```
-
-2. **Database Restore:**
-   ```bash
-   # Stop services
-   podman-compose down
-   
-   # Restore from backup
-   psql -U cycle_user cycle_navigator < backup.sql
-   
-   # Restart without TimescaleDB migrations
-   podman-compose up -d
-   ```
-
-3. **Docker Image Revert:**
-   ```bash
-   # Use previous image tag
-   podman pull ghcr.io/your-org/cycle-navigator-backend:previous-version
-   ```
+**Key Breaking Changes:**
+- **Celery Module Path**: Use `backend.celery_app` instead of the deprecated `backend.services.macro_worker`.
 
 ---
 

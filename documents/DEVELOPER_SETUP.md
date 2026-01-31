@@ -477,6 +477,68 @@ update_crypto_metrics()
 
 ---
 
+## Database Management & Migrations
+
+The project uses **Alembic** for version control of database schemas.
+
+### Quick Start
+
+**Initial Setup (Fresh Database):**
+```bash
+# Run all migrations to create tables
+python scripts/migrate.py upgrade
+
+# Or use init_db.py which includes migrations
+python scripts/init_db.py
+```
+
+**Existing Database (Already Has Tables):**
+If you have an existing database with tables already created manually:
+```bash
+# Mark database as up-to-date without running migrations
+python scripts/migrate.py stamp
+```
+
+### Common Operations
+
+**Check Status:**
+```bash
+# Quick status check
+python scripts/migrate.py check
+
+# Show current revision
+python scripts/migrate.py current
+
+# Show full migration history
+python scripts/migrate.py history
+```
+
+**Apply Migrations:**
+```bash
+# Upgrade to latest version
+python scripts/migrate.py upgrade
+
+# Downgrade one version
+python scripts/migrate.py downgrade -1
+```
+
+**Create New Migration:**
+```bash
+# Auto-generate migration from model changes
+python scripts/migrate.py create "Add new column to crypto_data"
+```
+
+### Migration Files
+- Location: `alembic/versions/`
+- Format: `YYYYMMDD_HHMM_<revision>_<description>.py`
+
+### Troubleshooting Migrations
+
+**"Table already exists"**: Run `python scripts/migrate.py stamp` to mark as current.
+**"Column already exists"**: Sync models and run `alembic revision --autogenerate`.
+
+---
+
 ## Running Tests
 
 ### Backend Tests

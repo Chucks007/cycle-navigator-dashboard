@@ -361,3 +361,43 @@ describe('StockMetricsSchema', () => {
 - [OpenAPI TypeScript Generator](https://www.npmjs.com/package/openapi-typescript)
 - Backend API Schema: http://localhost:8000/docs
 - Backend OpenAPI JSON: http://localhost:8000/openapi.json
+
+---
+
+## Quick Reference
+
+### Import Patterns
+
+```typescript
+// Recommended: Import from schemas (includes validation)
+import { StockMetrics, StockMetricsSchema } from '@/schemas/api-schemas';
+
+// Alternative: Import from types (backward compatible)
+import { StockMetrics } from '@/types/api';
+
+// For validation only
+import { StockMetricsSchema } from '@/schemas/api-schemas';
+```
+
+### Common Schemas
+
+- **Stock**: `StockMetricsSchema`, `StockHistoryPointSchema`
+- **Macro**: `LiquidityResponseSchema`, `CPIResponseSchema`, `MacroSummaryResponseSchema`
+- **Crypto**: `CryptoDominanceResponseSchema`
+- **Risk**: `RiskResponseSchema`, `RiskScoreResponseSchema`
+
+### NPM Scripts
+
+```bash
+npm run typecheck       # Type check
+npm run validate        # Type check + lint
+npm run generate:api    # Generate OpenAPI types
+```
+
+### Manual Validation
+
+```typescript
+const result = StockMetricsSchema.safeParse(data);
+if (result.success) console.log(result.data);
+else console.error(result.error.issues);
+```
