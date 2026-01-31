@@ -229,7 +229,7 @@ class ChartDefaultsConfig(BaseModel):
 class AppConfigResponse(BaseModel):
     """
     Application configuration response.
-    
+
     Exposes non-sensitive configuration to frontend for synchronization.
     This ensures frontend and backend use consistent settings.
     """

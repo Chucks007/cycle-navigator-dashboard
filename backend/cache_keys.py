@@ -10,10 +10,10 @@ used throughout the application. By centralizing key generation, we:
 
 Usage:
     from backend.cache_keys import CacheKeys
-    
+
     # Get a cache key
     key = CacheKeys.macro_series("M2SL")
-    
+
     # Invalidate keys by pattern
     CacheKeys.invalidate_pattern("macro:*")
 """
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class CacheKeys:
     """
     Centralized cache key generation and management.
-    
+
     All Redis keys in the application should be generated through this class
     to ensure consistency and make cache management easier.
     """
@@ -44,13 +44,13 @@ class CacheKeys:
     def macro_series(series_id: str) -> str:
         """
         Cache key for FRED time series data.
-        
+
         Args:
             series_id: FRED series identifier (e.g., 'M2SL', 'CPIAUCSL')
-            
+
         Returns:
             Redis key for this series
-            
+
         Example:
             >>> CacheKeys.macro_series("M2SL")
             'macro:M2SL'
@@ -61,13 +61,13 @@ class CacheKeys:
     def macro_metadata(series_id: str) -> str:
         """
         Cache key for FRED series metadata (last updated, observation count, etc.).
-        
+
         Args:
             series_id: FRED series identifier
-            
+
         Returns:
             Redis key for metadata
-            
+
         Example:
             >>> CacheKeys.macro_metadata("M2SL")
             'macro:meta:M2SL'
@@ -82,12 +82,12 @@ class CacheKeys:
     def crypto_dominance() -> str:
         """
         Cache key for crypto dominance time series data.
-        
+
         Stores daily snapshots of BTC/ETH dominance and total market cap.
-        
+
         Returns:
             Redis key for crypto dominance data
-            
+
         Example:
             >>> CacheKeys.crypto_dominance()
             'crypto:dominance'
@@ -98,13 +98,13 @@ class CacheKeys:
     def crypto_top_coins(limit: int = 100) -> str:
         """
         Cache key for top N coins by market cap.
-        
+
         Args:
             limit: Number of top coins (default: 100)
-            
+
         Returns:
             Redis key for top coins data
-            
+
         Example:
             >>> CacheKeys.crypto_top_coins(100)
             'crypto:top:100'
@@ -115,14 +115,14 @@ class CacheKeys:
     def crypto_coin_history(coin_id: str, days: int = 365) -> str:
         """
         Cache key for individual coin historical data.
-        
+
         Args:
             coin_id: CoinGecko coin identifier (e.g., 'bitcoin', 'ethereum')
             days: Number of days of history
-            
+
         Returns:
             Redis key for coin history
-            
+
         Example:
             >>> CacheKeys.crypto_coin_history("bitcoin", 365)
             'crypto:history:bitcoin:365'
@@ -137,15 +137,15 @@ class CacheKeys:
     def rate_limit_lock(lock_name: str = "rate_limit_lock") -> str:
         """
         Cache key for global rate limiting locks.
-        
+
         Used to prevent concurrent API calls that would violate rate limits.
-        
+
         Args:
             lock_name: Name of the lock (allows different locks for different APIs)
-            
+
         Returns:
             Redis key for the lock
-            
+
         Example:
             >>> CacheKeys.rate_limit_lock("fred_api")
             'lock:rate_limit_lock:fred_api'
@@ -156,15 +156,15 @@ class CacheKeys:
     def task_lock(task_name: str) -> str:
         """
         Cache key for Celery task locks.
-        
+
         Prevents duplicate execution of the same task.
-        
+
         Args:
             task_name: Name of the Celery task
-            
+
         Returns:
             Redis key for the task lock
-            
+
         Example:
             >>> CacheKeys.task_lock("update_crypto_metrics")
             'lock:task:update_crypto_metrics'
@@ -179,15 +179,15 @@ class CacheKeys:
     def get_pattern_prefix(category: str) -> str:
         """
         Get the Redis key pattern for a category of keys.
-        
+
         Useful for bulk operations like invalidation.
-        
+
         Args:
             category: Key category ('macro', 'crypto', 'lock')
-            
+
         Returns:
             Redis pattern string
-            
+
         Example:
             >>> CacheKeys.get_pattern_prefix("macro")
             'macro:*'
@@ -203,16 +203,16 @@ class CacheKeys:
     def invalidate_pattern(redis_client, pattern: str) -> int:
         """
         Delete all keys matching a pattern.
-        
+
         WARNING: Use with caution in production. This can be slow on large datasets.
-        
+
         Args:
             redis_client: Redis client instance
             pattern: Redis key pattern (supports wildcards)
-            
+
         Returns:
             Number of keys deleted
-            
+
         Example:
             >>> from backend.tasks.common import get_redis_client
             >>> redis_client = get_redis_client()
@@ -248,14 +248,14 @@ class CacheKeys:
     def invalidate_macro_series(redis_client, series_id: str | None = None) -> int:
         """
         Invalidate macro series cache.
-        
+
         Args:
             redis_client: Redis client instance
             series_id: Specific series to invalidate, or None for all
-            
+
         Returns:
             Number of keys deleted
-            
+
         Example:
             >>> CacheKeys.invalidate_macro_series(redis_client, "M2SL")
             1
@@ -275,13 +275,13 @@ class CacheKeys:
     def invalidate_crypto_data(redis_client) -> int:
         """
         Invalidate all crypto data cache.
-        
+
         Args:
             redis_client: Redis client instance
-            
+
         Returns:
             Number of keys deleted
-            
+
         Example:
             >>> CacheKeys.invalidate_crypto_data(redis_client)
             3
@@ -293,16 +293,16 @@ class CacheKeys:
     def list_all_keys(redis_client, category: str | None = None) -> list[str]:
         """
         List all cache keys, optionally filtered by category.
-        
+
         Useful for debugging and monitoring cache usage.
-        
+
         Args:
             redis_client: Redis client instance
             category: Filter by category ('macro', 'crypto', 'lock'), or None for all
-            
+
         Returns:
             List of Redis keys
-            
+
         Example:
             >>> CacheKeys.list_all_keys(redis_client, "macro")
             ['macro:M2SL', 'macro:CPIAUCSL', 'macro:meta:M2SL']

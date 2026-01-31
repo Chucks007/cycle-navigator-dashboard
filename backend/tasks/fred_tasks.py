@@ -85,7 +85,7 @@ def update_all_fred_series(self: Task) -> dict[str, Any]:
 
     Fetches all required macro indicators from FRED, stores in DB,
     and updates Redis cache. Uses global lock to prevent concurrent runs.
-    
+
     Uses Celery's group() for proper async parallel execution instead of
     blocking .get() calls which violate Celery's async execution model.
 

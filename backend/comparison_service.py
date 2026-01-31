@@ -39,11 +39,11 @@ COMPARISON_PERIODS = {
 def fetch_comparison_data(tickers: list[str], period: str = "1y") -> pd.DataFrame:
     """
     Fetch historical close prices for multiple tickers.
-    
+
     Args:
         tickers: List of ticker symbols to fetch
         period: Time period (ytd, 1y, 3y, 5y, 10y)
-    
+
     Returns:
         DataFrame with Date index and ticker columns containing Close prices
     """
@@ -96,12 +96,12 @@ def fetch_comparison_data(tickers: list[str], period: str = "1y") -> pd.DataFram
 def normalize_to_base_100(df: pd.DataFrame) -> pd.DataFrame:
     """
     Normalize all columns to start at 100.
-    
+
     Formula: Normalized_Price_t = (Price_t / Price_start) * 100
-    
+
     Args:
         df: DataFrame with price data
-    
+
     Returns:
         DataFrame with normalized values (all starting at 100)
     """
@@ -126,11 +126,11 @@ def fetch_normalized_comparison(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Fetch and normalize price data for multiple assets.
-    
+
     Args:
         tickers: List of ticker symbols
         period: Time period string (ytd, 1y, 3y, 5y, 10y)
-    
+
     Returns:
         Tuple of (raw_prices_df, normalized_df)
     """
@@ -147,19 +147,19 @@ def calculate_hard_vs_soft_ratio(
 ) -> pd.DataFrame:
     """
     Calculate the Hard Assets vs Soft Assets ratio.
-    
+
     Hard_Index = Average of normalized hard asset prices
     Soft_Index = Average of normalized soft asset prices
     Ratio = Hard_Index / Soft_Index
-    
+
     Rising ratio = Hard assets outperforming
     Falling ratio = Soft assets outperforming
-    
+
     Args:
         normalized_df: DataFrame with normalized prices (base 100)
         hard_assets: List of hard asset tickers (defaults to GLD, SLV, BTC-USD)
         soft_assets: List of soft asset tickers (defaults to SPY, TLT)
-    
+
     Returns:
         DataFrame with Hard_Index, Soft_Index, and Ratio columns
     """
@@ -194,10 +194,10 @@ def calculate_hard_vs_soft_ratio(
 def get_performance_summary(normalized_df: pd.DataFrame) -> dict[str, dict]:
     """
     Calculate performance summary for each asset.
-    
+
     Args:
         normalized_df: DataFrame with normalized prices
-    
+
     Returns:
         Dictionary with ticker -> {current_value, pct_gain, asset_type}
     """
@@ -235,7 +235,7 @@ def get_performance_summary(normalized_df: pd.DataFrame) -> dict[str, dict]:
 def get_asset_info() -> dict[str, dict]:
     """
     Return information about available assets for the UI.
-    
+
     Returns:
         Dictionary with asset type -> {ticker: name} mappings
     """
@@ -249,12 +249,12 @@ def get_asset_info() -> dict[str, dict]:
 def get_barbell_comparison(period: str = "1y") -> list[dict]:
     """
     Orchestrator function for the Barbell Strategy comparison.
-    
+
     Fetches data, calculates ratios, and formats the response in one go.
-    
+
     Args:
         period: Time period string (ytd, 1y, 3y, 5y, 10y)
-    
+
     Returns:
         List of dictionaries with date, Hard_Index, Soft_Index, Ratio, Ratio_Normalized
     """

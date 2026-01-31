@@ -32,7 +32,7 @@ coingecko_client = None  # Use get_coingecko_client() instead
 def init_db():
     """
     Initialize database tables.
-    
+
     DEPRECATED: Use scripts/init_db.py instead.
     This function is kept for backward compatibility but does nothing.
     Database initialization should be done explicitly via init_db.py.

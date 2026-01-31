@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def initialize_cache():
     """
     Populate Redis cache with FRED and crypto data on startup.
-    
+
     Uses synchronous fetch functions that don't depend on Celery workers,
     ensuring reliable initialization even during container startup.
     """

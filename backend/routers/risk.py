@@ -19,10 +19,10 @@ router = APIRouter(
 def get_risk_data(ticker: str):
     """
     Get full risk data including logarithmic regression bands for an asset.
-    
+
     Returns risk score (0.0-1.0), fair value bands, and current price position.
     Best used for charting with band overlays.
-    
+
     Supported tickers: BTC, ETH (and their -USD variants)
     """
     result = risk_service.get_risk_data(ticker)
@@ -34,7 +34,7 @@ def get_risk_data(ticker: str):
 def get_risk_score(ticker: str):
     """
     Get lightweight risk score data for an asset (faster, for dashboard cards).
-    
+
     Returns just the risk score, current band, price, and fair value.
     """
     result = risk_service.get_risk_score_only(ticker)

@@ -31,19 +31,19 @@ def get_crypto_dominance(
 ):
     """
     Returns global cryptocurrency market dominance data.
-    
+
     Includes:
     - Total market cap
     - Bitcoin (BTC) dominance percentage
     - Ethereum (ETH) dominance percentage
     - Altcoin market cap (Total - BTC - ETH)
-    
+
     Data is fetched from Redis cache (fast) or PostgreSQL (fallback).
     Background worker updates this daily to avoid rate limits.
-    
+
     Args:
         days: Number of days of historical data (max 365 for demo API key)
-    
+
     Returns:
         {
             'data': List of data points with timestamp, total_mcap, btc_dominance, etc.

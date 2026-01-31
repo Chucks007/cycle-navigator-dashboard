@@ -2,7 +2,7 @@
 Logarithmic Regression Risk Service
 
 Implements non-linear logarithmic regression logic to create "Fair Value" bands
-for volatile assets (primarily BTC and ETH). This provides the mathematical basis 
+for volatile assets (primarily BTC and ETH). This provides the mathematical basis
 for the "Risk Metric" (0-1) used throughout the dashboard.
 
 Mathematical Formula: y = 10^(a * ln(x) + b)
@@ -51,15 +51,15 @@ CACHE_TTL_HOURS = 24
 def _log_regression_model(x: np.ndarray, a: float, b: float) -> np.ndarray:
     """
     Logarithmic regression model: y = 10^(a * ln(x) + b)
-    
+
     This power law model captures the diminishing growth rate of crypto assets
     over time while accounting for their exponential price appreciation.
-    
+
     Args:
         x: Days since inception (must be > 0)
         a: Slope coefficient (growth rate decay)
         b: Intercept (initial value offset)
-    
+
     Returns:
         Predicted price values
     """
@@ -106,11 +106,11 @@ def _make_naive(dt: datetime) -> datetime:
 def fetch_historical_data(ticker: str, period: str = "max") -> pd.DataFrame:
     """
     Fetch historical price data for regression analysis.
-    
+
     Args:
         ticker: Asset ticker (e.g., "BTC-USD", "ETH-USD")
         period: Time period to fetch ("max" for all available data)
-    
+
     Returns:
         DataFrame with Date index and Close prices
     """
@@ -154,12 +154,12 @@ def fit_regression(
 ) -> tuple[float, float, float]:
     """
     Fit logarithmic regression to historical price data.
-    
+
     Args:
         dates: List of dates
         prices: List of corresponding prices
         inception_date: Optional inception date for x-axis calculation
-    
+
     Returns:
         Tuple of (a, b, residual_std) where a and b are regression coefficients
         and residual_std is the standard deviation of residuals in log space
@@ -188,7 +188,7 @@ def fit_regression(
 
     # Transform to log space for fitting
     log_y = np.log10(y)
-    ln_x = np.log(x)
+    np.log(x)
 
     # Initial guess for parameters
     # a: typical values for BTC are around 2-4
@@ -230,14 +230,14 @@ def generate_bands(
 ) -> list[dict]:
     """
     Generate regression bands from fitted parameters.
-    
+
     Args:
         dates: List of dates for which to generate bands
         a: Regression slope coefficient
         b: Regression intercept
         residual_std: Standard deviation of residuals
         inception_date: Inception date for x calculation
-    
+
     Returns:
         List of band dictionaries with values for each date
     """
@@ -270,7 +270,7 @@ def generate_bands(
             "std_multiplier": std_mult,
             "values": [
                 {"date": date.strftime("%Y-%m-%d"), "value": val}
-                for date, val in zip(dates, values)
+                for date, val in zip(dates, values, strict=False)
                 if val is not None
             ]
         })
@@ -288,18 +288,18 @@ def calculate_risk_score(
 ) -> float:
     """
     Calculate the risk score (0.0 - 1.0) based on current price position.
-    
+
     0.0 = Maximally undervalued (at or below -3 std)
     0.5 = Fair value (on regression line)
     1.0 = Maximally overvalued (at or above +3 std)
-    
+
     Args:
         current_price: Current asset price
         current_date: Current date
         a, b: Regression coefficients
         residual_std: Standard deviation of residuals
         inception_date: Asset inception date
-    
+
     Returns:
         Risk score between 0.0 and 1.0
     """
@@ -309,7 +309,7 @@ def calculate_risk_score(
 
     # Calculate fair value
     log_fair = a * np.log(days) + b
-    fair_value = np.power(10, log_fair)
+    np.power(10, log_fair)
 
     # Calculate current position in standard deviations from fair value
     if current_price <= 0:
@@ -329,10 +329,10 @@ def calculate_risk_score(
 def get_current_band(risk_score: float) -> dict:
     """
     Determine which band the current risk score falls into.
-    
+
     Args:
         risk_score: Risk score between 0.0 and 1.0
-    
+
     Returns:
         Band configuration dictionary
     """
@@ -355,11 +355,11 @@ def get_current_band(risk_score: float) -> dict:
 def get_risk_data(ticker: str, use_cache: bool = True) -> dict:
     """
     Main function to get complete risk data for an asset.
-    
+
     Args:
         ticker: Asset ticker (e.g., "BTC", "ETH", "BTC-USD")
         use_cache: Whether to use cached regression parameters
-    
+
     Returns:
         Dictionary containing:
         - ticker: Asset ticker
@@ -388,11 +388,11 @@ def get_risk_data(ticker: str, use_cache: bool = True) -> dict:
     prices = data[price_col].tolist()
 
     # Filter NaN values
-    valid_data = [(d, p) for d, p in zip(dates, prices) if pd.notna(p) and p > 0]
+    valid_data = [(d, p) for d, p in zip(dates, prices, strict=False) if pd.notna(p) and p > 0]
     if not valid_data:
         raise ValueError(f"No valid price data for {ticker}")
 
-    dates, prices = zip(*valid_data)
+    dates, prices = zip(*valid_data, strict=False)
     dates = list(dates)
     prices = list(prices)
 
@@ -472,10 +472,10 @@ def get_risk_data(ticker: str, use_cache: bool = True) -> dict:
 def get_risk_score_only(ticker: str) -> dict:
     """
     Get just the risk score without full band data (faster for dashboard cards).
-    
+
     Args:
         ticker: Asset ticker
-    
+
     Returns:
         Dictionary with ticker, current_risk, current_band, current_price, fair_value
     """

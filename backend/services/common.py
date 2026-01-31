@@ -1,4 +1,5 @@
 
+import contextlib
 import logging
 from abc import ABC
 from collections.abc import Callable
@@ -19,22 +20,22 @@ T = TypeVar("T")
 class CachedDataService(ABC):
     """
     Base class for services that use Redis cache with PostgreSQL fallback.
-    
+
     Provides common patterns for:
     - Data staleness checking
     - Cache-first with database fallback
     - Consistent metadata structure
-    
+
     Subclasses should implement their own Redis/DB fetch methods.
     """
 
     def _is_data_stale(self, last_updated: datetime | None) -> bool:
         """
         Check if data is stale based on configured threshold.
-        
+
         Args:
             last_updated: Timestamp of when data was last updated
-            
+
         Returns:
             True if data is stale or last_updated is None
         """
@@ -55,11 +56,11 @@ class CachedDataService(ABC):
     ) -> tuple[T | None, datetime | None, bool]:
         """
         Fetch data from cache first, falling back to database.
-        
+
         Args:
             cache_fn: Function that returns (data, last_updated) from cache
             db_fn: Function that returns (data, last_updated) from database
-            
+
         Returns:
             Tuple of (data, last_updated, is_stale)
         """
@@ -83,12 +84,12 @@ class CachedDataService(ABC):
     ) -> dict[str, Any]:
         """
         Build consistent metadata structure for API responses.
-        
+
         Args:
             last_updated: Timestamp of last data update
             is_stale: Whether the data is considered stale
             error: Optional error message
-            
+
         Returns:
             Metadata dict with last_updated, is_stale, and optional error
         """
@@ -108,15 +109,15 @@ class CachedDataService(ABC):
     ) -> tuple[T | None, dict[str, Any]]:
         """
         Fetch data from cache first, falling back to database, and build metadata.
-        
+
         This is the primary method for services to use when fetching cached data.
         It combines _get_with_fallback and _build_metadata for convenience.
-        
+
         Args:
             cache_fn: Function that returns (data, last_updated) from cache
             db_fn: Function that returns (data, last_updated) from database
             error_msg: Error message to include in metadata if no data found
-            
+
         Returns:
             Tuple of (data, metadata_dict)
             - data: The fetched data (or None if not found)
@@ -134,10 +135,10 @@ class CachedDataService(ABC):
     def _parse_timestamp(self, timestamp_str: str) -> datetime:
         """
         Parse an ISO format timestamp string and ensure it's timezone-aware.
-        
+
         Args:
             timestamp_str: ISO format timestamp string
-            
+
         Returns:
             Timezone-aware datetime object (UTC if no timezone info present)
         """
@@ -156,12 +157,12 @@ def align_dataframes(
     """
     Aligns two DataFrames on their index (assumed to be DatetimeIndex).
     Useful for comparing low-frequency Macro data with high-frequency Market data.
-    
+
     Args:
         df1: Primary DataFrame (e.g. Market Data)
         df2: Secondary DataFrame (e.g. Macro Data)
         method: Fill method ('ffill', 'bfill', None). Default 'ffill' propagates last valid observation forward.
-    
+
     Returns:
         Combined DataFrame with aligned index.
     """
@@ -171,16 +172,12 @@ def align_dataframes(
     d2 = df2.copy()
 
     if not isinstance(d1.index, pd.DatetimeIndex):
-         try:
+         with contextlib.suppress(Exception):
              d1.index = pd.to_datetime(d1.index)
-         except Exception:
-             pass
 
     if not isinstance(d2.index, pd.DatetimeIndex):
-         try:
+         with contextlib.suppress(Exception):
              d2.index = pd.to_datetime(d2.index)
-         except Exception:
-             pass
 
     # Merge
     # Outer join to keep all dates from both.
@@ -203,9 +200,8 @@ def standardize_dataframe(df: pd.DataFrame, timezone: str = 'US/Eastern', reset_
     df = df.copy()
 
     # Handle MultiIndex columns
-    if isinstance(df.columns, pd.MultiIndex):
-        if df.columns.nlevels == 2:
-            df.columns = df.columns.droplevel(1)
+    if isinstance(df.columns, pd.MultiIndex) and df.columns.nlevels == 2:
+        df.columns = df.columns.droplevel(1)
 
     # Timezone conversion
     # Ensure index is DatetimeIndex for this operation

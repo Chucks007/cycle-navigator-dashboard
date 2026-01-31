@@ -48,7 +48,7 @@ class CoinGeckoClient:
     def get_global_data(self) -> dict | None:
         """
         Fetch global cryptocurrency market data.
-        
+
         Endpoint: GET /global
         Returns total market cap, volume, and dominance percentages.
         """
@@ -63,7 +63,7 @@ class CoinGeckoClient:
     def get_top_coins(self, limit: int = 100) -> list[dict] | None:
         """
         Fetch top coins by market cap.
-        
+
         Endpoint: GET /coins/markets
         Used for "Barbell" tracker to analyze top 100 coins.
         """
@@ -89,10 +89,10 @@ class CoinGeckoClient:
     def get_coin_history(self, coin_id: str, days: int = 365) -> dict | None:
         """
         Fetch historical price data for a specific coin.
-        
+
         Endpoint: GET /coins/{id}/market_chart
         Used for log-regression analysis and historical charting.
-        
+
         Note: Demo API key limited to 365 days of history.
         """
         try:
@@ -119,9 +119,9 @@ class CoinGeckoClient:
 class CryptoService(CachedDataService):
     """
     Service for managing cryptocurrency market data with caching and persistence.
-    
+
     Inherits from CachedDataService for common Redis/DB fallback patterns.
-    
+
     Follows MacroService pattern:
     - Redis cache for fast frontend access (<100ms)
     - PostgreSQL for historical data and source of truth
@@ -142,7 +142,7 @@ class CryptoService(CachedDataService):
     def _get_dominance_from_redis(self) -> tuple[list[dict] | None, datetime | None]:
         """
         Get dominance data from Redis cache.
-        
+
         Returns:
             tuple: (list of data points, last_updated datetime) or (None, None) if not found
         """
@@ -163,7 +163,7 @@ class CryptoService(CachedDataService):
     def _get_dominance_from_db(self, days: int = 365) -> tuple[list[dict] | None, datetime | None]:
         """
         Get dominance data from PostgreSQL database as fallback.
-        
+
         Returns:
             tuple: (list of data points, last_updated datetime) or (None, None) if not found
         """
@@ -212,13 +212,13 @@ class CryptoService(CachedDataService):
     def get_dominance(self, days: int = 365) -> dict:
         """
         Get cryptocurrency dominance data (BTC, ETH, Altcoins).
-        
+
         Returns cached data from Redis (fast) or PostgreSQL (fallback).
         Worker updates this data daily to avoid rate limits.
-        
+
         Args:
             days: Number of days of historical data to return (max 365 for demo key)
-        
+
         Returns:
             dict: {
                 'data': list of data points with timestamp, total_mcap, btc_dominance, etc.
@@ -264,7 +264,7 @@ class CryptoService(CachedDataService):
     def get_current_snapshot(self) -> dict | None:
         """
         Get current global crypto market snapshot.
-        
+
         This is a utility method for the worker to fetch fresh data from CoinGecko.
         Not intended for direct API use (use get_dominance instead).
         """
@@ -307,16 +307,16 @@ def update_crypto_dominance_data(
 ) -> dict[str, Any]:
     """
     Unified method to store crypto dominance data in DB, update metadata, and cache in Redis.
-    
+
     This method consolidates the storage/caching logic used by both Celery tasks
     and synchronous initialization scripts to maintain a single source of truth.
-    
+
     Args:
         db: Database session
         snapshot: Dict with timestamp, total_mcap, btc_dominance, eth_dominance, altcoin_mcap
         status: Fetch status ('success' or 'failed')
         error_message: Optional error message if status is 'failed'
-        
+
     Returns:
         Dict with operation status and metadata
     """
@@ -423,10 +423,10 @@ def update_crypto_dominance_data(
 def fetch_crypto_dominance_sync() -> dict[str, Any]:
     """
     Synchronous crypto dominance fetch for initialization.
-    
+
     Fetches global crypto data directly without using Celery tasks.
     Used during application startup to populate the cache.
-    
+
     Returns:
         Dict with status and crypto data or error
     """

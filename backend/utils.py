@@ -24,12 +24,12 @@ F = TypeVar("F", bound=Callable)
 def handle_api_errors(func: F) -> F:
     """
     Decorator for consistent error handling across FastAPI route handlers.
-    
+
     Catches common exception types and converts them to appropriate HTTPExceptions:
     - ValueError -> 400 Bad Request
     - ConnectionError/Timeout/RequestException -> 502 Bad Gateway (upstream error)
     - Exception -> 500 Internal Server Error
-    
+
     Usage:
         @router.get("/endpoint")
         @handle_api_errors

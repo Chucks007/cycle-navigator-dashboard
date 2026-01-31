@@ -31,7 +31,7 @@ FRED_SERIES_LIST = config.FRED_SERIES_LIST
 class MacroService(CachedDataService):
     """
     Service for fetching macroeconomic data from FRED API.
-    
+
     Inherits from CachedDataService for common Redis/DB fallback patterns.
     """
 
@@ -49,7 +49,7 @@ class MacroService(CachedDataService):
     def _get_series_from_redis(self, series_id: str) -> tuple[pd.Series | None, datetime | None]:
         """
         Get series data from Redis cache.
-        
+
         Returns:
             tuple: (pandas Series with data, last_updated datetime) or (None, None) if not found
         """
@@ -76,7 +76,7 @@ class MacroService(CachedDataService):
     def _get_series_from_db(self, series_id: str) -> tuple[pd.Series, datetime]:
         """
         Get series data from PostgreSQL database as fallback.
-        
+
         Returns:
             tuple: (pandas Series with data, last_updated datetime) or (None, None) if not found
         """
@@ -116,7 +116,7 @@ class MacroService(CachedDataService):
     def _get_series(self, series_id: str) -> tuple[pd.Series, dict]:
         """
         Fetches a series from Redis cache (primary) or PostgreSQL (fallback).
-        
+
         Returns:
             tuple: (pandas Series with data, metadata dict with last_updated and is_stale)
         """
@@ -141,7 +141,7 @@ class MacroService(CachedDataService):
     def _prepare_macro_response(self, df: pd.DataFrame, metadata: dict, days: int = None) -> tuple[list, dict]:
         """
         Helper to standardize, filter, and format macro data for API response.
-        
+
         Returns:
             tuple: (list of data points, metadata dict with last_updated and is_stale)
         """
@@ -327,7 +327,7 @@ class MacroService(CachedDataService):
     def get_cpi_series(self, include_metadata: bool = False):
         """
         Returns the raw CPI Index series (CPIAUCSL) with metadata.
-        
+
         Args:
             include_metadata: if True, return dict with 'data' and 'metadata', otherwise return legacy list
         """
@@ -352,10 +352,10 @@ class MacroService(CachedDataService):
         """
         Aggregates all macro indicators and calculates summary metrics.
         This moves business logic out of the router and into the service layer.
-        
+
         Args:
             days: Optional number of days of history to return for series data
-            
+
         Returns:
             Dict containing liquidity, debt_status, real_rates, cpi data and summary metrics
         """
@@ -400,17 +400,17 @@ def update_fred_series_data(
 ) -> dict[str, Any]:
     """
     Unified method to store FRED series data in DB, update metadata, and cache in Redis.
-    
+
     This method consolidates the storage/caching logic used by both Celery tasks
     and synchronous initialization scripts to maintain a single source of truth.
-    
+
     Args:
         db: Database session
         series_id: FRED series ID
         data: Pandas Series with datetime index and values
         status: Fetch status ('success' or 'failed')
         error_message: Optional error message if status is 'failed'
-        
+
     Returns:
         Dict with operation status and metadata
     """
@@ -498,10 +498,10 @@ def update_fred_series_data(
 def fetch_all_fred_series_sync() -> dict[str, Any]:
     """
     Synchronous FRED data fetch for initialization.
-    
+
     Fetches all FRED series directly without using Celery tasks.
     Used during application startup to populate the cache.
-    
+
     Returns:
         Dict with status, total count, successful count, and results
     """

@@ -32,7 +32,7 @@ class HealthCheckResult:
 class HealthCheckService:
     """
     Centralized health check service for validating critical application dependencies.
-    
+
     Provides both synchronous health checks for startup validation and
     structured results for health endpoints.
     """
@@ -49,7 +49,7 @@ class HealthCheckService:
     def check_env_config(self) -> dict[str, HealthCheckResult]:
         """
         Validate environment configuration.
-        
+
         Returns:
             Dictionary mapping config keys to HealthCheckResult objects.
         """
@@ -106,7 +106,7 @@ class HealthCheckService:
     def check_database(self) -> HealthCheckResult:
         """
         Check database connectivity and retrieve version information.
-        
+
         Returns:
             HealthCheckResult with database status and version details.
         """
@@ -132,7 +132,7 @@ class HealthCheckService:
     def check_redis(self) -> HealthCheckResult:
         """
         Check Redis connectivity and retrieve server information.
-        
+
         Returns:
             HealthCheckResult with Redis status and server details.
         """
@@ -159,7 +159,7 @@ class HealthCheckService:
     def check_tables(self) -> HealthCheckResult:
         """
         Verify that all required database tables exist and check record counts.
-        
+
         Returns:
             HealthCheckResult with table validation status and counts.
         """
@@ -216,10 +216,10 @@ class HealthCheckService:
     def run_all_checks(self) -> dict[str, Any]:
         """
         Run all health checks and return structured results.
-        
+
         This method is designed for health endpoints that need a complete
         status overview.
-        
+
         Returns:
             Dictionary with overall status and individual check results.
         """
@@ -266,10 +266,10 @@ class HealthCheckService:
     def log_startup_checks(self) -> bool:
         """
         Run all health checks and log results for startup validation.
-        
+
         This method is designed for startup event, providing detailed logging
         and returning a boolean indicating if all critical checks passed.
-        
+
         Returns:
             True if all critical checks passed, False otherwise.
         """
@@ -285,7 +285,7 @@ class HealthCheckService:
         logger.info("1. Checking environment configuration...")
         env_results = self.check_env_config()
 
-        for key, result in env_results.items():
+        for _key, result in env_results.items():
             if result.status == "ok":
                 logger.info(f"✓ {result.message}")
             elif result.status == "warning":

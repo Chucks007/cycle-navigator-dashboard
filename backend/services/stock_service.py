@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 class StockService:
     """
     Unified service for stock data operations.
-    
+
     Implements a class-based singleton pattern with LRU caching to minimize
     redundant Yahoo Finance API calls within a 15-minute window.
     """
@@ -46,13 +46,13 @@ class StockService:
     ) -> pd.DataFrame:
         """
         Internal cached fetcher for Yahoo Finance data.
-        
+
         Args:
             ticker: Stock symbol (e.g., 'AAPL')
             period: Time period (e.g., '1d', '1mo', '1y', 'max')
             interval: Data interval (e.g., '1m', '1h', '1d', '1wk')
             cache_key: Timestamp-based key for 15-minute cache buckets
-            
+
         Returns:
             pd.DataFrame: Raw OHLCV data from Yahoo Finance
         """
@@ -83,10 +83,10 @@ class StockService:
     def _fetch_raw_batch_data(self, tickers: list[str]) -> pd.DataFrame:
         """
         Downloads batch price data for multiple tickers.
-        
+
         Args:
             tickers: List of stock symbols
-            
+
         Returns:
             pd.DataFrame: Batch data grouped by ticker
         """
@@ -109,11 +109,11 @@ class StockService:
     def _calculate_batch_deltas(self, data: pd.DataFrame, tickers: list[str]) -> dict:
         """
         Calculates price, delta, and pct_delta for each ticker from batch data.
-        
+
         Args:
             data: Batch DataFrame from yfinance
             tickers: List of tickers to process
-            
+
         Returns:
             dict: Mapping of ticker -> {price, delta, pct_delta}
         """
@@ -171,15 +171,15 @@ class StockService:
     ) -> pd.DataFrame:
         """
         Fetches historical price data with standardized formatting.
-        
+
         This is the primary data fetcher with 15-minute caching to prevent
         redundant API calls.
-        
+
         Args:
             ticker: Stock symbol
             period: Time period (default: '1y')
             interval: Data interval (default: '1d')
-            
+
         Returns:
             pd.DataFrame: Standardized OHLCV data with DatetimeIndex
         """
@@ -201,7 +201,7 @@ class StockService:
     ) -> pd.DataFrame:
         """
         Legacy-compatible wrapper for get_historical_prices.
-        
+
         Raises:
             Exception: If data is empty or fetch fails
         """
@@ -215,12 +215,12 @@ class StockService:
     def fetch_batch_prices(self, tickers: list[str]) -> dict:
         """
         Fetches batch data and calculates price deltas for multiple tickers.
-        
+
         Optimized to avoid N+1 API call problems for portfolio/sidebar views.
-        
+
         Args:
             tickers: List of stock symbols
-            
+
         Returns:
             dict: Mapping of ticker -> {price, delta, pct_delta}
         """
@@ -239,10 +239,10 @@ class StockService:
     def process_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """
         Formats the date & time to ensure timezone awareness with correct formatting.
-        
+
         Args:
             data: Raw DataFrame with DatetimeIndex
-            
+
         Returns:
             pd.DataFrame: Processed DataFrame with 'Datetime' column and standardized index
         """
@@ -260,11 +260,11 @@ class StockService:
     ) -> pd.DataFrame:
         """
         Adds standard technical indicators (SMA, EMA, RSI).
-        
+
         Args:
             data: DataFrame with 'Close' column
             fill_na: If True, fill NaN values with 0 (default: True)
-            
+
         Returns:
             pd.DataFrame: DataFrame with additional columns: 'SMA_20', 'EMA_20', 'RSI_14'
         """
@@ -287,15 +287,15 @@ class StockService:
     ) -> pd.DataFrame:
         """
         Fetches price data and adds technical indicators.
-        
-        Specifically adds 20-period SMA and 21-period EMA for the Bull Market 
+
+        Specifically adds 20-period SMA and 21-period EMA for the Bull Market
         Support Band when used with weekly interval.
-        
+
         Args:
             ticker: Stock symbol
             period: Time period (default: '2y' for weekly charts)
             interval: Data interval (default: '1wk')
-            
+
         Returns:
             pd.DataFrame: Price data with SMA_20 and EMA_21 columns
         """
@@ -321,7 +321,7 @@ class StockService:
     def fetch_risk_free_rate(self) -> float:
         """
         Fetches the current 10-Year Treasury Yield from yfinance.
-        
+
         Returns:
             float: The latest yield as a decimal (e.g. 0.045)
         """
@@ -357,13 +357,13 @@ class StockService:
     ) -> tuple[float, float]:
         """
         Calculates Annualized Volatility and Sharpe Ratio.
-        
+
         Pure calculation method - does NOT call API.
-        
+
         Args:
             data: DataFrame with 'Close' column
             risk_free_rate: Risk-free rate as decimal (default: from config)
-            
+
         Returns:
             tuple: (volatility, sharpe_ratio) as floats
         """
@@ -406,13 +406,13 @@ class StockService:
     ) -> schemas.StockMetrics:
         """
         Calculates comprehensive stock metrics from price data.
-        
+
         Takes risk_free_rate as input to avoid API calls inside a calculation function.
-        
+
         Args:
             data: DataFrame with OHLCV columns
             risk_free_rate: Risk-free rate for Sharpe calculation
-            
+
         Returns:
             schemas.StockMetrics: Pydantic model with calculated metrics
         """
@@ -448,11 +448,11 @@ class StockService:
     ) -> dict:
         """
         Internal cached fetcher for yfinance fundamentals (.info).
-        
+
         Args:
             ticker: Stock symbol (e.g., 'AAPL')
             cache_key: Timestamp-based key for 15-minute cache buckets
-            
+
         Returns:
             dict: Raw fundamentals data from yfinance
         """
@@ -480,16 +480,16 @@ class StockService:
     def fetch_fundamentals(self, ticker: str) -> schemas.StockFundamentals:
         """
         Fetches fundamental metrics for a stock from yfinance.
-        
+
         Returns key valuation and risk metrics including:
         - Market Cap, P/E ratios, Beta
         - 52-week High/Low
         - Dividend Yield, EPS, Profit Margin
         - Price-to-Sales, Debt-to-Equity
-        
+
         Args:
             ticker: Stock symbol (e.g., 'AAPL')
-            
+
         Returns:
             schemas.StockFundamentals: Pydantic model with fundamental metrics
         """

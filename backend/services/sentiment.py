@@ -145,7 +145,7 @@ def get_sentiment_label(score: float) -> str:
 def fetch_news_sentiment(ticker: str) -> dict:
     """
     Orchestrator: Fetches, parses, analyzes, and formats news sentiment.
-    
+
     Returns:
         schemas.SentimentResponse: A dictionary (or Pydantic model) containing:
         - sentiment_score (float): Average sentiment score.

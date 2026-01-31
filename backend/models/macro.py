@@ -17,7 +17,7 @@ Base = declarative_base()
 class FREDSeriesData(Base):
     """
     Stores individual observations for FRED time series.
-    
+
     Each row represents one data point (date + value) for a specific FRED series.
     This allows us to store historical data without re-fetching from FRED API.
     """
@@ -42,7 +42,7 @@ class FREDSeriesData(Base):
 class FREDSeriesMetadata(Base):
     """
     Stores metadata about FRED series updates.
-    
+
     Tracks when each series was last successfully fetched from FRED API
     to implement smart refresh logic and prevent unnecessary API calls.
     """

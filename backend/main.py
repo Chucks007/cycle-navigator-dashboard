@@ -39,7 +39,7 @@ app.include_router(config_router.router)
 async def startup_event():
     """
     Validate critical services and configuration on startup.
-    
+
     Performs fail-fast validation to catch configuration issues early.
     Logs warnings for non-critical issues, errors for critical failures.
     """
@@ -56,7 +56,7 @@ def health_check():
 def detailed_health_check():
     """
     Detailed health check with database, Redis, and table validation.
-    
+
     Returns status of all critical services.
     """
     return health_service.run_all_checks()

@@ -74,7 +74,7 @@ def get_stock_indicators(
 def get_stock_fundamentals(ticker: str):
     """
     Fetch fundamental metrics for a stock.
-    
+
     Returns valuation metrics (P/E, P/S), risk metrics (Beta, 52-week range),
     and profitability metrics (EPS, Profit Margin, Dividend Yield).
     """

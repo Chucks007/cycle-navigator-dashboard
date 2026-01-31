@@ -15,7 +15,7 @@ from .macro import Base
 class CryptoData(Base):
     """
     Stores global cryptocurrency market data from CoinGecko.
-    
+
     Each row represents a daily snapshot of global crypto metrics including
     total market cap, Bitcoin/Ethereum dominance, and calculated altcoin market cap.
     """
@@ -37,7 +37,7 @@ class CryptoData(Base):
 class CryptoMetadata(Base):
     """
     Stores metadata about CoinGecko API fetches.
-    
+
     Tracks when global crypto data was last successfully fetched from CoinGecko
     to implement refresh logic and monitor API health.
     """

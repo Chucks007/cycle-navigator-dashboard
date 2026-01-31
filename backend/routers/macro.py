@@ -20,11 +20,11 @@ router = APIRouter(
 def get_macro_summary(days: int = Query(None, description="Number of days of history to return")):
     """
     Returns all macro data (liquidity, debt status, real rates, CPI) in a single request.
-    
+
     This endpoint is optimized for frontend dashboards that need multiple macro indicators.
     Instead of making 4 separate API calls, the frontend can fetch everything at once,
     reducing latency and preventing redundant database queries.
-    
+
     The response includes a summary object with the latest values for quick display.
     """
     # Delegate to service layer for business logic

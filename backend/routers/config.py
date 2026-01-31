@@ -52,18 +52,18 @@ TIMEFRAMES = [
 def get_app_config():
     """
     Returns application configuration.
-    
+
     This endpoint exposes non-sensitive configuration values that the frontend
     needs to stay in sync with the backend. Changes to these values in config.py
     are automatically reflected here.
-    
+
     Use cases:
     - Timeframe options for chart controls
     - Cache TTL for data freshness indicators
     - API rate limits for client-side throttling
     - Chart indicator defaults
     - Market indices and watchlist tickers
-    
+
     Note: Sensitive values (API keys, database URLs) are NOT exposed.
     """
     return schemas.AppConfigResponse(
