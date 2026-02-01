@@ -75,6 +75,48 @@ FRED_SERIES_LIST = [
     FRED_SERIES_CPI,
 ]
 
+# FRED Series Metadata for overlay feature
+# Maps series_id to human-readable name, description, frequency, and units
+FRED_SERIES_INFO = {
+    FRED_SERIES_M2: {
+        "name": "M2 Money Supply",
+        "description": "M2 includes a broader set of financial assets held principally by households",
+        "frequency": "Monthly",
+        "units": "Billions of Dollars",
+    },
+    FRED_SERIES_INTEREST: {
+        "name": "Federal Interest Payments",
+        "description": "Federal government interest payments on debt",
+        "frequency": "Quarterly",
+        "units": "Billions of Dollars",
+    },
+    FRED_SERIES_TAX: {
+        "name": "Federal Tax Receipts",
+        "description": "Federal government current tax receipts",
+        "frequency": "Quarterly",
+        "units": "Billions of Dollars",
+    },
+    FRED_SERIES_10Y_YIELD: {
+        "name": "10-Year Treasury Yield",
+        "description": "Market yield on U.S. Treasury securities at 10-year constant maturity",
+        "frequency": "Daily",
+        "units": "Percent",
+    },
+    FRED_SERIES_CPI: {
+        "name": "Consumer Price Index",
+        "description": "Consumer Price Index for All Urban Consumers: All Items",
+        "frequency": "Monthly",
+        "units": "Index 1982-1984=100",
+    },
+}
+
+# Overlay-friendly series (excludes intermediate calculation series)
+OVERLAY_SERIES_IDS = [
+    FRED_SERIES_M2,
+    FRED_SERIES_CPI,
+    FRED_SERIES_10Y_YIELD,
+]
+
 DEFAULT_RISK_FREE_RATE = 0.04  # 4% fallback rate when unable to fetch current rate
 TRADING_DAYS_PER_YEAR = 252  # Standard number of trading days per year
 

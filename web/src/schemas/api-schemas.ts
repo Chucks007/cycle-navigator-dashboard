@@ -149,6 +149,45 @@ export const MacroSummaryResponseSchema = z.object({
 });
 
 // ===========================
+// Macro Series Schemas (for overlay feature)
+// ===========================
+
+export const MacroSeriesPointSchema = z.object({
+  date: z.string(),
+  value: z.number(),
+});
+
+export const MacroSeriesInfoSchema = z.object({
+  series_id: z.string(),
+  name: z.string(),
+  description: z.string().nullable().optional(),
+  frequency: z.string(),
+  units: z.string().nullable().optional(),
+});
+
+export const MacroSeriesDataSchema = z.object({
+  series_id: z.string(),
+  name: z.string(),
+  data: z.array(MacroSeriesPointSchema),
+  metadata: MacroDataMetadataSchema,
+});
+
+export const MacroSeriesResponseSchema = z.object({
+  series: z.array(MacroSeriesDataSchema),
+});
+
+export const AvailableOverlaysResponseSchema = z.object({
+  overlays: z.array(MacroSeriesInfoSchema),
+});
+
+// Inferred types for macro series
+export type MacroSeriesPoint = z.infer<typeof MacroSeriesPointSchema>;
+export type MacroSeriesInfo = z.infer<typeof MacroSeriesInfoSchema>;
+export type MacroSeriesData = z.infer<typeof MacroSeriesDataSchema>;
+export type MacroSeriesResponse = z.infer<typeof MacroSeriesResponseSchema>;
+export type AvailableOverlaysResponse = z.infer<typeof AvailableOverlaysResponseSchema>;
+
+// ===========================
 // Crypto Schemas
 // ===========================
 

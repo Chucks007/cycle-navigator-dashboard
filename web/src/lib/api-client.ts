@@ -13,6 +13,8 @@ import {
   RiskResponse,
   RiskScoreResponse,
   MacroSummaryResponse,
+  MacroSeriesResponse,
+  AvailableOverlaysResponse,
   AppConfig,
   StockMetricsSchema,
   StockHistoryPointSchema,
@@ -24,6 +26,8 @@ import {
   RealRatesResponseSchema,
   CPIResponseSchema,
   MacroSummaryResponseSchema,
+  MacroSeriesResponseSchema,
+  AvailableOverlaysResponseSchema,
   CryptoDominanceResponseSchema,
   RiskResponseSchema,
   RiskScoreResponseSchema,
@@ -173,6 +177,29 @@ class ApiClient {
   public async getMacroSummary(days?: number): Promise<MacroSummaryResponse> {
     const query = days ? `?days=${days}` : '';
     return this.validatedRequest(`${API_ROUTES.MACRO.SUMMARY}${query}`, MacroSummaryResponseSchema);
+  }
+
+  /**
+   * Fetch one or more macro series for chart overlays.
+   * Returns data resampled to daily frequency for alignment with stock charts.
+   */
+  public async getMacroSeries(
+    seriesIds: string | string[],
+    days?: number,
+    resample: boolean = true
+  ): Promise<MacroSeriesResponse> {
+    const ids = Array.isArray(seriesIds) ? seriesIds.join(',') : seriesIds;
+    const params = new URLSearchParams({ series_ids: ids });
+    if (days) params.set('days', days.toString());
+    if (!resample) params.set('resample', 'false');
+    return this.validatedRequest(`${API_ROUTES.MACRO.SERIES}?${params.toString()}`, MacroSeriesResponseSchema);
+  }
+
+  /**
+   * Get list of available macro series for overlay selection.
+   */
+  public async getAvailableOverlays(): Promise<AvailableOverlaysResponse> {
+    return this.validatedRequest(API_ROUTES.MACRO.OVERLAYS, AvailableOverlaysResponseSchema);
   }
 
   // Crypto

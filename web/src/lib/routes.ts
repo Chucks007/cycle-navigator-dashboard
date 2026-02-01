@@ -25,6 +25,8 @@ export const API_ROUTES = {
     DEBT_STATUS: '/api/macro/debt-status',
     REAL_RATES: '/api/macro/real-rates',
     CPI: '/api/macro/cpi',
+    SERIES: '/api/macro/series',
+    OVERLAYS: '/api/macro/overlays',
   },
 
   /**

@@ -70,3 +70,35 @@ def get_macro_cpi():
     Frontend should poll this endpoint periodically and check metadata.is_stale.
     """
     return macro_service.get_cpi_series(include_metadata=True)
+
+
+@router.get("/series", response_model=schemas.MacroSeriesResponse, responses=ERROR_RESPONSES)
+@handle_api_errors
+def get_macro_series(
+    series_ids: str = Query(..., description="Comma-separated list of FRED series IDs (e.g., 'M2SL,CPIAUCSL')"),
+    days: int = Query(None, description="Number of days of history to return"),
+    resample: bool = Query(True, description="Resample lower-frequency data to daily for chart alignment"),
+):
+    """
+    Returns one or more macro series for chart overlay.
+
+    This endpoint is optimized for the Ticker Analysis page to overlay macro indicators
+    (like M2 Money Supply, CPI) on stock price charts. The data is resampled to daily
+    frequency by default to align with stock data granularity.
+
+    Example: `/api/macro/series?series_ids=M2SL,CPIAUCSL&days=365`
+    """
+    ids = [s.strip() for s in series_ids.split(",") if s.strip()]
+    return macro_service.get_series_batch(ids, days=days, resample_to_daily=resample)
+
+
+@router.get("/overlays", response_model=schemas.AvailableOverlaysResponse, responses=ERROR_RESPONSES)
+@handle_api_errors
+def get_available_overlays():
+    """
+    Returns list of available macro series for overlay selection in the UI.
+
+    This endpoint provides metadata about each overlay-friendly series,
+    including name, description, frequency, and units.
+    """
+    return macro_service.get_available_overlays()

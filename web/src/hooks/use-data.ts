@@ -15,6 +15,8 @@ import {
   type SentimentResponse,
   type RiskResponse,
   type RiskScoreResponse,
+  type MacroSeriesResponse,
+  type AvailableOverlaysResponse,
 } from "@/types/api";
 
 // ============================================
@@ -51,6 +53,40 @@ export function useCpi(days?: number) {
     queryFn: () => apiClient.getCpi(days),
     staleTime: 5 * 60 * 1000,
     enabled: days !== undefined, // Only fetch when explicitly requested
+  });
+}
+
+/**
+ * Fetch macro series data for chart overlays.
+ * Lazy-loaded: only fetches when seriesIds is non-empty.
+ *
+ * @param seriesIds - Array of FRED series IDs (e.g., ['M2SL', 'CPIAUCSL'])
+ * @param days - Number of days of history to fetch
+ * @param options - Additional options (resample to daily, etc.)
+ */
+export function useMacroSeries(
+  seriesIds: string[],
+  days?: number,
+  options?: { resample?: boolean; enabled?: boolean }
+) {
+  const { resample = true, enabled = true } = options ?? {};
+
+  return useQuery<MacroSeriesResponse, Error>({
+    queryKey: ["macro", "series", seriesIds.sort().join(","), days, resample],
+    queryFn: () => apiClient.getMacroSeries(seriesIds, days, resample),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: enabled && seriesIds.length > 0, // Only fetch when overlays are selected
+  });
+}
+
+/**
+ * Fetch available macro series for overlay selection UI.
+ */
+export function useAvailableOverlays() {
+  return useQuery<AvailableOverlaysResponse, Error>({
+    queryKey: ["macro", "overlays"],
+    queryFn: () => apiClient.getAvailableOverlays(),
+    staleTime: 60 * 60 * 1000, // 1 hour (rarely changes)
   });
 }
 

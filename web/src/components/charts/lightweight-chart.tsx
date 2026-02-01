@@ -482,9 +482,42 @@ export function LightweightChart({
       }
     });
 
-    // Add new extra series (supports Line and Area types)
+    // Check if any extra series uses the left price scale
+    const hasLeftScale = extraSeries.some((config) => config.priceScaleId === "left");
+    
+    // Configure left price scale if needed
+    if (hasLeftScale) {
+      chartRef.current.applyOptions({
+        leftPriceScale: {
+          visible: true,
+          borderColor: resolvedTheme === "dark" ? "#27272a" : "#e4e4e7",
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.1,
+          },
+        },
+      });
+    } else {
+      // Hide left scale if no series uses it
+      chartRef.current.applyOptions({
+        leftPriceScale: {
+          visible: false,
+        },
+      });
+    }
+
+    // Add new extra series (supports Line and Area types, with priceScaleId)
     extraSeriesRefs.current = extraSeries.map((config) => {
       let extraSeriesInstance: ISeriesApi<"Line" | "Area">;
+      
+      // Build common options including priceScaleId if specified
+      const commonOptions = {
+        priceLineVisible: config.priceLineVisible ?? false,
+        lastValueVisible: config.lastValueVisible ?? false,
+        title: config.title,
+        ...(config.priceScaleId && { priceScaleId: config.priceScaleId }),
+        ...(config.priceFormat && { priceFormat: config.priceFormat }),
+      };
       
       if (config.seriesType === "Area") {
         extraSeriesInstance = chartRef.current!.addSeries(AreaSeries, {
@@ -493,25 +526,21 @@ export function LightweightChart({
           bottomColor: config.bottomColor ?? `${config.color}00`,
           lineWidth: config.lineWidth ?? 1,
           lineStyle: config.lineStyle ?? 0,
-          priceLineVisible: config.priceLineVisible ?? false,
-          lastValueVisible: config.lastValueVisible ?? false,
-          title: config.title,
+          ...commonOptions,
         } as DeepPartial<AreaStyleOptions & SeriesOptionsCommon>);
       } else {
         extraSeriesInstance = chartRef.current!.addSeries(LineSeries, {
           color: config.color,
           lineWidth: config.lineWidth ?? 1,
           lineStyle: config.lineStyle ?? 0, // 0=Solid, 2=Dashed
-          priceLineVisible: config.priceLineVisible ?? false,
-          lastValueVisible: config.lastValueVisible ?? false,
-          title: config.title,
+          ...commonOptions,
         } as DeepPartial<LineStyleOptions & SeriesOptionsCommon>);
       }
       
       extraSeriesInstance.setData(config.data);
       return extraSeriesInstance;
     });
-  }, [extraSeries]);
+  }, [extraSeries, resolvedTheme]);
 
   // Update log scale
   React.useEffect(() => {

@@ -46,6 +46,15 @@ export interface ExtraSeriesConfig {
   topColor?: string;
   /** Optional bottomColor for Area series */
   bottomColor?: string;
+  /** Price scale ID: 'right' (default), 'left', or custom ID for overlay scales */
+  priceScaleId?: "right" | "left" | string;
+  /** Custom price format for this series (e.g., for macro data in trillions) */
+  priceFormat?: {
+    type?: "price" | "volume" | "percent" | "custom";
+    precision?: number;
+    minMove?: number;
+    formatter?: (price: number) => string;
+  };
 }
 
 /**
@@ -449,4 +458,113 @@ export function getRiskBandColor(riskScore: number): string {
 
   const index = Math.min(Math.floor(riskScore * colors.length), colors.length - 1);
   return colors[index];
+}
+
+// ============================================
+// Macro Overlay Utilities
+// ============================================
+
+/**
+ * Color mapping for macro overlay series
+ */
+export const MACRO_OVERLAY_COLORS: Record<string, string> = {
+  M2SL: "#f97316", // Orange - M2 Money Supply
+  CPIAUCSL: "#8b5cf6", // Purple - CPI
+  DGS10: "#06b6d4", // Cyan - 10Y Treasury Yield
+};
+
+/**
+ * Format large numbers for display (trillions, billions, millions)
+ */
+export function formatLargeNumber(value: number): string {
+  const absValue = Math.abs(value);
+  if (absValue >= 1e12) {
+    return `${(value / 1e12).toFixed(2)}T`;
+  }
+  if (absValue >= 1e9) {
+    return `${(value / 1e9).toFixed(2)}B`;
+  }
+  if (absValue >= 1e6) {
+    return `${(value / 1e6).toFixed(2)}M`;
+  }
+  if (absValue >= 1e3) {
+    return `${(value / 1e3).toFixed(2)}K`;
+  }
+  return value.toFixed(2);
+}
+
+/**
+ * Transform macro series data to ExtraSeriesConfig for chart overlay.
+ * Places macro overlays on the left price scale with appropriate formatting.
+ *
+ * @param seriesData - MacroSeriesData from the API
+ * @param options - Customization options
+ * @returns ExtraSeriesConfig for use with LightweightChart
+ */
+export function transformMacroSeriesToOverlay(
+  seriesData: {
+    series_id: string;
+    name: string;
+    data: Array<{ date: string; value: number }>;
+  },
+  options?: {
+    color?: string;
+    lineWidth?: number;
+    priceScaleId?: "left" | "right" | string;
+    showLabel?: boolean;
+  }
+): ExtraSeriesConfig {
+  const {
+    color = MACRO_OVERLAY_COLORS[seriesData.series_id] ?? "#888888",
+    lineWidth = 2,
+    priceScaleId = "left",
+    showLabel = true,
+  } = options ?? {};
+
+  return {
+    data: seriesData.data
+      .filter((d) => d.value != null && isFinite(d.value))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map((d) => ({
+        time: toChartTime(d.date),
+        value: d.value,
+      }))
+      .filter((d): d is ChartDataPoint => d.time !== null),
+    color,
+    lineWidth,
+    priceLineVisible: false,
+    lastValueVisible: true,
+    title: showLabel ? seriesData.name : undefined,
+    lineStyle: 0, // Solid line for macro overlays
+    seriesType: "Line",
+    priceScaleId,
+    priceFormat: {
+      type: "custom",
+      formatter: formatLargeNumber,
+    },
+  };
+}
+
+/**
+ * Transform multiple macro series to overlay configs.
+ */
+export function transformMacroSeriesToOverlays(
+  seriesArray: Array<{
+    series_id: string;
+    name: string;
+    data: Array<{ date: string; value: number }>;
+  }>,
+  options?: {
+    priceScaleId?: "left" | "right" | string;
+    showLabels?: boolean;
+  }
+): ExtraSeriesConfig[] {
+  const { priceScaleId = "left", showLabels = true } = options ?? {};
+
+  return seriesArray.map((series) =>
+    transformMacroSeriesToOverlay(series, {
+      priceScaleId,
+      showLabel: showLabels,
+    })
+  );
 }

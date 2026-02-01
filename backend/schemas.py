@@ -137,6 +137,44 @@ class MacroSummaryResponse(BaseModel):
     summary: MacroMetrics
 
 
+# --- Macro Series (for overlays) ---
+
+class MacroSeriesPoint(BaseModel):
+    """Single data point for a macro time series overlay."""
+    date: str
+    value: float
+
+
+class MacroSeriesInfo(BaseModel):
+    """Metadata about a single macro series."""
+    series_id: str
+    name: str
+    description: str | None = None
+    frequency: str  # e.g., "Monthly", "Daily", "Quarterly"
+    units: str | None = None
+
+
+class MacroSeriesData(BaseModel):
+    """Response for a single macro series with data and metadata."""
+    series_id: str
+    name: str
+    data: list[MacroSeriesPoint]
+    metadata: MacroDataMetadata
+
+
+class MacroSeriesResponse(BaseModel):
+    """
+    Response for macro series endpoint.
+    Supports single or batch series requests for chart overlays.
+    """
+    series: list[MacroSeriesData]
+
+
+class AvailableOverlaysResponse(BaseModel):
+    """List of available macro series for overlay selection."""
+    overlays: list[MacroSeriesInfo]
+
+
 # --- Comparison / Barbell ---
 
 class ComparisonPoint(BaseModel):

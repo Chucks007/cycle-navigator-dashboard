@@ -387,6 +387,125 @@ class MacroService(CachedDataService):
             "summary": summary
         }
 
+    def get_series(
+        self,
+        series_id: str,
+        days: int | None = None,
+        resample_to_daily: bool = True
+    ) -> schemas.MacroSeriesData:
+        """
+        Get a single FRED series formatted for chart overlay.
+
+        Args:
+            series_id: FRED series identifier (e.g., 'M2SL', 'CPIAUCSL')
+            days: Optional number of days of history to return
+            resample_to_daily: If True, resample lower frequency data to daily using forward-fill
+
+        Returns:
+            MacroSeriesData with series_id, name, data points, and metadata
+        """
+        # Validate series exists in our config
+        if series_id not in config.FRED_SERIES_INFO:
+            logger.warning(f"Unknown series_id requested: {series_id}")
+            return schemas.MacroSeriesData(
+                series_id=series_id,
+                name=series_id,
+                data=[],
+                metadata=schemas.MacroDataMetadata(last_updated=None, is_stale=True)
+            )
+
+        series_info = config.FRED_SERIES_INFO[series_id]
+
+        # Fetch raw series data
+        series, metadata_dict = self._get_series(series_id)
+
+        if getattr(series, 'empty', True):
+            return schemas.MacroSeriesData(
+                series_id=series_id,
+                name=series_info["name"],
+                data=[],
+                metadata=schemas.MacroDataMetadata(**metadata_dict)
+            )
+
+        # Convert to DataFrame for processing
+        df = pd.DataFrame({'value': series})
+        df.dropna(inplace=True)
+
+        # Resample to daily if requested and frequency is lower than daily
+        if resample_to_daily and series_info["frequency"] in ("Monthly", "Quarterly"):
+            # Ensure index is DatetimeIndex
+            if not isinstance(df.index, pd.DatetimeIndex):
+                df.index = pd.to_datetime(df.index)
+            
+            # Resample to daily frequency with forward-fill
+            df = df.resample('D').ffill()
+            logger.debug(f"Resampled {series_id} from {series_info['frequency']} to daily: {len(df)} points")
+
+        # Apply days filter if specified
+        if days is not None:
+            cutoff = pd.Timestamp.now(tz='UTC') - pd.Timedelta(days=days)
+            # Ensure index is tz-aware for comparison
+            if df.index.tz is None:
+                df.index = df.index.tz_localize('UTC')
+            df = df[df.index >= cutoff]
+
+        # Standardize and format
+        df = utils.standardize_dataframe(df, timezone='UTC', reset_index=True)
+        records = utils.format_for_api(df)
+
+        data_points = [schemas.MacroSeriesPoint(**r) for r in records]
+
+        return schemas.MacroSeriesData(
+            series_id=series_id,
+            name=series_info["name"],
+            data=data_points,
+            metadata=schemas.MacroDataMetadata(**metadata_dict)
+        )
+
+    def get_series_batch(
+        self,
+        series_ids: list[str],
+        days: int | None = None,
+        resample_to_daily: bool = True
+    ) -> schemas.MacroSeriesResponse:
+        """
+        Get multiple FRED series in a single call for efficient overlay loading.
+
+        Args:
+            series_ids: List of FRED series identifiers
+            days: Optional number of days of history to return
+            resample_to_daily: If True, resample lower frequency data to daily
+
+        Returns:
+            MacroSeriesResponse containing all requested series
+        """
+        series_list = []
+        for series_id in series_ids:
+            series_data = self.get_series(series_id, days=days, resample_to_daily=resample_to_daily)
+            series_list.append(series_data)
+
+        return schemas.MacroSeriesResponse(series=series_list)
+
+    def get_available_overlays(self) -> schemas.AvailableOverlaysResponse:
+        """
+        Get list of available macro series for overlay selection in the UI.
+
+        Returns:
+            AvailableOverlaysResponse with list of overlay-friendly series info
+        """
+        overlays = []
+        for series_id in config.OVERLAY_SERIES_IDS:
+            info = config.FRED_SERIES_INFO.get(series_id, {})
+            overlays.append(schemas.MacroSeriesInfo(
+                series_id=series_id,
+                name=info.get("name", series_id),
+                description=info.get("description"),
+                frequency=info.get("frequency", "Unknown"),
+                units=info.get("units"),
+            ))
+        return schemas.AvailableOverlaysResponse(overlays=overlays)
+
+
 # Singleton instance
 macro_service = MacroService()
 

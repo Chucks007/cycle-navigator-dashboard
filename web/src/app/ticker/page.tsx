@@ -33,16 +33,19 @@ import {
   useStockFundamentals,
   useSentiment,
   useRiskData,
+  useMacroSeries,
 } from "@/hooks/use-data";
 import {
   transformToLineDataWithKey,
   transformToOHLCData,
   transformToHistogramData,
   transformRiskBandsToSeries,
+  transformMacroSeriesToOverlays,
   toChartTime,
   type ChartDataPoint,
   type OHLCDataPoint,
   type HistogramDataPoint,
+  type ExtraSeriesConfig,
 } from "@/lib/chart-utils";
 import { RiskScoreCard, RiskChart } from "@/components/charts/risk-chart";
 import { useTickerPreferences, timeframeToPeriodInterval } from "@/stores/ticker-preferences";
@@ -50,6 +53,7 @@ import { ChartTypeToggle } from "@/components/features/ticker/chart-toggle";
 import { SentimentGauge } from "@/components/features/ticker/sentiment-gauge";
 import { IndicatorDisplay } from "@/components/features/ticker/indicator-display";
 import { FinancialsTable } from "@/components/features/ticker/financials-table";
+import { OverlaySelector } from "@/components/features/ticker/overlay-selector";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -99,6 +103,9 @@ function TickerAnalysisContent() {
     setShowRiskBands,
   } = useTickerPreferences();
 
+  // Macro overlay state
+  const [selectedOverlays, setSelectedOverlays] = React.useState<string[]>([]);
+
   // Use the utility function for period/interval mapping
   const { period, interval } = timeframeToPeriodInterval(timeframe);
 
@@ -122,6 +129,24 @@ function TickerAnalysisContent() {
   // Risk Data (Only relevant for BTC/ETH, but safe to call for others - handles errors gracefully)
   const isCrypto = ticker === "BTC" || ticker === "ETH" || ticker === "BTC-USD" || ticker === "ETH-USD";
   const { data: riskData } = useRiskData(ticker, isCrypto); // Always fetch if crypto, control visibility with state
+
+  // Macro Overlays - fetch selected series for chart overlay
+  // Convert timeframe to days for the API (approximate)
+  const overlayDays = React.useMemo(() => {
+    const daysMap: Record<string, number | undefined> = {
+      "1D": 30,   // Show some context even for 1D view
+      "5D": 60,
+      "1M": 90,
+      "3M": 180,
+      "6M": 365,
+      "1Y": 730,
+      "5Y": 1825,
+      "ALL": undefined, // No filter
+    };
+    return daysMap[timeframe] ?? 365;
+  }, [timeframe]);
+
+  const { data: macroSeriesData } = useMacroSeries(selectedOverlays, overlayDays);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,6 +224,20 @@ function TickerAnalysisContent() {
       opacity: 0.15, // Low opacity so bands don't obscure price action
     });
   }, [riskData, showRiskBands]);
+
+  // Macro Overlay Series (M2, CPI, etc.) - placed on left axis
+  const macroOverlaySeries = React.useMemo((): ExtraSeriesConfig[] => {
+    if (!macroSeriesData?.series || macroSeriesData.series.length === 0) return [];
+    return transformMacroSeriesToOverlays(macroSeriesData.series, {
+      priceScaleId: "left",
+      showLabels: true,
+    });
+  }, [macroSeriesData]);
+
+  // Combined extra series (risk bands + macro overlays)
+  const combinedExtraSeries = React.useMemo((): ExtraSeriesConfig[] => {
+    return [...riskBandSeries, ...macroOverlaySeries];
+  }, [riskBandSeries, macroOverlaySeries]);
 
   // Price formatting - memoized to prevent chart re-renders
   const priceFormat = React.useMemo(() => {
@@ -408,7 +447,7 @@ function TickerAnalysisContent() {
                   seriesType="Candlestick"
                   logScale={useLogScale}
                   height={400}
-                  extraSeries={riskBandSeries}
+                  extraSeries={combinedExtraSeries}
                   fitContent
                   priceFormat={priceFormat}
                 />
@@ -419,7 +458,7 @@ function TickerAnalysisContent() {
                   colors={chartColors}
                   logScale={useLogScale}
                   height={400}
-                  extraSeries={riskBandSeries}
+                  extraSeries={combinedExtraSeries}
                   fitContent
                   priceFormat={priceFormat}
                 />
@@ -433,6 +472,11 @@ function TickerAnalysisContent() {
                   <ChartTypeToggle value={chartType} onChange={setChartType} />
                   <div className="h-6 w-px bg-border/50" />
                   <LogScaleToggle checked={useLogScale} onChange={setUseLogScale} />
+                  <div className="h-6 w-px bg-border/50" />
+                  <OverlaySelector
+                    selectedOverlays={selectedOverlays}
+                    onChange={setSelectedOverlays}
+                  />
                   {isCrypto && (
                     <>
                       <div className="h-6 w-px bg-border/50" />
