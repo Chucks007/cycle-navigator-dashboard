@@ -151,8 +151,7 @@ INTERVAL_MAPPING = {
 # Load S&P 500 companies list for dropdown search
 # This list is generated from documents/constituents.csv
 _config_dir = os.path.dirname(os.path.abspath(__file__))
-_project_root = os.path.dirname(_config_dir)
-_companies_file = os.path.join(_project_root, 'top_companies.json')
+_companies_file = os.path.join(_config_dir, 'top_companies.json')
 
 try:
     with open(_companies_file) as f:
