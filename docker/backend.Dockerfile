@@ -70,14 +70,14 @@ COPY --from=builder /opt/venv /opt/venv
 # Copy NLTK data from builder (for TextBlob sentiment analysis)
 COPY --from=builder /root/nltk_data /home/appuser/nltk_data
 
-# Copy generated data files
-COPY --from=data-prep /data/top_companies.json ./top_companies.json
-
 # Copy entrypoint script (before copying backend code)
 COPY docker/entrypoint-backend.sh /app/entrypoint.sh
 
 # Copy application code
 COPY backend/ ./backend/
+
+# Copy generated data files
+COPY --from=data-prep /data/top_companies.json ./backend/top_companies.json
 
 # Set environment variables
 ENV PATH="/opt/venv/bin:$PATH"
