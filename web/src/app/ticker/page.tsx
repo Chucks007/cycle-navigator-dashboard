@@ -25,6 +25,7 @@ import {
   LogScaleToggle,
   TimeframeSelector,
   RegressionBandsToggle,
+  PurchasingPowerModeSelector,
 } from "@/components/charts/chart-controls";
 import {
   useStockMetrics,
@@ -34,6 +35,8 @@ import {
   useSentiment,
   useRiskData,
   useMacroSeries,
+  useM2Supply,
+  useCpi,
 } from "@/hooks/use-data";
 import {
   transformToLineDataWithKey,
@@ -54,6 +57,8 @@ import { SentimentGauge } from "@/components/features/ticker/sentiment-gauge";
 import { IndicatorDisplay } from "@/components/features/ticker/indicator-display";
 import { FinancialsTable } from "@/components/features/ticker/financials-table";
 import { OverlaySelector } from "@/components/features/ticker/overlay-selector";
+import { useInflationAdjustedData } from "@/hooks/use-inflation-adjusted-data";
+import type { SeriesPoint } from "@/lib/series-utils";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -101,6 +106,8 @@ function TickerAnalysisContent() {
     setLogScale: setUseLogScale,
     showRiskBands,
     setShowRiskBands,
+    purchasingPowerMode,
+    setPurchasingPowerMode,
   } = useTickerPreferences();
 
   // Macro overlay state
@@ -148,6 +155,15 @@ function TickerAnalysisContent() {
 
   const { data: macroSeriesData } = useMacroSeries(selectedOverlays, overlayDays);
 
+  // Purchasing Power Adjustment: fetch M2/CPI data on demand
+  const { data: m2Data, isLoading: m2Loading } = useM2Supply(
+    overlayDays,
+    purchasingPowerMode === "REAL_M2"
+  );
+  const { data: cpiData, isLoading: cpiLoading } = useCpi(
+    purchasingPowerMode === "REAL_CPI" ? overlayDays : undefined
+  );
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const newTicker = inputValue.toUpperCase().trim();
@@ -166,17 +182,47 @@ function TickerAnalysisContent() {
   // const [logScale, setLogScale] = React.useState(false); // Removed: Duplicate / renamed to useLogScale
 
   // Transform history data for LightweightChart
-  const lineChartData = React.useMemo((): ChartDataPoint[] => {
+  // First, build a SeriesPoint[] for the adjustment hook
+  const priceSeries = React.useMemo((): SeriesPoint[] => {
     if (!history) return [];
     return history
       .slice()
       .sort((a, b) => new Date(a.Datetime).getTime() - new Date(b.Datetime).getTime())
       .map((point) => ({
-        time: toChartTime(point.Datetime),
+        date: point.Datetime,
         value: point.Close,
       }))
-      .filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
+      .filter((point) => isFinite(point.value));
   }, [history]);
+
+  // Apply purchasing power adjustment
+  const m2Series = React.useMemo(
+    () => m2Data?.map((d) => ({ date: d.date, value: d.value })) ?? null,
+    [m2Data]
+  );
+  const cpiSeries = React.useMemo(
+    () => cpiData?.map((d) => ({ date: d.date, value: d.value })) ?? null,
+    [cpiData]
+  );
+  const { adjustedLineData, adjustmentLabel, isIndexed, isAdjusting } =
+    useInflationAdjustedData(
+      priceSeries,
+      purchasingPowerMode,
+      m2Series,
+      cpiSeries,
+      m2Loading,
+      cpiLoading
+    );
+
+  // Convert adjusted data to chart-compatible format
+  const lineChartData = React.useMemo((): ChartDataPoint[] => {
+    return adjustedLineData
+      .map((point) => ({
+        time: toChartTime(point.date),
+        value: point.value,
+      }))
+      .filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
+  }, [adjustedLineData]);
 
   // OHLC data for candlestick chart
   const ohlcChartData = React.useMemo((): OHLCDataPoint[] => {
@@ -241,11 +287,15 @@ function TickerAnalysisContent() {
 
   // Price formatting - memoized to prevent chart re-renders
   const priceFormat = React.useMemo(() => {
+    if (isIndexed) {
+      // Indexed mode: show 1 decimal (e.g., 125.3)
+      return { type: 'price' as const, precision: 1, minMove: 0.1 };
+    }
     if (isCrypto) {
       return { type: 'price' as const, precision: 1, minMove: 0.1 };
     }
     return { type: 'price' as const, precision: 2, minMove: 0.01 };
-  }, [isCrypto]);
+  }, [isCrypto, isIndexed]);
 
   // Chart colors - memoized to prevent unnecessary re-draws on UI changes
   const chartColors = React.useMemo(() => ({
@@ -416,17 +466,24 @@ function TickerAnalysisContent() {
               <TimeframeSelector value={timeframe} onChange={setTimeframe} />
               <ChartTypeToggle value={chartType} onChange={setChartType} />
               <LogScaleToggle checked={useLogScale} onChange={setUseLogScale} />
+              <PurchasingPowerModeSelector 
+                value={purchasingPowerMode} 
+                onChange={setPurchasingPowerMode}
+                disabled={isAdjusting}
+              />
             </div>
           </div>
 
         <TabsContent value="price">
           <ExpandableChartCard
             id="price-history"
-            title={`${ticker} Price History`}
+            title={`${ticker} Price History${adjustmentLabel}`}
             subtitle={
-              timeframe === "ALL" 
-                ? "All available trading data" 
-                : `Trading data for the last ${timeframe}`
+              isIndexed
+                ? `Indexed to 100 at start of period${adjustmentLabel}`
+                : timeframe === "ALL" 
+                  ? "All available trading data" 
+                  : `Trading data for the last ${timeframe}`
             }
             metricValue={metrics?.last_close ? `$${metrics.last_close.toFixed(2)}` : undefined}
             metricChange={priceChangePct}
@@ -472,6 +529,12 @@ function TickerAnalysisContent() {
                   <ChartTypeToggle value={chartType} onChange={setChartType} />
                   <div className="h-6 w-px bg-border/50" />
                   <LogScaleToggle checked={useLogScale} onChange={setUseLogScale} />
+                  <div className="h-6 w-px bg-border/50" />
+                  <PurchasingPowerModeSelector 
+                    value={purchasingPowerMode} 
+                    onChange={setPurchasingPowerMode}
+                    disabled={isAdjusting}
+                  />
                   <div className="h-6 w-px bg-border/50" />
                   <OverlaySelector
                     selectedOverlays={selectedOverlays}

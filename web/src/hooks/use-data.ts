@@ -57,6 +57,20 @@ export function useCpi(days?: number) {
 }
 
 /**
+ * Fetch M2 money supply data for purchasing power adjustments.
+ * Lazy-loaded: only fetches when enabled (e.g., purchasing power mode = REAL_M2).
+ * Reuses the liquidity endpoint which returns M2 data.
+ */
+export function useM2Supply(days?: number, enabled: boolean = true) {
+  return useQuery<LiquidityPoint[], Error>({
+    queryKey: ["macro", "liquidity", days],
+    queryFn: () => apiClient.getLiquidity(days),
+    staleTime: 5 * 60 * 1000,
+    enabled, // Only fetch when purchasing power mode requires it
+  });
+}
+
+/**
  * Fetch macro series data for chart overlays.
  * Lazy-loaded: only fetches when seriesIds is non-empty.
  *

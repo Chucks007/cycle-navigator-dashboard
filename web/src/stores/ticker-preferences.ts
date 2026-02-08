@@ -19,6 +19,7 @@ import type {
   TickerPreferencesStore,
   TickerPreferencesState,
   ChartType,
+  PurchasingPowerMode,
 } from "@/types/chart-preferences";
 import type { Timeframe } from "@/components/charts/chart-controls";
 
@@ -35,6 +36,8 @@ const DEFAULT_STATE: TickerPreferencesState = {
   logScale: true,
   // Risk bands off by default (requires additional API call)
   showRiskBands: false,
+  // Purchasing power mode: NOMINAL (raw), REAL_M2, or REAL_CPI
+  purchasingPowerMode: "NOMINAL" as PurchasingPowerMode,
 };
 
 // ============================================
@@ -68,6 +71,9 @@ export const useTickerPreferences = create<TickerPreferencesStore>()(
 
         setShowRiskBands: (showRiskBands: boolean) =>
           set({ showRiskBands }, false, "setShowRiskBands"),
+
+        setPurchasingPowerMode: (purchasingPowerMode: PurchasingPowerMode) =>
+          set({ purchasingPowerMode }, false, "setPurchasingPowerMode"),
 
         // Reset all preferences to defaults
         reset: () => set(DEFAULT_STATE, false, "reset"),
@@ -106,6 +112,15 @@ export const useTickerRiskBands = () => {
   const showRiskBands = useTickerPreferences((s) => s.showRiskBands);
   const setShowRiskBands = useTickerPreferences((s) => s.setShowRiskBands);
   return { showRiskBands, setShowRiskBands };
+};
+
+/**
+ * Select purchasing power mode preference.
+ */
+export const useTickerPurchasingPower = () => {
+  const purchasingPowerMode = useTickerPreferences((s) => s.purchasingPowerMode);
+  const setPurchasingPowerMode = useTickerPreferences((s) => s.setPurchasingPowerMode);
+  return { purchasingPowerMode, setPurchasingPowerMode };
 };
 
 // ============================================

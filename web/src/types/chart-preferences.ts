@@ -66,6 +66,14 @@ export type MacroPreferencesStore = MacroPreferencesState & MacroPreferencesActi
 export type ChartType = "line" | "candlestick";
 
 /**
+ * Purchasing power adjustment mode for ticker charts.
+ * - NOMINAL: Raw prices (default)
+ * - REAL_M2: Price / M2 Supply (indexed to 100)
+ * - REAL_CPI: Price / CPI (inflation-adjusted, indexed to 100)
+ */
+export type PurchasingPowerMode = "NOMINAL" | "REAL_M2" | "REAL_CPI";
+
+/**
  * Ticker analysis page preferences state.
  */
 export interface TickerPreferencesState {
@@ -73,6 +81,7 @@ export interface TickerPreferencesState {
   chartType: ChartType;
   logScale: boolean;
   showRiskBands: boolean;
+  purchasingPowerMode: PurchasingPowerMode;
 }
 
 /**
@@ -83,6 +92,7 @@ export interface TickerPreferencesActions {
   setChartType: (chartType: ChartType) => void;
   setLogScale: (logScale: boolean) => void;
   setShowRiskBands: (showRiskBands: boolean) => void;
+  setPurchasingPowerMode: (mode: PurchasingPowerMode) => void;
   reset: () => void;
 }
 
