@@ -23,9 +23,7 @@ The "Purchasing Power" toggle currently exists in the frontend UI (`MacroMetricC
 *   **OHLC Candlestick Adjustment:** Added `adjustOHLCByM2` and `adjustOHLCByCPI` to `web/src/lib/series-utils.ts` — divides all four OHLC price values by the same adjustment factor and indexes to 100. Extended `useInflationAdjustedData` hook and ticker page to pass adjusted OHLC data to candlestick charts.
 *   **Tooltip Refinement:** `priceFormat` now uses a custom formatter that appends `(Index)` when in adjusted mode, displayed in the floating legend overlay.
 *   **Unit Tests:** Added 10 new tests for OHLC adjustment in `web/src/lib/__tests__/series-utils.test.ts` — covering M2/CPI adjustment, OHLC ordering preservation (high ≥ open/close/low), empty inputs, forward-fill, and inflation erosion. All 57 tests pass.
-
-### Remaining
-*   **End-to-End Verification:** Test with live backend data for SPY, BTC-USD to confirm chart shapes change appropriately.
+*   **End-to-End Verification:** Created Playwright test script `scripts/playwright/test_purchasing_power.py` and verified purchasing power toggle with live backend data for SPY and BTC-USD. All tests passed — chart shapes change appropriately when toggling between Nominal, ÷ M2, and ÷ CPI modes. Adjustment labels display correctly, and mode selector persists across page reloads via localStorage.
 
 ## Objective
 Implement a robust, global state-driven "Purchasing Power" mode that adjusts all relevant price charts by dividing the asset price by the M2 Money Supply (or CPI).
