@@ -27,8 +27,8 @@ export {
   type MacroContextValue,
   type MacroDataState,
   type MacroMetadata,
-} from "@/components/macro/macro-provider";
+} from "@/components/features/macro/macro-provider";
 
 // Re-export the main hook with a shorter name
-import { useMacroContext } from "@/components/macro/macro-provider";
+import { useMacroContext } from "@/components/features/macro/macro-provider";
 export const useMacro = useMacroContext;

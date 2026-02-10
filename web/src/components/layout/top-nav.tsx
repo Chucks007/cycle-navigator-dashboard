@@ -12,8 +12,8 @@ import {
   NavigationMenuList,
 } from "@/components/ui/navigation-menu";
 import { Button } from "@/components/ui/button";
-import { ModeToggle } from "@/components/mode-toggle";
-import { CommandSearch } from "@/components/command-search";
+import { ModeToggle } from "@/components/layout/mode-toggle";
+import { CommandSearch } from "@/components/layout/command-search";
 import {
   Sheet,
   SheetContent,

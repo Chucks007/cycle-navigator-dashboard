@@ -1,4 +1,4 @@
-import { MacroDashboard } from "@/components/macro/macro-dashboard";
+import { MacroDashboard } from "@/components/features/macro/macro-dashboard";
 
 export default function MacroWatchtowerPage() {
   return <MacroDashboard />;

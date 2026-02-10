@@ -188,6 +188,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/macro/series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Macro Series
+         * @description Returns one or more macro series for chart overlay.
+         *
+         *     This endpoint is optimized for the Ticker Analysis page to overlay macro indicators
+         *     (like M2 Money Supply, CPI) on stock price charts. The data is resampled to daily
+         *     frequency by default to align with stock data granularity.
+         *
+         *     Example: `/api/macro/series?series_ids=M2SL,CPIAUCSL&days=365`
+         */
+        get: operations["get_macro_series_api_macro_series_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/macro/overlays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Available Overlays
+         * @description Returns list of available macro series for overlay selection in the UI.
+         *
+         *     This endpoint provides metadata about each overlay-friendly series,
+         *     including name, description, frequency, and units.
+         */
+        get: operations["get_available_overlays_api_macro_overlays_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sentiment/{ticker}": {
         parameters: {
             query?: never;
@@ -425,6 +474,14 @@ export interface components {
             /** Watchlist Tickers */
             watchlist_tickers: string[];
         };
+        /**
+         * AvailableOverlaysResponse
+         * @description List of available macro series for overlay selection.
+         */
+        AvailableOverlaysResponse: {
+            /** Overlays */
+            overlays: components["schemas"]["MacroSeriesInfo"][];
+        };
         /** CPIPoint */
         CPIPoint: {
             /** Date */
@@ -558,6 +615,54 @@ export interface components {
             debt_to_tax_ratio: number;
             /** Real Rate */
             real_rate: number;
+        };
+        /**
+         * MacroSeriesData
+         * @description Response for a single macro series with data and metadata.
+         */
+        MacroSeriesData: {
+            /** Series Id */
+            series_id: string;
+            /** Name */
+            name: string;
+            /** Data */
+            data: components["schemas"]["MacroSeriesPoint"][];
+            metadata: components["schemas"]["MacroDataMetadata"];
+        };
+        /**
+         * MacroSeriesInfo
+         * @description Metadata about a single macro series.
+         */
+        MacroSeriesInfo: {
+            /** Series Id */
+            series_id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** Frequency */
+            frequency: string;
+            /** Units */
+            units?: string | null;
+        };
+        /**
+         * MacroSeriesPoint
+         * @description Single data point for a macro time series overlay.
+         */
+        MacroSeriesPoint: {
+            /** Date */
+            date: string;
+            /** Value */
+            value: number;
+        };
+        /**
+         * MacroSeriesResponse
+         * @description Response for macro series endpoint.
+         *     Supports single or batch series requests for chart overlays.
+         */
+        MacroSeriesResponse: {
+            /** Series */
+            series: components["schemas"]["MacroSeriesData"][];
         };
         /**
          * MacroSummaryResponse
@@ -791,6 +896,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -1236,6 +1345,104 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CPIResponse"];
+                };
+            };
+            /** @description Invalid Request / Bad Input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Upstream Provider Error (FRED/Yahoo/Connectivity) */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_macro_series_api_macro_series_get: {
+        parameters: {
+            query: {
+                /** @description Comma-separated list of FRED series IDs (e.g., 'M2SL,CPIAUCSL') */
+                series_ids: string;
+                /** @description Number of days of history to return */
+                days?: number;
+                /** @description Resample lower-frequency data to daily for chart alignment */
+                resample?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MacroSeriesResponse"];
+                };
+            };
+            /** @description Invalid Request / Bad Input */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Upstream Provider Error (FRED/Yahoo/Connectivity) */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_available_overlays_api_macro_overlays_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailableOverlaysResponse"];
                 };
             };
             /** @description Invalid Request / Bad Input */
