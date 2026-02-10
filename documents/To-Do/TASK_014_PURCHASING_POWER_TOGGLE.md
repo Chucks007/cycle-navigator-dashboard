@@ -1,9 +1,9 @@
 # Task 014: Implement Purchasing Power Toggle
 
-**Status**: In Progress
+**Status**: Complete
 **Priority**: Medium
 **Created**: 2026-01-29
-**Last Updated**: 2026-02-08
+**Last Updated**: 2026-02-10
 
 ## Context
 The "Purchasing Power" toggle currently exists in the frontend UI (`MacroMetricCard` and controls), but the logic to perform the adjustment is incomplete or inconsistent across different charts. The goal is to allow users to view asset prices (stocks, crypto, etc.) denominated in "real" terms by dividing the nominal price by a liquidity metric (M2 Supply) or inflation metric (CPI).
@@ -20,11 +20,12 @@ The "Purchasing Power" toggle currently exists in the frontend UI (`MacroMetricC
 *   **Standardized Hook:** Created `useInflationAdjustedData` in `web/src/hooks/use-inflation-adjusted-data.ts` — encapsulates alignment, transformation, and indexing for any price series.
 *   **Mode Selector UI:** Created `PurchasingPowerModeSelector` segmented control in `web/src/components/charts/chart-controls.tsx` (Nominal / ÷ M2 / ÷ CPI).
 *   **Ticker Analysis Integration:** Integrated purchasing power mode into `/ticker` page — selector in both condensed and expanded chart controls, conditional M2/CPI fetching, adjusted line chart data, updated chart titles/subtitles, and index-aware price formatting.
+*   **OHLC Candlestick Adjustment:** Added `adjustOHLCByM2` and `adjustOHLCByCPI` to `web/src/lib/series-utils.ts` — divides all four OHLC price values by the same adjustment factor and indexes to 100. Extended `useInflationAdjustedData` hook and ticker page to pass adjusted OHLC data to candlestick charts.
+*   **Tooltip Refinement:** `priceFormat` now uses a custom formatter that appends `(Index)` when in adjusted mode, displayed in the floating legend overlay.
+*   **Unit Tests:** Added 10 new tests for OHLC adjustment in `web/src/lib/__tests__/series-utils.test.ts` — covering M2/CPI adjustment, OHLC ordering preservation (high ≥ open/close/low), empty inputs, forward-fill, and inflation erosion. All 57 tests pass.
 
 ### Remaining
-*   **OHLC Candlestick Adjustment:** Apply purchasing power adjustment to OHLC (Open/High/Low/Close) candlestick data (currently only line chart close prices are adjusted).
 *   **End-to-End Verification:** Test with live backend data for SPY, BTC-USD to confirm chart shapes change appropriately.
-*   **Tooltip Refinement:** Ensure tooltips clearly indicate "Index" values when in adjusted mode.
 
 ## Objective
 Implement a robust, global state-driven "Purchasing Power" mode that adjusts all relevant price charts by dividing the asset price by the M2 Money Supply (or CPI).

@@ -17,7 +17,10 @@ import {
     indexSeriesToBase,
     adjustSeriesByM2,
     adjustSeriesByCPI,
+    adjustOHLCByM2,
+    adjustOHLCByCPI,
     type SeriesPoint,
+    type OHLCSeriesPoint,
 } from '../series-utils';
 
 describe('alignSeriesByDate', () => {
@@ -263,5 +266,152 @@ describe('adjustSeriesByCPI', () => {
         // Real value should decrease with inflation
         expect(result[1].value).toBeLessThan(100);
         expect(result[1].value).toBeCloseTo(90.91, 1);
+    });
+});
+
+// ============================================
+// OHLC Adjustment Tests
+// ============================================
+
+describe('adjustOHLCByM2', () => {
+    const ohlc: OHLCSeriesPoint[] = [
+        { date: '2024-01-01', open: 100, high: 110, low: 95, close: 105 },
+        { date: '2024-01-02', open: 105, high: 120, low: 100, close: 115 },
+    ];
+    const m2: SeriesPoint[] = [
+        { date: '2024-01-01', value: 20000 },
+        { date: '2024-01-02', value: 21000 },
+    ];
+
+    it('should adjust all four OHLC values by M2 and index to 100', () => {
+        const result = adjustOHLCByM2(ohlc, m2);
+
+        expect(result).toHaveLength(2);
+        // First close is base → should be 100
+        expect(result[0].close).toBe(100);
+        // First open: (100/20000) / (105/20000) * 100 ≈ 95.24
+        expect(result[0].open).toBeCloseTo(95.24, 1);
+        // First high: (110/20000) / (105/20000) * 100 ≈ 104.76
+        expect(result[0].high).toBeCloseTo(104.76, 1);
+        // First low: (95/20000) / (105/20000) * 100 ≈ 90.48
+        expect(result[0].low).toBeCloseTo(90.48, 1);
+    });
+
+    it('should preserve high >= max(open, close, low) after adjustment', () => {
+        const result = adjustOHLCByM2(ohlc, m2);
+
+        for (const point of result) {
+            expect(point.high).toBeGreaterThanOrEqual(point.open);
+            expect(point.high).toBeGreaterThanOrEqual(point.close);
+            expect(point.high).toBeGreaterThanOrEqual(point.low);
+        }
+    });
+
+    it('should preserve low <= min(open, close, high) after adjustment', () => {
+        const result = adjustOHLCByM2(ohlc, m2);
+
+        for (const point of result) {
+            expect(point.low).toBeLessThanOrEqual(point.open);
+            expect(point.low).toBeLessThanOrEqual(point.close);
+            expect(point.low).toBeLessThanOrEqual(point.high);
+        }
+    });
+
+    it('should handle empty inputs', () => {
+        expect(adjustOHLCByM2([], m2)).toEqual([]);
+        expect(adjustOHLCByM2(ohlc, [])).toEqual([]);
+    });
+
+    it('should return raw ratios when indexToBase=false', () => {
+        const result = adjustOHLCByM2(ohlc, m2, false);
+
+        expect(result).toHaveLength(2);
+        expect(result[0].close).toBe(105 / 20000);
+        expect(result[0].open).toBe(100 / 20000);
+        expect(result[1].close).toBe(115 / 21000);
+    });
+
+    it('should forward-fill M2 for daily OHLC data with monthly M2', () => {
+        const dailyOhlc: OHLCSeriesPoint[] = [
+            { date: '2024-01-01', open: 100, high: 110, low: 95, close: 105 },
+            { date: '2024-01-10', open: 106, high: 112, low: 102, close: 108 },
+            { date: '2024-02-01', open: 110, high: 120, low: 105, close: 115 },
+        ];
+        const monthlyM2: SeriesPoint[] = [
+            { date: '2024-01-01', value: 20000 },
+            { date: '2024-02-01', value: 20500 },
+        ];
+
+        const result = adjustOHLCByM2(dailyOhlc, monthlyM2);
+
+        expect(result).toHaveLength(3);
+        // Jan 10 should use Jan 1 M2 value (forward-fill)
+        // All values should be finite
+        for (const point of result) {
+            expect(isFinite(point.open)).toBe(true);
+            expect(isFinite(point.high)).toBe(true);
+            expect(isFinite(point.low)).toBe(true);
+            expect(isFinite(point.close)).toBe(true);
+        }
+    });
+});
+
+describe('adjustOHLCByCPI', () => {
+    const ohlc: OHLCSeriesPoint[] = [
+        { date: '2024-01-01', open: 100, high: 110, low: 95, close: 105 },
+        { date: '2024-02-01', open: 105, high: 120, low: 100, close: 115 },
+    ];
+    const cpi: SeriesPoint[] = [
+        { date: '2024-01-01', value: 300 },
+        { date: '2024-02-01', value: 310 },
+    ];
+
+    it('should adjust OHLC by CPI and index to 100', () => {
+        const result = adjustOHLCByCPI(ohlc, cpi);
+
+        expect(result).toHaveLength(2);
+        // First close is base → 100
+        expect(result[0].close).toBe(100);
+        // All values should be finite
+        for (const point of result) {
+            expect(isFinite(point.open)).toBe(true);
+            expect(isFinite(point.close)).toBe(true);
+        }
+    });
+
+    it('should show inflation erosion: flat nominal + rising CPI = declining real', () => {
+        const flatOhlc: OHLCSeriesPoint[] = [
+            { date: '2024-01-01', open: 100, high: 105, low: 95, close: 100 },
+            { date: '2024-02-01', open: 100, high: 105, low: 95, close: 100 },
+        ];
+        const risingCpi: SeriesPoint[] = [
+            { date: '2024-01-01', value: 100 },
+            { date: '2024-02-01', value: 110 }, // 10% inflation
+        ];
+
+        const result = adjustOHLCByCPI(flatOhlc, risingCpi);
+
+        expect(result).toHaveLength(2);
+        expect(result[0].close).toBe(100);
+        // Real close should decline due to inflation
+        expect(result[1].close).toBeLessThan(100);
+        expect(result[1].close).toBeCloseTo(90.91, 1);
+    });
+
+    it('should preserve OHLC ordering after CPI adjustment', () => {
+        const result = adjustOHLCByCPI(ohlc, cpi);
+
+        for (const point of result) {
+            expect(point.high).toBeGreaterThanOrEqual(point.open);
+            expect(point.high).toBeGreaterThanOrEqual(point.close);
+            expect(point.high).toBeGreaterThanOrEqual(point.low);
+            expect(point.low).toBeLessThanOrEqual(point.open);
+            expect(point.low).toBeLessThanOrEqual(point.close);
+        }
+    });
+
+    it('should handle empty inputs', () => {
+        expect(adjustOHLCByCPI([], cpi)).toEqual([]);
+        expect(adjustOHLCByCPI(ohlc, [])).toEqual([]);
     });
 });

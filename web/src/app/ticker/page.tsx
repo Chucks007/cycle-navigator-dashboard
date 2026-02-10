@@ -40,7 +40,6 @@ import {
 } from "@/hooks/use-data";
 import {
   transformToLineDataWithKey,
-  transformToOHLCData,
   transformToHistogramData,
   transformRiskBandsToSeries,
   transformMacroSeriesToOverlays,
@@ -58,7 +57,7 @@ import { IndicatorDisplay } from "@/components/features/ticker/indicator-display
 import { FinancialsTable } from "@/components/features/ticker/financials-table";
 import { OverlaySelector } from "@/components/features/ticker/overlay-selector";
 import { useInflationAdjustedData } from "@/hooks/use-inflation-adjusted-data";
-import type { SeriesPoint } from "@/lib/series-utils";
+import type { SeriesPoint, OHLCSeriesPoint } from "@/lib/series-utils";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -195,6 +194,25 @@ function TickerAnalysisContent() {
       .filter((point) => isFinite(point.value));
   }, [history]);
 
+  // Build OHLC series points for candlestick adjustment
+  const ohlcSeriesPoints = React.useMemo((): OHLCSeriesPoint[] => {
+    if (!history) return [];
+    return history
+      .slice()
+      .sort((a, b) => new Date(a.Datetime).getTime() - new Date(b.Datetime).getTime())
+      .filter((point) =>
+        isFinite(point.Open) && isFinite(point.High) &&
+        isFinite(point.Low) && isFinite(point.Close)
+      )
+      .map((point) => ({
+        date: point.Datetime,
+        open: point.Open,
+        high: point.High,
+        low: point.Low,
+        close: point.Close,
+      }));
+  }, [history]);
+
   // Apply purchasing power adjustment
   const m2Series = React.useMemo(
     () => m2Data?.map((d) => ({ date: d.date, value: d.value })) ?? null,
@@ -204,14 +222,15 @@ function TickerAnalysisContent() {
     () => cpiData?.map((d) => ({ date: d.date, value: d.value })) ?? null,
     [cpiData]
   );
-  const { adjustedLineData, adjustmentLabel, isIndexed, isAdjusting } =
+  const { adjustedLineData, adjustedOHLCData, adjustmentLabel, isIndexed, isAdjusting } =
     useInflationAdjustedData(
       priceSeries,
       purchasingPowerMode,
       m2Series,
       cpiSeries,
       m2Loading,
-      cpiLoading
+      cpiLoading,
+      ohlcSeriesPoints
     );
 
   // Convert adjusted data to chart-compatible format
@@ -224,11 +243,19 @@ function TickerAnalysisContent() {
       .filter((point): point is ChartDataPoint => point.time !== null && isFinite(point.value));
   }, [adjustedLineData]);
 
-  // OHLC data for candlestick chart
+  // OHLC data for candlestick chart (uses adjusted data when mode != NOMINAL)
   const ohlcChartData = React.useMemo((): OHLCDataPoint[] => {
-    if (!history) return [];
-    return transformToOHLCData(history);
-  }, [history]);
+    const source = adjustedOHLCData.length > 0 ? adjustedOHLCData : [];
+    return source
+      .map((p) => ({
+        time: toChartTime(p.date),
+        open: p.open,
+        high: p.high,
+        low: p.low,
+        close: p.close,
+      }))
+      .filter((item): item is OHLCDataPoint => item.time !== null);
+  }, [adjustedOHLCData]);
 
   // Volume data for histogram
   const volumeChartData = React.useMemo((): HistogramDataPoint[] => {
@@ -288,8 +315,13 @@ function TickerAnalysisContent() {
   // Price formatting - memoized to prevent chart re-renders
   const priceFormat = React.useMemo(() => {
     if (isIndexed) {
-      // Indexed mode: show 1 decimal (e.g., 125.3)
-      return { type: 'price' as const, precision: 1, minMove: 0.1 };
+      // Indexed mode: show 1 decimal with "Index" label in tooltip
+      return {
+        type: 'price' as const,
+        precision: 1,
+        minMove: 0.1,
+        formatter: (price: number) => `${price.toFixed(1)} (Index)`,
+      };
     }
     if (isCrypto) {
       return { type: 'price' as const, precision: 1, minMove: 0.1 };

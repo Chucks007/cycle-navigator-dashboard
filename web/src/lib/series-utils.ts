@@ -224,3 +224,161 @@ export function adjustSeriesByCPI(
 
     return adjusted;
 }
+
+// ============================================
+// OHLC Adjustment Types & Functions
+// ============================================
+
+/**
+ * OHLC data point with date string (for pre-chart transformation).
+ */
+export interface OHLCSeriesPoint {
+    date: string;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+}
+
+/**
+ * Compute the aligned adjustment factor for each date in the primary series.
+ * Returns an array of { date, factor } where factor is the divisor for that date.
+ * 
+ * For M2 mode: factor = auxValue (raw M2 value)
+ * For CPI mode: factor = auxValue / baseCPI (normalized CPI)
+ */
+function computeAdjustmentFactors(
+    dates: string[],
+    auxSeries: SeriesPoint[],
+    mode: 'M2' | 'CPI',
+    dropEarly: boolean = false
+): Map<string, number> {
+    // Build a dummy primary series using close prices (we only need the date alignment)
+    const dummyPrimary: SeriesPoint[] = dates.map(d => ({ date: d, value: 1 }));
+    const aligned = alignSeriesByDate(dummyPrimary, auxSeries, dropEarly);
+
+    const factorMap = new Map<string, number>();
+
+    if (mode === 'CPI' && aligned.length > 0) {
+        const baseCPI = aligned[0].auxValue;
+        for (const point of aligned) {
+            factorMap.set(point.date, point.auxValue / baseCPI);
+        }
+    } else {
+        for (const point of aligned) {
+            factorMap.set(point.date, point.auxValue);
+        }
+    }
+
+    return factorMap;
+}
+
+/**
+ * Adjust OHLC data by M2 money supply. Divides all four price values (O/H/L/C)
+ * by the same M2 factor for each date, then indexes to 100.
+ * 
+ * @param ohlcSeries - The OHLC price data to adjust
+ * @param m2Series - The M2 money supply series
+ * @param indexToBase - Whether to index result to 100 at first point (default: true)
+ * @param dropEarly - Whether to drop points before first M2 date (default: false)
+ * @returns Adjusted OHLC series
+ */
+export function adjustOHLCByM2(
+    ohlcSeries: OHLCSeriesPoint[],
+    m2Series: SeriesPoint[],
+    indexToBase: boolean = true,
+    dropEarly: boolean = false
+): OHLCSeriesPoint[] {
+    if (!ohlcSeries.length || !m2Series.length) return [];
+
+    const sorted = [...ohlcSeries].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    const dates = sorted.map(d => d.date);
+    const factors = computeAdjustmentFactors(dates, m2Series, 'M2', dropEarly);
+
+    // Divide all OHLC values by the M2 factor
+    const adjusted = sorted
+        .filter(p => factors.has(p.date))
+        .map(p => {
+            const factor = factors.get(p.date)!;
+            return {
+                date: p.date,
+                open: p.open / factor,
+                high: p.high / factor,
+                low: p.low / factor,
+                close: p.close / factor,
+            };
+        });
+
+    if (!indexToBase || adjusted.length === 0) return adjusted;
+
+    // Index to 100 using the first close value as base
+    const baseClose = adjusted[0].close;
+    if (baseClose === 0) return adjusted;
+
+    const scale = 100 / baseClose;
+    return adjusted.map(p => ({
+        date: p.date,
+        open: p.open * scale,
+        high: p.high * scale,
+        low: p.low * scale,
+        close: p.close * scale,
+    }));
+}
+
+/**
+ * Adjust OHLC data by CPI (inflation). Divides all four price values (O/H/L/C)
+ * by the normalized CPI factor for each date, then indexes to 100.
+ * 
+ * @param ohlcSeries - The OHLC price data to adjust
+ * @param cpiSeries - The CPI series
+ * @param indexToBase - Whether to index result to 100 at first point (default: true)
+ * @param dropEarly - Whether to drop points before first CPI date (default: false)
+ * @returns Inflation-adjusted OHLC series
+ */
+export function adjustOHLCByCPI(
+    ohlcSeries: OHLCSeriesPoint[],
+    cpiSeries: SeriesPoint[],
+    indexToBase: boolean = true,
+    dropEarly: boolean = false
+): OHLCSeriesPoint[] {
+    if (!ohlcSeries.length || !cpiSeries.length) return [];
+
+    const sorted = [...ohlcSeries].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    const dates = sorted.map(d => d.date);
+    const factors = computeAdjustmentFactors(dates, cpiSeries, 'CPI', dropEarly);
+
+    // Divide all OHLC values by the normalized CPI factor
+    const adjusted = sorted
+        .filter(p => factors.has(p.date))
+        .map(p => {
+            const factor = factors.get(p.date)!;
+            return {
+                date: p.date,
+                open: p.open / factor,
+                high: p.high / factor,
+                low: p.low / factor,
+                close: p.close / factor,
+            };
+        });
+
+    if (!indexToBase || adjusted.length === 0) return adjusted;
+
+    // Index to 100 using the first close value as base
+    const baseClose = adjusted[0].close;
+    if (baseClose === 0) return adjusted;
+
+    const scale = 100 / baseClose;
+    return adjusted.map(p => ({
+        date: p.date,
+        open: p.open * scale,
+        high: p.high * scale,
+        low: p.low * scale,
+        close: p.close * scale,
+    }));
+}
