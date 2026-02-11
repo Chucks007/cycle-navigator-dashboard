@@ -23,10 +23,10 @@ except Exception as e:  # pragma: no cover - exercised via tests
     def _stub_download(*args, **kwargs):
         raise ImportError('yfinance not available: "download" called on stub')
 
-    def _stub_Ticker(*args, **kwargs):
+    def _stub_ticker(*args, **kwargs):
         raise ImportError('yfinance not available: "Ticker" called on stub')
 
-    yf = SimpleNamespace(download=_stub_download, Ticker=_stub_Ticker)
+    yf = SimpleNamespace(download=_stub_download, Ticker=_stub_ticker)
     _yf_import_error = e
 
 
