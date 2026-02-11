@@ -289,7 +289,7 @@ class TestFetchStockData:
     """Tests for the fetch_stock_data function."""
 
     @patch("backend.services.get_yf_import_error", return_value=None)
-    @patch("backend.utils.yf.download")
+    @patch("backend.services.common.yf.download")
     def test_fetch_stock_data_calls_yfinance(self, mock_download, mock_error):
         """Test that fetch_stock_data calls yfinance.download."""
         mock_download.return_value = pd.DataFrame({
@@ -304,7 +304,7 @@ class TestFetchStockData:
         mock_download.assert_called_once()
 
     @patch("backend.services.get_yf_import_error", return_value=None)
-    @patch("backend.utils.yf.download")
+    @patch("backend.services.common.yf.download")
     def test_fetch_stock_data_raises_on_empty(self, mock_download, mock_error):
         """Test that fetch_stock_data raises exception for empty data."""
         mock_download.return_value = pd.DataFrame()
@@ -313,7 +313,7 @@ class TestFetchStockData:
             fetch_stock_data("INVALID", "1d", "1m")
 
     @patch("backend.services.get_yf_import_error", return_value=None)
-    @patch("backend.utils.yf.download")
+    @patch("backend.services.common.yf.download")
     def test_fetch_stock_data_handles_max_period(self, mock_download, mock_error):
         """Test that fetch_stock_data handles 'max' period."""
         mock_download.return_value = pd.DataFrame({
@@ -329,7 +329,7 @@ class TestFetchStockData:
             "AAPL", period="max", interval="1d", auto_adjust=False, progress=False
         )
     @patch("backend.services.get_yf_import_error", return_value=None)
-    @patch("backend.utils.yf.download")
+    @patch("backend.services.common.yf.download")
     def test_fetch_stock_data_returns_dataframe(self, mock_download, mock_error):
         """Test that fetch_stock_data returns a DataFrame."""
         dates = pd.date_range(start="2024-01-01", periods=2, freq="D", tz="UTC")
@@ -407,7 +407,7 @@ class TestFetchNewsSentiment:
     """Tests for the fetch_news_sentiment function."""
 
     @patch("backend.services.get_yf_import_error", return_value=None)
-    @patch("backend.utils.yf.Ticker")
+    @patch("backend.services.common.yf.Ticker")
     def test_fetch_news_sentiment_with_news(self, mock_ticker, mock_error):
         """Test fetch_news_sentiment with mock news data."""
         mock_ticker_instance = MagicMock()
@@ -427,7 +427,7 @@ class TestFetchNewsSentiment:
         assert len(result.headlines) == 2
 
     @patch("backend.services.get_yf_import_error", return_value=None)
-    @patch("backend.utils.yf.Ticker")
+    @patch("backend.services.common.yf.Ticker")
     def test_fetch_news_sentiment_no_news(self, mock_ticker, mock_error):
         """Test fetch_news_sentiment when no news is available."""
         mock_ticker_instance = MagicMock()
@@ -443,7 +443,7 @@ class TestFetchNewsSentiment:
         assert result.message is not None
 
     @patch("backend.services.get_yf_import_error", return_value=None)
-    @patch("backend.utils.yf.Ticker")
+    @patch("backend.services.common.yf.Ticker")
     def test_fetch_news_sentiment_handles_exception(self, mock_ticker, mock_error):
         """Test fetch_news_sentiment handles exceptions gracefully."""
         mock_ticker.side_effect = Exception("API Error")
@@ -455,7 +455,7 @@ class TestFetchNewsSentiment:
         assert result.message is not None
 
     @patch("backend.services.get_yf_import_error", return_value=None)
-    @patch("backend.utils.yf.Ticker")
+    @patch("backend.services.common.yf.Ticker")
     def test_fetch_news_sentiment_limits_headlines(self, mock_ticker, mock_error):
         """Test that fetch_news_sentiment limits to 10 headlines."""
         mock_ticker_instance = MagicMock()

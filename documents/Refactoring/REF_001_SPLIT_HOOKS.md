@@ -1,4 +1,4 @@
-# Refactor 001: Split Frontend API Hooks
+# Refactor 001: Split Frontend API Hooks [COMPLETE]
 
 ## Objective
 Decompose the monolithic `web/src/hooks/use-data.ts` into feature-specific hook files to improve maintainability, reduce file size, and clarify dependencies.
@@ -17,15 +17,15 @@ New files in `web/src/hooks/`:
 - `use-sentiment-data.ts`: All sentiment-related hooks (`useSentiment`)
 
 ## Implementation Plan
-1. [ ] Create the new hook files in `web/src/hooks/`.
-2. [ ] Move the respective hooks from `use-data.ts` to their new homes.
-3. [ ] Update imports in all consuming components:
+1. [x] Create the new hook files in `web/src/hooks/`.
+2. [x] Move the respective hooks from `use-data.ts` to their new homes.
+3. [x] Update imports in all consuming components:
     - `web/src/app/page.tsx`
     - `web/src/app/ticker/page.tsx`
     - `web/src/components/features/macro/`
     - `web/src/components/features/ticker/`
-4. [ ] Delete `web/src/hooks/use-data.ts` once empty.
-5. [ ] Verify application build and functionality.
+4. [x] Delete `web/src/hooks/use-data.ts` once empty.
+5. [x] Verify application build and functionality.
 
 ## Acceptance Criteria
 1. `use-data.ts` no longer exists.

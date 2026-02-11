@@ -4,8 +4,7 @@ from fastapi import APIRouter
 
 from .. import schemas
 from ..services.sentiment import fetch_news_sentiment
-from ..utils import handle_api_errors
-from .utils import ERROR_RESPONSES
+from .utils import ERROR_RESPONSES, handle_api_errors
 
 logger = logging.getLogger(__name__)
 

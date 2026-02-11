@@ -10,8 +10,7 @@ import logging
 from fastapi import APIRouter, Query
 
 from ..services.crypto import CryptoService
-from ..utils import handle_api_errors
-from .utils import ERROR_RESPONSES
+from .utils import ERROR_RESPONSES, handle_api_errors
 
 logger = logging.getLogger(__name__)
 

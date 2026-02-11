@@ -9,7 +9,7 @@ for comparative analysis, supporting the "Hard Assets vs Paper Assets" thesis.
 import numpy as np
 import pandas as pd
 
-from ..utils import get_yf, get_yf_import_error
+from .common import get_yf, get_yf_import_error
 
 # Asset class definitions
 HARD_ASSETS = {

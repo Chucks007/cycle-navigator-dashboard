@@ -1,4 +1,4 @@
-# Refactor 002: Backend Utility Cleanup
+# Refactor 002: Backend Utility Cleanup [COMPLETE]
 
 ## Objective
 Standardize backend utility management by separating high-level API decorators from low-level library wrappers.
@@ -14,12 +14,12 @@ Standardize backend utility management by separating high-level API decorators f
 - `backend/utils.py`: Should only contain general-purpose, non-domain-specific utilities (if any remain).
 
 ## Implementation Plan
-1. [ ] Move `handle_api_errors` to `backend/routers/utils.py`.
-2. [ ] Update all router files to import the decorator from the new location.
-3. [ ] Create `backend/services/common.py` (if it doesn't exist) or `backend/lib/yf_wrapper.py`.
-4. [ ] Move `get_yf` and the stubbing logic to the new location.
-5. [ ] Update `backend/services/stock_service.py` and others to use the new `yf` wrapper.
-6. [ ] Verify backend tests pass.
+1. [x] Move `handle_api_errors` to `backend/routers/utils.py`.
+2. [x] Update all router files to import the decorator from the new location.
+3. [x] Create `backend/services/common.py` (if it doesn't exist) or `backend/lib/yf_wrapper.py`.
+4. [x] Move `get_yf` and the stubbing logic to the new location.
+5. [x] Update `backend/services/stock_service.py` and others to use the new `yf` wrapper.
+6. [x] Verify backend tests pass.
 
 ## Acceptance Criteria
 1. `backend/utils.py` does not contain router-specific logic.

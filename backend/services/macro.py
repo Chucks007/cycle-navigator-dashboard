@@ -436,7 +436,7 @@ class MacroService(CachedDataService):
             # Ensure index is DatetimeIndex
             if not isinstance(df.index, pd.DatetimeIndex):
                 df.index = pd.to_datetime(df.index)
-            
+
             # Resample to daily frequency with forward-fill
             df = df.resample('D').ffill()
             logger.debug(f"Resampled {series_id} from {series_info['frequency']} to daily: {len(df)} points")

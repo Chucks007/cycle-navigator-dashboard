@@ -4,6 +4,7 @@ import logging
 from abc import ABC
 from collections.abc import Callable
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any, TypeVar
 
 import numpy as np
@@ -12,6 +13,31 @@ import pandas as pd
 from backend import config
 
 logger = logging.getLogger(__name__)
+
+# yfinance may fail to import on newer Python/protobuf combos (e.g., Python 3.14)
+# Wrap import to surface the error but allow module import to succeed for testing
+try:
+    import yfinance as yf
+    _yf_import_error = None
+except Exception as e:  # pragma: no cover - exercised via tests
+    def _stub_download(*args, **kwargs):
+        raise ImportError('yfinance not available: "download" called on stub')
+
+    def _stub_Ticker(*args, **kwargs):
+        raise ImportError('yfinance not available: "Ticker" called on stub')
+
+    yf = SimpleNamespace(download=_stub_download, Ticker=_stub_Ticker)
+    _yf_import_error = e
+
+
+def get_yf():
+    """Return the yfinance module or a stub if import failed."""
+    return yf
+
+
+def get_yf_import_error():
+    """Return the import error if yfinance failed to load, else None."""
+    return _yf_import_error
 
 # Type variable for generic cached data
 T = TypeVar("T")

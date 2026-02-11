@@ -4,8 +4,7 @@ from fastapi import APIRouter, Query
 
 from .. import schemas
 from ..services import macro_service
-from ..utils import handle_api_errors
-from .utils import ERROR_RESPONSES
+from .utils import ERROR_RESPONSES, handle_api_errors
 
 logger = logging.getLogger(__name__)
 

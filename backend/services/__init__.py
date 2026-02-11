@@ -1,4 +1,4 @@
-from ..utils import get_yf, get_yf_import_error
+from .common import get_yf, get_yf_import_error
 from .comparison import get_barbell_comparison
 from .macro import macro_service
 from .sentiment import fetch_news_sentiment
