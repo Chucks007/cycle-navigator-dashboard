@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useDebtStatus } from "@/hooks/use-data";
+import { useDebtStatus } from "@/hooks/use-macro-data";
 import { useDebtStatusPrefs } from "@/stores/macro-preferences";
 import { MacroMetricCard } from "./macro-metric-card";
 

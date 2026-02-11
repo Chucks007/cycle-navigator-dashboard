@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useLiquidity, useCpi } from "@/hooks/use-data";
+import { useCpi, useLiquidity } from "@/hooks/use-macro-data";
 import { PurchasingPowerToggle } from "@/components/charts/chart-controls";
 import { formatLargeNumber } from "@/lib/formatters";
 import { adjustSeriesByCPI, type SeriesPoint } from "@/lib/series-utils";

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRealRates } from "@/hooks/use-data";
+import { useRealRates } from "@/hooks/use-macro-data";
 import { useRealRatesPrefs } from "@/stores/macro-preferences";
 import { MacroMetricCard } from "./macro-metric-card";
 

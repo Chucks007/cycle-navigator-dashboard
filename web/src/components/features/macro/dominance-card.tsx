@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useCryptoDominance } from "@/hooks/use-data";
+import { useCryptoDominance } from "@/hooks/use-crypto-data";
 import { LightweightChart } from "@/components/charts/lightweight-chart";
 import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { TimeframeSelector } from "@/components/charts/chart-controls";
@@ -194,80 +194,76 @@ export function DominanceCard() {
         />
       </div>
     );
-  }, [timeframe, extraSeries]);
+  }, [timeframe, setTimeframe, extraSeries]);
 
-  // Sidebar content for metrics
-  const sidebarContent = React.useMemo(() => {
-    if (!latestMetrics) return null;
-
-    return (
-      <div className="space-y-4">
+  // Sidebar content for metrics (simple render, memo not required)
+  const sidebarContent = latestMetrics ? (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-medium text-muted-foreground">Total Market Cap</h3>
+        <p className="text-2xl font-bold">${formatLargeNumber(latestMetrics.totalMcap)}</p>
+      </div>
+      <div className="space-y-2">
         <div>
-          <h3 className="text-sm font-medium text-muted-foreground">Total Market Cap</h3>
-          <p className="text-2xl font-bold">${formatLargeNumber(latestMetrics.totalMcap)}</p>
-        </div>
-        <div className="space-y-2">
-          <div>
-            <div className="flex justify-between text-sm">
-              <span className="text-blue-500">BTC Dominance</span>
-              <span className="font-medium">{latestMetrics.btcDominance.toFixed(2)}%</span>
-            </div>
-            <div className="w-full bg-secondary h-2 rounded-full mt-1">
-              <div
-                className="bg-blue-500 h-2 rounded-full"
-                style={{ width: `${latestMetrics.btcDominance}%` }}
-              />
-            </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-blue-500">BTC Dominance</span>
+            <span className="font-medium">{latestMetrics.btcDominance.toFixed(2)}%</span>
           </div>
-          <div>
-            <div className="flex justify-between text-sm">
-              <span className="text-purple-500">ETH Dominance</span>
-              <span className="font-medium">{latestMetrics.ethDominance.toFixed(2)}%</span>
-            </div>
-            <div className="w-full bg-secondary h-2 rounded-full mt-1">
-              <div
-                className="bg-purple-500 h-2 rounded-full"
-                style={{ width: `${latestMetrics.ethDominance}%` }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between text-sm">
-              <span className="text-green-500">Others</span>
-              <span className="font-medium">{latestMetrics.othersDominance.toFixed(2)}%</span>
-            </div>
-            <div className="w-full bg-secondary h-2 rounded-full mt-1">
-              <div
-                className="bg-green-500 h-2 rounded-full"
-                style={{ width: `${latestMetrics.othersDominance}%` }}
-              />
-            </div>
+          <div className="w-full bg-secondary h-2 rounded-full mt-1">
+            <div
+              className="bg-blue-500 h-2 rounded-full"
+              style={{ width: `${latestMetrics.btcDominance}%` }}
+            />
           </div>
         </div>
-        <div className="pt-2 border-t">
-          <h4 className="text-xs font-medium text-muted-foreground mb-2">BTC Dominance Stats</h4>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <span className="text-muted-foreground">Mean:</span>
-              <span className="ml-1 font-medium">{btcDomStats.avg.toFixed(2)}%</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Current:</span>
-              <span className="ml-1 font-medium">{btcDomStats.current.toFixed(2)}%</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Min:</span>
-              <span className="ml-1 font-medium">{btcDomStats.min.toFixed(2)}%</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Max:</span>
-              <span className="ml-1 font-medium">{btcDomStats.max.toFixed(2)}%</span>
-            </div>
+        <div>
+          <div className="flex justify-between text-sm">
+            <span className="text-purple-500">ETH Dominance</span>
+            <span className="font-medium">{latestMetrics.ethDominance.toFixed(2)}%</span>
+          </div>
+          <div className="w-full bg-secondary h-2 rounded-full mt-1">
+            <div
+              className="bg-purple-500 h-2 rounded-full"
+              style={{ width: `${latestMetrics.ethDominance}%` }}
+            />
+          </div>
+        </div>
+        <div>
+          <div className="flex justify-between text-sm">
+            <span className="text-green-500">Others</span>
+            <span className="font-medium">{latestMetrics.othersDominance.toFixed(2)}%</span>
+          </div>
+          <div className="w-full bg-secondary h-2 rounded-full mt-1">
+            <div
+              className="bg-green-500 h-2 rounded-full"
+              style={{ width: `${latestMetrics.othersDominance}%` }}
+            />
           </div>
         </div>
       </div>
-    );
-  }, [latestMetrics, btcDomStats]);
+      <div className="pt-2 border-t">
+        <h4 className="text-xs font-medium text-muted-foreground mb-2">BTC Dominance Stats</h4>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-muted-foreground">Mean:</span>
+            <span className="ml-1 font-medium">{btcDomStats.avg.toFixed(2)}%</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Current:</span>
+            <span className="ml-1 font-medium">{btcDomStats.current.toFixed(2)}%</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Min:</span>
+            <span className="ml-1 font-medium">{btcDomStats.min.toFixed(2)}%</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Max:</span>
+            <span className="ml-1 font-medium">{btcDomStats.max.toFixed(2)}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   if (error) {
     return (

@@ -28,16 +28,14 @@ import {
   PurchasingPowerModeSelector,
 } from "@/components/charts/chart-controls";
 import {
-  useStockMetrics,
-  useStockHistory,
-  useStockIndicators,
   useStockFundamentals,
-  useSentiment,
-  useRiskData,
-  useMacroSeries,
-  useM2Supply,
-  useCpi,
-} from "@/hooks/use-data";
+  useStockHistoryWithPurchasingPower,
+  useStockIndicators,
+  useStockMetrics,
+} from "@/hooks/use-stock-data";
+import { useMacroSeries } from "@/hooks/use-macro-data";
+import { useSentiment } from "@/hooks/use-sentiment-data";
+import { useRiskData } from "@/hooks/use-risk-data";
 import {
   transformToLineDataWithKey,
   transformToHistogramData,
@@ -56,8 +54,6 @@ import { SentimentGauge } from "@/components/features/ticker/sentiment-gauge";
 import { IndicatorDisplay } from "@/components/features/ticker/indicator-display";
 import { FinancialsTable } from "@/components/features/ticker/financials-table";
 import { OverlaySelector } from "@/components/features/ticker/overlay-selector";
-import { useInflationAdjustedData } from "@/hooks/use-inflation-adjusted-data";
-import type { SeriesPoint, OHLCSeriesPoint } from "@/lib/series-utils";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -115,6 +111,21 @@ function TickerAnalysisContent() {
   // Use the utility function for period/interval mapping
   const { period, interval } = timeframeToPeriodInterval(timeframe);
 
+  // Convert timeframe to days for API calls (overlays, purchasing power helpers)
+  const overlayDays = React.useMemo(() => {
+    const daysMap: Record<string, number | undefined> = {
+      "1D": 30,
+      "5D": 60,
+      "1M": 90,
+      "3M": 180,
+      "6M": 365,
+      "1Y": 730,
+      "5Y": 1825,
+      ALL: undefined,
+    };
+    return daysMap[timeframe] ?? 365;
+  }, [timeframe]);
+
   // Sync state when URL changes
   React.useEffect(() => {
     // Default to BTC-USD if no symbol provided
@@ -127,7 +138,21 @@ function TickerAnalysisContent() {
 
   // Fetch data
   const { data: metrics, isLoading: metricsLoading, error: metricsError } = useStockMetrics(ticker);
-  const { data: history, isLoading: historyLoading } = useStockHistory(ticker, period, interval);
+  const {
+    data: history,
+    isLoading: historyLoading,
+    adjustedLineData,
+    adjustedOHLCData,
+    adjustmentLabel,
+    isIndexed,
+    isAdjusting,
+  } = useStockHistoryWithPurchasingPower({
+    ticker,
+    period,
+    interval,
+    purchasingPowerMode,
+    days: overlayDays,
+  });
   const { data: indicators, isLoading: indicatorsLoading } = useStockIndicators(ticker, period, interval);
   const { data: sentiment, isLoading: sentimentLoading } = useSentiment(ticker);
   const { data: fundamentals, isLoading: fundamentalsLoading, error: fundamentalsError } = useStockFundamentals(ticker);
@@ -136,32 +161,7 @@ function TickerAnalysisContent() {
   const isCrypto = ticker === "BTC" || ticker === "ETH" || ticker === "BTC-USD" || ticker === "ETH-USD";
   const { data: riskData } = useRiskData(ticker, isCrypto); // Always fetch if crypto, control visibility with state
 
-  // Macro Overlays - fetch selected series for chart overlay
-  // Convert timeframe to days for the API (approximate)
-  const overlayDays = React.useMemo(() => {
-    const daysMap: Record<string, number | undefined> = {
-      "1D": 30,   // Show some context even for 1D view
-      "5D": 60,
-      "1M": 90,
-      "3M": 180,
-      "6M": 365,
-      "1Y": 730,
-      "5Y": 1825,
-      "ALL": undefined, // No filter
-    };
-    return daysMap[timeframe] ?? 365;
-  }, [timeframe]);
-
   const { data: macroSeriesData } = useMacroSeries(selectedOverlays, overlayDays);
-
-  // Purchasing Power Adjustment: fetch M2/CPI data on demand
-  const { data: m2Data, isLoading: m2Loading } = useM2Supply(
-    overlayDays,
-    purchasingPowerMode === "REAL_M2"
-  );
-  const { data: cpiData, isLoading: cpiLoading } = useCpi(
-    purchasingPowerMode === "REAL_CPI" ? overlayDays : undefined
-  );
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,59 +179,6 @@ function TickerAnalysisContent() {
   // Chart view state
   // const [chartType, setChartType] = React.useState<"line" | "candlestick">("line"); // Removed: Duplicate
   // const [logScale, setLogScale] = React.useState(false); // Removed: Duplicate / renamed to useLogScale
-
-  // Transform history data for LightweightChart
-  // First, build a SeriesPoint[] for the adjustment hook
-  const priceSeries = React.useMemo((): SeriesPoint[] => {
-    if (!history) return [];
-    return history
-      .slice()
-      .sort((a, b) => new Date(a.Datetime).getTime() - new Date(b.Datetime).getTime())
-      .map((point) => ({
-        date: point.Datetime,
-        value: point.Close,
-      }))
-      .filter((point) => isFinite(point.value));
-  }, [history]);
-
-  // Build OHLC series points for candlestick adjustment
-  const ohlcSeriesPoints = React.useMemo((): OHLCSeriesPoint[] => {
-    if (!history) return [];
-    return history
-      .slice()
-      .sort((a, b) => new Date(a.Datetime).getTime() - new Date(b.Datetime).getTime())
-      .filter((point) =>
-        isFinite(point.Open) && isFinite(point.High) &&
-        isFinite(point.Low) && isFinite(point.Close)
-      )
-      .map((point) => ({
-        date: point.Datetime,
-        open: point.Open,
-        high: point.High,
-        low: point.Low,
-        close: point.Close,
-      }));
-  }, [history]);
-
-  // Apply purchasing power adjustment
-  const m2Series = React.useMemo(
-    () => m2Data?.map((d) => ({ date: d.date, value: d.value })) ?? null,
-    [m2Data]
-  );
-  const cpiSeries = React.useMemo(
-    () => cpiData?.map((d) => ({ date: d.date, value: d.value })) ?? null,
-    [cpiData]
-  );
-  const { adjustedLineData, adjustedOHLCData, adjustmentLabel, isIndexed, isAdjusting } =
-    useInflationAdjustedData(
-      priceSeries,
-      purchasingPowerMode,
-      m2Series,
-      cpiSeries,
-      m2Loading,
-      cpiLoading,
-      ohlcSeriesPoints
-    );
 
   // Convert adjusted data to chart-compatible format
   const lineChartData = React.useMemo((): ChartDataPoint[] => {
