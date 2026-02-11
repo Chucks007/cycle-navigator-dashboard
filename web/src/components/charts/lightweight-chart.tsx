@@ -24,7 +24,7 @@ import {
 } from "lightweight-charts";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import type { ChartDataPoint, OHLCDataPoint, HistogramDataPoint, ExtraSeriesConfig } from "@/lib/chart-utils";
+import type { ChartDataPoint, OHLCDataPoint, HistogramDataPoint, ExtraSeriesConfig } from "@/lib/transformations";
 
 export type SeriesTypeOption = "Line" | "Area" | "Candlestick" | "Histogram";
 

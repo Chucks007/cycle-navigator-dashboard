@@ -12,7 +12,7 @@ import {
   type StockMetrics,
 } from "@/types/api";
 import type { PurchasingPowerMode } from "@/types/chart-preferences";
-import type { OHLCSeriesPoint, SeriesPoint } from "@/lib/series-utils";
+import type { OHLCSeriesPoint, SeriesPoint } from "@/lib/transformations";
 
 // ============================================
 // Stock Hooks

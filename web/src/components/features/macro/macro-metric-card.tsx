@@ -9,7 +9,7 @@ import { calculateSMA, calculateEMA, getFinancialStats } from "@/lib/financial-m
 import { TimeframeSelector, IndicatorToggle, LogScaleToggle, PurchasingPowerToggle, type Timeframe } from "@/components/charts/chart-controls";
 import { filterByTimeframe } from "@/lib/formatters";
 import { MetricSummarySidebar } from "@/components/features/macro/metric-summary-sidebar";
-import { transformToLineDataWithKey, createIndicatorSeries, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/chart-utils";
+import { transformToLineDataWithKey, createIndicatorSeries, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/transformations";
 
 /**
  * Base data structure for macro metrics

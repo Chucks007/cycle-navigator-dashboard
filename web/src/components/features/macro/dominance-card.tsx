@@ -7,7 +7,7 @@ import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { TimeframeSelector } from "@/components/charts/chart-controls";
 import { formatLargeNumber, filterByTimeframe } from "@/lib/formatters";
 import { getFinancialStats } from "@/lib/financial-math";
-import { transformToLineDataWithKey, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/chart-utils";
+import { transformToLineDataWithKey, type ChartDataPoint, type ExtraSeriesConfig } from "@/lib/transformations";
 import type { Time } from "lightweight-charts";
 import { useDominancePrefs } from "@/stores/macro-preferences";
 

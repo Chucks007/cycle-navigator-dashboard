@@ -18,7 +18,7 @@ import {
 } from "lightweight-charts";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import type { ChartDataPoint, ExtraSeriesConfig } from "@/lib/chart-utils";
+import type { ChartDataPoint, ExtraSeriesConfig } from "@/lib/transformations";
 
 // Shared context for chart synchronization
 interface SyncedChartsContextValue {

@@ -6,11 +6,11 @@ import { ExpandableChartCard } from "@/components/charts/expandable-chart-card";
 import { LogScaleToggle, RegressionBandsToggle } from "@/components/charts/chart-controls";
 import { useRiskData } from "@/hooks/use-risk-data";
 import { useStockHistory } from "@/hooks/use-stock-data";
-import { transformRiskBandsToSeries, transformToOHLCData } from "@/lib/chart-utils";
+import { transformRiskBandsToSeries, transformToOHLCData } from "@/lib/transformations";
 import { DashboardCard } from "@/components/ui/dashboard-card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { ExtraSeriesConfig } from "@/lib/chart-utils";
+import type { ExtraSeriesConfig } from "@/lib/transformations";
 
 interface RiskChartProps {
   ticker: string;

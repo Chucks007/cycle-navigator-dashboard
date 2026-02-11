@@ -46,7 +46,7 @@ import {
   type OHLCDataPoint,
   type HistogramDataPoint,
   type ExtraSeriesConfig,
-} from "@/lib/chart-utils";
+} from "@/lib/transformations";
 import { RiskScoreCard, RiskChart } from "@/components/charts/risk-chart";
 import { useTickerPreferences, timeframeToPeriodInterval } from "@/stores/ticker-preferences";
 import { ChartTypeToggle } from "@/components/features/ticker/chart-toggle";

@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAvailableOverlays } from "@/hooks/use-macro-data";
-import { MACRO_OVERLAY_COLORS } from "@/lib/chart-utils";
+import { MACRO_OVERLAY_COLORS } from "@/lib/transformations";
 import { cn } from "@/lib/utils";
 
 interface OverlaySelectorProps {

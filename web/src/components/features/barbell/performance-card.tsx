@@ -13,7 +13,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { toChartTime, type ChartDataPoint } from "@/lib/chart-utils";
+import { toChartTime, type ChartDataPoint } from "@/lib/transformations";
 
 // Type for asset data points
 interface AssetDataPoint {

@@ -4,7 +4,7 @@ import * as React from "react";
 import { useCpi, useLiquidity } from "@/hooks/use-macro-data";
 import { PurchasingPowerToggle } from "@/components/charts/chart-controls";
 import { formatLargeNumber } from "@/lib/formatters";
-import { adjustSeriesByCPI, type SeriesPoint } from "@/lib/series-utils";
+import { adjustSeriesByCPI, type SeriesPoint } from "@/lib/transformations";
 import { useLiquidityPrefs } from "@/stores/macro-preferences";
 import { MacroMetricCard } from "./macro-metric-card";
 

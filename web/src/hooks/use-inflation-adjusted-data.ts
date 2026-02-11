@@ -8,7 +8,7 @@ import {
   adjustOHLCByCPI,
   type SeriesPoint,
   type OHLCSeriesPoint,
-} from "@/lib/series-utils";
+} from "@/lib/transformations";
 import type { PurchasingPowerMode } from "@/types/chart-preferences";
 
 /**
