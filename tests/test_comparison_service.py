@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from unittest.mock import patch, MagicMock
 
-from backend.comparison_service import (
+from backend.services.comparison import (
     normalize_to_base_100,
     calculate_hard_vs_soft_ratio,
     get_performance_summary,
@@ -153,8 +153,8 @@ class TestAssetInfo:
 class TestFetchComparisonData:
     """Test cases for data fetching (with mocking)."""
     
-    @patch('backend.comparison_service.get_yf')
-    @patch('backend.comparison_service.get_yf_import_error')
+    @patch('backend.services.comparison.get_yf')
+    @patch('backend.services.comparison.get_yf_import_error')
     def test_fetch_comparison_data_success(self, mock_error, mock_yf):
         """Test successful data fetch."""
         mock_error.return_value = None
@@ -178,7 +178,7 @@ class TestFetchComparisonData:
         assert 'GLD' in result.columns
         assert len(result) == 5
         
-    @patch('backend.comparison_service.get_yf_import_error')
+    @patch('backend.services.comparison.get_yf_import_error')
     def test_fetch_comparison_data_no_yfinance(self, mock_error):
         """Test error when yfinance not available."""
         mock_error.return_value = "yfinance not installed"

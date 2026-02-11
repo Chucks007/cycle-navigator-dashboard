@@ -25,7 +25,7 @@ calculate_risk_metrics = stock_service.calculate_risk_metrics
 fetch_stock_data = stock_service.fetch_stock_data
 process_data = stock_service.process_data
 
-from backend.sentiment_service import (
+from backend.services.sentiment import (
     analyze_sentiment,
     get_sentiment_label,
     fetch_news_sentiment,

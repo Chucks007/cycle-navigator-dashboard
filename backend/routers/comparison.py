@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Query
 
 from .. import schemas
-from ..comparison_service import get_barbell_comparison
+from ..services.comparison import get_barbell_comparison
 from ..utils import handle_api_errors
 from .utils import ERROR_RESPONSES
 

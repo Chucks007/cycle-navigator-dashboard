@@ -3,11 +3,11 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from backend.macro_service import MacroService
+from backend.services.macro import MacroService
 
 class TestMacroService(unittest.TestCase):
     def setUp(self):
-        self.mock_fred_patcher = patch('backend.macro_service.Fred')
+        self.mock_fred_patcher = patch('backend.services.macro.Fred')
         self.mock_fred_cls = self.mock_fred_patcher.start()
         self.mock_fred_instance = self.mock_fred_cls.return_value
         

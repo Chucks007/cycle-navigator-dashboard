@@ -9,7 +9,7 @@ for comparative analysis, supporting the "Hard Assets vs Paper Assets" thesis.
 import numpy as np
 import pandas as pd
 
-from .utils import get_yf, get_yf_import_error
+from ..utils import get_yf, get_yf_import_error
 
 # Asset class definitions
 HARD_ASSETS = {
@@ -258,7 +258,7 @@ def get_barbell_comparison(period: str = "1y") -> list[dict]:
     Returns:
         List of dictionaries with date, Hard_Index, Soft_Index, Ratio, Ratio_Normalized
     """
-    from .services.common import format_for_api
+    from .common import format_for_api
 
     # 1. Fetch asset lists
     hard_tickers = list(HARD_ASSETS.keys())
