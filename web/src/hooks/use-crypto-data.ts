@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { CryptoDominanceResponse } from "@/types/api";
+import type { CryptoDominanceResponse } from "@/schemas/api-types";
 
 export function useCryptoDominance(days: number = 365) {
   return useQuery<CryptoDominanceResponse, Error>({

@@ -10,7 +10,7 @@ import {
   type StockHistoryPoint,
   type StockIndicatorsPoint,
   type StockMetrics,
-} from "@/types/api";
+} from "@/schemas/api-types";
 import type { PurchasingPowerMode } from "@/types/chart-preferences";
 import type { OHLCSeriesPoint, SeriesPoint } from "@/lib/transformations";
 

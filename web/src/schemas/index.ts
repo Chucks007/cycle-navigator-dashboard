@@ -4,4 +4,4 @@
  * Re-exports all schemas and types for convenient imports.
  */
 
-export * from './api-schemas';
+export * from './api-types';

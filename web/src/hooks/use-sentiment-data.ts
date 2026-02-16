@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { SentimentResponse } from "@/types/api";
+import type { SentimentResponse } from "@/schemas/api-types";
 
 export function useSentiment(ticker: string) {
   return useQuery<SentimentResponse, Error>({

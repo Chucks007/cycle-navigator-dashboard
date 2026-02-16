@@ -8,7 +8,7 @@ import type {
   DebtPoint,
   RealRatePoint,
   CPIPoint,
-} from "@/types/api";
+} from "@/schemas/api-types";
 import {
   useMacroPreferences,
   timeframeToDays,

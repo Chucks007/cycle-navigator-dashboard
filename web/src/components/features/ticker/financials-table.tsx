@@ -14,7 +14,7 @@ import {
   Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { StockFundamentals } from "@/types/api";
+import type { StockFundamentals } from "@/schemas/api-types";
 
 // ===========================
 // Types

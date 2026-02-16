@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { RiskResponse, RiskScoreResponse } from "@/types/api";
+import type { RiskResponse, RiskScoreResponse } from "@/schemas/api-types";
 
 export function useRiskData(ticker: string, enabled: boolean = true) {
   return useQuery<RiskResponse, Error>({

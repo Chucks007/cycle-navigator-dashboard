@@ -9,7 +9,7 @@ import {
   type LiquidityPoint,
   type MacroSeriesResponse,
   type RealRatePoint,
-} from "@/types/api";
+} from "@/schemas/api-types";
 
 // ============================================
 // Macro Hooks

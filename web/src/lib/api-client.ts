@@ -33,7 +33,7 @@ import {
   RiskScoreResponseSchema,
   AppConfigSchema,
   HealthResponseSchema,
-} from '@/schemas/api-schemas';
+} from '@/schemas/api-types';
 import { API_ROUTES } from './routes';
 
 // Use relative path for browser requests (proxied by Next.js rewrites)

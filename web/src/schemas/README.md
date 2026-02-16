@@ -16,7 +16,7 @@ These schemas serve three critical functions:
 
 ```typescript
 // Import both schema and type
-import { StockMetrics, StockMetricsSchema } from '@/schemas/api-schemas';
+import { StockMetrics, StockMetricsSchema } from '@/schemas/api-types';
 
 // Use type for annotations
 const metrics: StockMetrics = await apiClient.getStockMetrics('AAPL');
@@ -30,7 +30,7 @@ const validated = StockMetricsSchema.parse(unknownData);
 When adding a new API endpoint:
 
 1. **Check OpenAPI schema**: Run `npm run generate:api` to see backend types
-2. **Create Zod schema** in `api-schemas.ts`:
+2. **Create Zod schema** in `api-types.ts`:
 
 ```typescript
 export const NewFeatureSchema = z.object({
@@ -54,7 +54,7 @@ public async getNewFeature(): Promise<NewFeature> {
 
 ## Files
 
-- **api-schemas.ts**: All Zod schemas and inferred types
+- **api-types.ts**: All Zod schemas and inferred types
 - **index.ts**: Re-exports for convenient imports
 
 ## Validation
